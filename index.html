@@ -40,7 +40,6 @@
         .correct { background: var(--primary) !important; color: #1a1a2e !important; font-weight: bold; border-color: var(--primary) !important; }
         .wrong { background: var(--danger) !important; border-color: var(--danger) !important; }
         
-        /* 對手選擇的專屬外框樣式 */
         .op-selected { border: 3px dashed var(--highlight) !important; box-shadow: 0 0 10px rgba(249, 211, 66, 0.5); }
         
         .vocab-list { list-style: none; padding: 0; max-height: 400px; overflow-y: auto; margin-bottom: 15px; }
@@ -54,13 +53,12 @@
         .star-active { color: var(--star); text-shadow: 0 0 8px rgba(255,215,0,0.6); }
         .star-inactive { color: #555; }
 
-        /* 手機版響應式設計 */
         @media (max-width: 600px) {
             body { padding: 10px; }
             .app-container { padding: 15px; }
             .nav-btn { font-size: 1rem; padding: 8px 5px; }
             .question-box { font-size: 1.6rem; padding: 20px 10px; }
-            .options { grid-template-columns: 1fr; } /* 選項改為單行垂直排列 */
+            .options { grid-template-columns: 1fr; } 
             .input-group { flex-direction: column; }
             #diff-select { margin-top: 5px; }
         }
@@ -166,6 +164,7 @@
     
     let currentRoomData = null; 
     let isRoundEnding = false;
+    let isStarting = false; // 新增倒數狀態鎖
 
     if(myName) document.getElementById('player-name').value = myName;
     document.getElementById('player-name').addEventListener('input', (e) => {
@@ -232,22 +231,17 @@
         const list = document.getElementById('vocab-list');
         list.innerHTML = '';
         let vocabList = JSON.parse(localStorage.getItem('gsat_vocab')) || [];
-        
         if (vocabList.length === 0) {
             list.innerHTML = '<li style="text-align:center; color:var(--muted); padding:20px;">筆記本是空的！對戰選錯的單字會自動出現在這。</li>';
             return;
         }
-
         vocabList.sort((a, b) => (a.star === b.star) ? 0 : a.star ? -1 : 1);
         vocabList.forEach((v) => {
             let li = document.createElement('li');
             li.className = 'vocab-item';
             let starClass = v.star ? 'star-active' : 'star-inactive';
             li.innerHTML = `
-                <div class="vocab-text">
-                    <span class="vocab-en">${v.word}</span>
-                    <span class="vocab-ch">${v.meaning}</span>
-                </div>
+                <div class="vocab-text"><span class="vocab-en">${v.word}</span><span class="vocab-ch">${v.meaning}</span></div>
                 <div class="vocab-actions">
                     <button class="action-btn ${starClass}" onclick="toggleStar('${v.word}')">★</button>
                     <button class="action-btn" style="color:var(--danger);" onclick="deleteVocab('${v.word}')">🗑️</button>
@@ -298,7 +292,6 @@
         list.innerHTML = '';
         let history = JSON.parse(localStorage.getItem('gsat_history')) || [];
         if (history.length === 0) { list.innerHTML = '<li style="text-align:center; color:var(--muted); padding:20px;">尚無對戰紀錄</li>'; return; }
-        
         history.forEach(h => {
             let color = h.result === "Win" ? "var(--primary)" : (h.result === "Lose" ? "var(--danger)" : "var(--muted)");
             let resultTxt = h.result === "Win" ? "勝利" : (h.result === "Lose" ? "敗北" : "平手");
@@ -320,7 +313,7 @@
     }
 
     // ==========================================
-    // 模式 1：單機對戰
+    // 模式 1：單機對戰 (加入 3 秒倒數)
     // ==========================================
     window.startNpcGame = function() {
         if (!database || database.length === 0) return alert("題庫未載入！");
@@ -331,14 +324,32 @@
         document.getElementById('ui-p1-name').innerHTML = `${myName}<br><span id="score-p1">0</span>`;
         document.getElementById('ui-p2-name').innerHTML = `電腦關主<br><span id="score-p2">0</span>`;
         document.getElementById('result-overlay').style.display = 'none';
-        document.getElementById('options-container').style.display = 'grid';
         
         let indices = getIndicesByDifficulty(diff);
         currentQuestions = indices.map(i => database[i]);
         
         document.getElementById('main-nav').style.display = 'none'; 
         switchTab('screen-game', null);
-        nextNpcRound();
+        
+        // 進入單機倒數
+        document.getElementById('options-container').style.display = 'none';
+        document.getElementById('game-status').innerText = "";
+        document.getElementById('round-info').innerText = "準備中...";
+        document.getElementById('time-fill').style.width = "100%";
+        
+        let countdown = 3;
+        document.getElementById('question-text').innerHTML = `<span style="color:var(--highlight);">倒數 ${countdown} 秒...</span>`;
+        
+        let cdInterval = setInterval(() => {
+            countdown--;
+            if (countdown > 0) {
+                document.getElementById('question-text').innerHTML = `<span style="color:var(--highlight);">倒數 ${countdown} 秒...</span>`;
+            } else {
+                clearInterval(cdInterval);
+                document.getElementById('options-container').style.display = 'grid';
+                nextNpcRound();
+            }
+        }, 1000);
     };
 
     function nextNpcRound() {
@@ -358,7 +369,6 @@
             let btn = document.createElement('button');
             btn.className = 'opt-btn'; 
             btn.innerText = opt;
-            btn.id = "btn-" + idx;
             btn.onclick = () => {
                 pAnswered = true;
                 playerChoiceIndex = idx;
@@ -438,7 +448,7 @@
     }
 
     // ==========================================
-    // 模式 2：連線對戰
+    // 模式 2：連線對戰 (加入 3 秒倒數)
     // ==========================================
     window.createRoom = async function() {
         myName = document.getElementById('player-name').value || '房主P1';
@@ -484,14 +494,38 @@
                 update(roomRef, { status: 'playing', q_indices: indices });
             }
 
+            // 進入遊戲畫面並執行倒數
             if (data.status === 'playing' && document.getElementById('screen-main').classList.contains('active')) {
                 document.getElementById('ui-p1-name').innerHTML = `${data.p1.name} (P1)<br><span id="score-p1">0</span>`;
                 document.getElementById('ui-p2-name').innerHTML = `${data.p2.name} (P2)<br><span id="score-p2">0</span>`;
                 document.getElementById('main-nav').style.display = 'none';
                 switchTab('screen-game', null);
+                
+                isStarting = true;
+                document.getElementById('options-container').style.display = 'none';
+                document.getElementById('game-status').innerText = "連線成功！";
+                document.getElementById('round-info').innerText = "準備中...";
+                document.getElementById('time-fill').style.width = "100%";
+                
+                let countdown = 3;
+                document.getElementById('question-text').innerHTML = `<span style="color:var(--highlight);">倒數 ${countdown} 秒...</span>`;
+                
+                let cdInterval = setInterval(() => {
+                    countdown--;
+                    if (countdown > 0) {
+                        document.getElementById('question-text').innerHTML = `<span style="color:var(--highlight);">倒數 ${countdown} 秒...</span>`;
+                    } else {
+                        clearInterval(cdInterval);
+                        isStarting = false;
+                        document.getElementById('options-container').style.display = 'grid';
+                        renderMpQuestion(data.q_indices[data.round], data.round);
+                    }
+                }, 1000);
+                return; // 倒數期間跳出，不執行下方邏輯
             }
 
-            if (data.status === 'playing') {
+            // 正常回合監聽
+            if (data.status === 'playing' && !isStarting) {
                 document.getElementById('score-p1').innerText = data.p1.score;
                 document.getElementById('score-p2').innerText = data.p2.score;
                 
