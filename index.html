@@ -288,17 +288,21 @@
     };
 
     // ==========================================
-    // 戰績清單
+    // 戰績清單 (修復)
     // ==========================================
     window.renderHistory = function() {
         const list = document.getElementById('history-list');
         list.innerHTML = '';
         let history = JSON.parse(localStorage.getItem('gsat_history')) || [];
         if (history.length === 0) { list.innerHTML = '<li style="text-align:center; color:var(--muted); padding:20px;">尚無對戰紀錄</li>'; return; }
+        
         history.forEach(h => {
             let color = h.result === "Win" ? "var(--primary)" : (h.result === "Lose" ? "var(--danger)" : "var(--muted)");
             let resultTxt = h.result === "Win" ? "勝利" : (h.result === "Lose" ? "敗北" : "平手");
-            let opName = h.opponent ? h.opponent : (h.mode === "單機" ? "電腦關主" : "未知對手"); // 舊戰績防呆
+            
+            // 讀取對手名稱，舊版本防呆處理
+            let opName = h.opponent ? h.opponent : (h.mode === "單機" ? "電腦關主" : "未知對手");
+            
             let li = document.createElement('li');
             li.className = 'vocab-item';
             li.style.borderLeft = `5px solid ${color}`;
@@ -308,6 +312,7 @@
         });
     };
 
+    // 將 opponentName 加入傳入參數與物件屬性中
     function saveHistory(resultStr, s1, s2, modeName, opponentName) {
         let history = JSON.parse(localStorage.getItem('gsat_history')) || [];
         let dateStr = new Date().toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -450,6 +455,7 @@
         let resText = result === "Win" ? "🏆 你贏了！" : (result === "Lose" ? "💀 挑戰失敗！" : "🤝 平手！");
         document.getElementById('final-result').innerText = resText;
         document.getElementById('result-overlay').style.display = 'block';
+        
         saveHistory(result, scoreP1, scoreP2, "單機", "電腦關主");
     }
 
@@ -654,6 +660,7 @@
         
         document.getElementById('final-result').innerText = resText;
         document.getElementById('result-overlay').style.display = 'block';
+        
         saveHistory(result, myScore, opScore, "連線", opName);
     }
 </script>
