@@ -9,7 +9,6 @@
         body { font-family: 'Microsoft JhengHei', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; min-height: 100vh; }
         .app-container { width: 100%; max-width: 550px; background: var(--panel); border-radius: 12px; padding: 25px; box-shadow: 0 8px 25px rgba(0,0,0,0.6); position: relative; }
         
-        /* 導覽列 */
         .nav-bar { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px solid #0f3460; padding-bottom: 10px; }
         .nav-btn { background: transparent; border: none; color: var(--muted); font-size: 1.1rem; font-weight: bold; cursor: pointer; padding: 10px; transition: 0.3s; }
         .nav-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
@@ -18,7 +17,6 @@
         .screen { display: none; flex-direction: column; }
         .screen.active { display: flex; }
         
-        /* 表單與按鈕 */
         .input-group { display: flex; gap: 10px; margin-bottom: 15px; }
         .input-box { flex: 1; padding: 12px; border-radius: 8px; border: none; font-size: 1.1rem; text-align: center; background: #e0e0e0; color: #1a1a2e; font-weight: bold; }
         select.input-box { cursor: pointer; }
@@ -28,7 +26,6 @@
         .btn-danger { background: var(--danger); color: white; }
         .btn-small { padding: 8px 12px; font-size: 1rem; width: auto; margin-bottom: 0; }
         
-        /* 遊戲區UI */
         .scoreboard { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 1.2rem; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 10px;}
         .player1-ui { color: var(--primary); }
         .player2-ui { color: var(--danger); text-align: right; }
@@ -43,7 +40,6 @@
         .correct { background: var(--primary) !important; color: #1a1a2e !important; font-weight: bold; }
         .wrong { background: var(--danger) !important; }
         
-        /* 單字筆記本 UI */
         .vocab-list { list-style: none; padding: 0; max-height: 400px; overflow-y: auto; margin-bottom: 15px; }
         .vocab-item { background: #0f3460; margin-bottom: 8px; padding: 12px 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
         .vocab-text { display: flex; flex-direction: column; }
@@ -65,7 +61,7 @@
         <button class="nav-btn" onclick="switchTab('screen-history', this); renderHistory();">🏆 戰績</button>
     </div>
 
-    <!-- 1. 對戰大廳 -->
+    <!-- 對戰大廳 -->
     <div id="screen-main" class="screen active">
         <div id="db-status" style="text-align:center; color:var(--highlight); margin-bottom:15px;">⏳ 題庫載入中...</div>
         
@@ -93,7 +89,7 @@
         </div>
     </div>
 
-    <!-- 2. 遊戲進行畫面 -->
+    <!-- 遊戲進行畫面 -->
     <div id="screen-game" class="screen">
         <div class="scoreboard">
             <div class="player1-ui" id="ui-p1-name">P1<br><span id="score-p1">0</span></div>
@@ -111,7 +107,7 @@
         </div>
     </div>
 
-    <!-- 3. 單字筆記本 -->
+    <!-- 單字筆記本 -->
     <div id="screen-vocab" class="screen">
         <div class="input-group">
             <input type="text" id="new-word" class="input-box" placeholder="輸入單字 (例: apple)">
@@ -122,7 +118,7 @@
         <button class="btn btn-danger" onclick="clearVocab()">清空所有單字</button>
     </div>
 
-    <!-- 4. 對戰紀錄 -->
+    <!-- 對戰紀錄 -->
     <div id="screen-history" class="screen">
         <ul class="vocab-list" id="history-list"></ul>
     </div>
@@ -153,6 +149,10 @@
     let pAnswered = false, cAnswered = false;
     let playerChoiceIndex = -1, npcChoiceIndex = -1;
     let myName = localStorage.getItem('gsat_username') || '';
+    
+    // 【修復核心】加入連線狀態快取與結算防呆鎖
+    let currentRoomData = null; 
+    let isRoundEnding = false;
 
     if(myName) document.getElementById('player-name').value = myName;
     document.getElementById('player-name').addEventListener('input', (e) => {
@@ -178,7 +178,12 @@
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(screenId).classList.add('active');
-        btnElement.classList.add('active');
+        if (btnElement) btnElement.classList.add('active'); // 防呆：確保不是從遊戲內呼叫時報錯
+        
+        if (screenId !== 'screen-game') { 
+            clearInterval(timerInterval); 
+            clearTimeout(npcTimeout); 
+        }
     };
 
     function getIndicesByDifficulty(targetDiff) {
@@ -319,7 +324,7 @@
         currentQuestions = indices.map(i => database[i]);
         
         document.getElementById('main-nav').style.display = 'none'; 
-        switchTab('screen-game', document.createElement('div'));
+        switchTab('screen-game', null);
         nextNpcRound();
     };
 
@@ -389,7 +394,6 @@
                 btns[i].disabled = true;
                 if (i === q.correct) btns[i].classList.add('correct');
                 
-                // 標示電腦的選擇
                 if (i === npcChoiceIndex && !timeOut) {
                     if (i !== q.correct) {
                         btns[i].style.border = "3px dashed #f9d342";
@@ -400,7 +404,6 @@
                 }
             }
             
-            // 錯題回饋提示
             if (playerChoiceIndex !== q.correct || timeOut) {
                 document.getElementById('game-status').innerHTML = "回合結算！<span style='color:var(--danger);'>錯題已自動加入筆記本</span>";
                 if (timeOut) checkAndSaveMistake(q, true);
@@ -415,6 +418,7 @@
     }
 
     function endNpcGame() {
+        if (document.getElementById('result-overlay').style.display === 'block') return; // 防呆
         document.getElementById('options-container').style.display = 'none';
         document.getElementById('question-text').innerText = "結算中...";
         document.getElementById('time-fill').style.width = "0%";
@@ -427,7 +431,7 @@
     }
 
     // ==========================================
-    // 模式 2：連線對戰
+    // 模式 2：連線對戰 (修復防卡死鎖)
     // ==========================================
     window.createRoom = async function() {
         myName = document.getElementById('player-name').value || '房主P1';
@@ -463,7 +467,8 @@
     function listenToRoom() {
         const roomRef = ref(db, `rooms/${currentRoomId}`);
         onValue(roomRef, (snap) => {
-            const data = snap.val();
+            currentRoomData = snap.val(); // ★ 把最新的資料快取起來，避免 await get()
+            const data = currentRoomData;
             if (!data) return;
 
             if (myRole === 'p1' && data.status === 'ready') {
@@ -476,7 +481,7 @@
                 document.getElementById('ui-p1-name').innerHTML = `${data.p1.name} (P1)<br><span id="score-p1">0</span>`;
                 document.getElementById('ui-p2-name').innerHTML = `${data.p2.name} (P2)<br><span id="score-p2">0</span>`;
                 document.getElementById('main-nav').style.display = 'none';
-                switchTab('screen-game', document.createElement('div'));
+                switchTab('screen-game', null);
             }
 
             if (data.status === 'playing') {
@@ -484,10 +489,18 @@
                 document.getElementById('score-p2').innerText = data.p2.score;
                 
                 const curRound = document.getElementById('round-info').dataset.round;
-                if (curRound != data.round) renderMpQuestion(data.q_indices[data.round], data.round);
+                // 新回合開始，解鎖
+                if (curRound != data.round) {
+                    isRoundEnding = false;
+                    renderMpQuestion(data.q_indices[data.round], data.round);
+                }
 
+                // ★ 防呆鎖定：避免短時間內重複觸發回合結算
                 if (data.p1.answered && data.p2.answered) {
-                    handleMpRoundEnd(data);
+                    if (!isRoundEnding) {
+                        isRoundEnding = true;
+                        handleMpRoundEnd(data);
+                    }
                 } else if ((myRole === 'p1' && data.p2.answered) || (myRole === 'p2' && data.p1.answered)) {
                     document.getElementById('game-status').innerText = "對手已作答，等待中...";
                 }
@@ -498,6 +511,7 @@
     }
 
     function renderMpQuestion(qIndex, roundNum) {
+        isRoundEnding = false; 
         pAnswered = false; timeLeft = 10;
         document.getElementById('round-info').innerHTML = `第 ${roundNum + 1} / 7 回合 ` + (roundNum >= 5 ? `<span class="double-score">(雙倍)</span>` : "");
         document.getElementById('round-info').dataset.round = roundNum;
@@ -523,6 +537,7 @@
         }, 100);
     }
 
+    // ★ 移除導致卡死的 await get() 寫法，改用本地的 currentRoomData
     window.submitMpAnswer = async function(selectedIndex, qIndex, roundNum) {
         if (pAnswered) return;
         pAnswered = true;
@@ -541,8 +556,12 @@
 
         document.getElementById('game-status').innerText = "已上傳，等待對手...";
         const roomRef = ref(db, `rooms/${currentRoomId}`);
-        const snap = await get(roomRef);
-        await update(roomRef, { [`${myRole}/answered`]: true, [`${myRole}/score`]: snap.val()[myRole].score + scoreAdd, [`${myRole}/choice`]: selectedIndex });
+        let currentScore = currentRoomData ? currentRoomData[myRole].score : 0;
+        await update(roomRef, { 
+            [`${myRole}/answered`]: true, 
+            [`${myRole}/score`]: currentScore + scoreAdd, 
+            [`${myRole}/choice`]: selectedIndex 
+        });
     };
 
     function handleMpRoundEnd(data) {
@@ -556,7 +575,6 @@
         for(let i=0; i<btns.length; i++) {
             if (i === q.correct) btns[i].classList.add('correct');
             
-            // 標示對手選擇
             if (i === opChoice && opChoice !== -1) {
                 if (i !== q.correct) {
                     btns[i].style.border = "3px dashed #f9d342";
@@ -567,7 +585,6 @@
             }
         }
         
-        // 錯題回饋提示
         if (myChoice !== q.correct) {
             document.getElementById('game-status').innerHTML = "回合結算！<span style='color:var(--danger);'>錯題已自動加入筆記本</span>";
         } else {
@@ -583,6 +600,7 @@
     }
 
     function endMpGame(data) {
+        if (document.getElementById('result-overlay').style.display === 'block') return; // 防呆
         document.getElementById('options-container').style.display = 'none';
         document.getElementById('question-text').innerText = "遊戲結算";
         document.getElementById('time-fill').style.width = "0%";
