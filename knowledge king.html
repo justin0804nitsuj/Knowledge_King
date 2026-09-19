@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學測單字對戰 - 完整整合版</title>
+    <style>
+        :root { --bg: #1a1a2e; --panel: #16213e; --primary: #4ecca3; --danger: #e94560; --text: #fff; --muted: #a9a9a9; --highlight: #f9d342; }
+        body { font-family: 'Microsoft JhengHei', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; min-height: 100vh; }
+        .app-container { width: 100%; max-width: 500px; background: var(--panel); border-radius: 12px; padding: 25px; box-shadow: 0 8px 25px rgba(0,0,0,0.6); position: relative; }
+        .screen { display: none; flex-direction: column; }
+        .screen.active { display: flex; }
+        h1, h2 { text-align: center; color: var(--primary); margin-bottom: 20px; }
+        h2 { border-bottom: 2px solid #0f3460; padding-bottom: 10px; }
+        
+        .btn { background: var(--primary); color: #1a1a2e; border: none; padding: 15px; font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; margin-bottom: 15px; width: 100%; }
+        .btn:hover { background: #45b393; transform: translateY(-2px); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #d13d56; }
+        .btn-outline { background: transparent; border: 2px solid var(--muted); color: var(--muted); }
+        .input-box { width: 90%; padding: 10px; margin-bottom: 15px; border-radius: 5px; border: none; font-size: 1.2rem; text-align: center; display: block; margin-left: auto; margin-right: auto; }
+        
+        /* 遊戲畫面與共用 UI */
+        .scoreboard { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 1.2rem; font-weight: bold; }
+        .player1-ui { color: var(--primary); }
+        .player2-ui { color: var(--danger); text-align: right; }
+        .round-info { text-align: center; margin-bottom: 15px; color: var(--muted); font-size: 1.1rem; }
+        .double-score { color: var(--highlight); font-weight: bold; animation: blink 1s infinite alternate; }
+        @keyframes blink { from { opacity: 1; } to { opacity: 0.5; } }
+        
+        .question-box { background: #0f3460; padding: 30px 20px; text-align: center; font-size: 2rem; border-radius: 8px; margin-bottom: 20px; font-weight: bold; }
+        .timer-bar { width: 100%; height: 10px; background: #333; border-radius: 5px; margin-bottom: 10px; overflow: hidden; }
+        #time-fill { height: 100%; width: 100%; background: var(--primary); transition: width 0.1s linear; }
+        .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .opt-btn { background: var(--danger); color: white; border: none; padding: 15px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .opt-btn:disabled { cursor: not-allowed; opacity: 0.8; }
+        .correct { background: var(--primary) !important; color: #1a1a2e !important; font-weight: bold; }
+        .wrong { background: #555 !important; }
+        .status-msg { text-align: center; height: 20px; color: var(--muted); margin-bottom: 10px; font-size: 0.9rem; }
+        
+        /* 列表介面 (錯題本/紀錄) */
+        .data-list { list-style: none; padding: 0; max-height: 300px; overflow-y: auto; margin-bottom: 20px; }
+        .data-item { background: #0f3460; margin-bottom: 10px; padding: 10px 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .word-en { font-size: 1.3rem; font-weight: bold; color: var(--highlight); }
+        .history-win { border-left: 5px solid var(--primary); }
+        .history-lose { border-left: 5px solid var(--danger); }
+        .history-draw { border-left: 5px solid var(--muted); }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    
+    <!-- 主畫面 -->
+    <div id="screen-main" class="screen active">
+        <h1>學測單字對戰</h1>
+        <button class="btn" onclick="startNpcGame()">單機練習 (vs 電腦)</button>
+        
+        <div style="background: #0f3460; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+            <h3 style="margin-top:0; text-align:center;">連線對戰</h3>
+            <button class="btn btn-danger" onclick="createRoom()">建立房間 (關主)</button>
+            <div id="room-code-display" style="text-align: center; font-size: 1.3rem; color: var(--highlight); margin-bottom: 10px; display: none;"></div>
+            <hr style="border-color: #333; margin: 15px 0;">
+            <input type="text" id="room-input" class="input-box" placeholder="輸入5碼房間代碼">
+            <button class="btn" style="background: var(--highlight); color: black;" onclick="joinRoom()">加入房間 (挑戰者)</button>
+            <div id="lobby-status" class="status-msg"></div>
+        </div>
+
+        <button class="btn btn-outline" onclick="openReview()">錯題回顧</button>
+        <button class="btn btn-outline" onclick="openHistory()">對戰紀錄</button>
+    </div>
+
+    <!-- 遊戲畫面 -->
+    <div id="screen-game" class="screen">
+        <div class="scoreboard">
+            <div class="player1-ui" id="ui-p1-name">你<br><span id="score-p1">0</span></div>
+            <div class="player2-ui" id="ui-p2-name">對手<br><span id="score-p2">0</span></div>
+        </div>
+        <div class="round-info" id="round-info">準備開始...</div>
+        <div class="timer-bar"><div id="time-fill"></div></div>
+        <div class="question-box" id="question-text">Loading...</div>
+        <div class="status-msg" id="game-status"></div>
+        <div class="options" id="options-container"></div>
+        
+        <div id="result-overlay" style="display:none; text-align:center; margin-top:20px;">
+            <div id="final-result" style="font-size:1.5rem; margin-bottom:20px; font-weight:bold;"></div>
+            <button class="btn" onclick="window.location.reload()">回主畫面</button>
+        </div>
+    </div>
+
+    <!-- 錯題回顧畫面 -->
+    <div id="screen-review" class="screen">
+        <h2>錯題回顧本</h2>
+        <ul class="data-list" id="review-list"></ul>
+        <button class="btn btn-danger" onclick="clearReview()">清空錯題</button>
+        <button class="btn btn-outline" onclick="switchScreen('screen-main')">回主畫面</button>
+    </div>
+
+    <!-- 對戰紀錄畫面 -->
+    <div id="screen-history" class="screen">
+        <h2>對戰紀錄</h2>
+        <ul class="data-list" id="history-list"></ul>
+        <button class="btn btn-outline" onclick="switchScreen('screen-main')">回主畫面</button>
+    </div>
+
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, update, get, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyA4UGz3hd-WosEGuhCF3bmHs52JJOhZGts",
+        authDomain: "gsat-battle-992b8.firebaseapp.com",
+        databaseURL: "https://gsat-battle-992b8-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "gsat-battle-992b8",
+        storageBucket: "gsat-battle-992b8.firebasestorage.app",
+        messagingSenderId: "880103499727",
+        appId: "1:880103499727:web:0f3540fc8e7ed7d26c14ba",
+        measurementId: "G-550T1J7C40"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // 將常數改為空陣列，等待載入
+    let database = [];
+
+    // 初始化載入外部題庫
+    window.onload = async function() {
+        try {
+            // 讀取同層目錄下的 words.json
+            const response = await fetch('words.json');
+            database = await response.json();
+            document.getElementById('round-info').innerText = `題庫載入完成 (共 ${database.length} 字)`;
+        } catch (error) {
+            console.error("題庫載入失敗:", error);
+            document.getElementById('round-info').innerText = "題庫載入失敗，請確認 words.json 是否存在。";
+        }
+    };
+
+    // 全域狀態
+    let activeMode = ''; // 'npc' 或是 'multiplayer'
+    let myRole = ''; // 'p1' 或 'p2'
+    let currentRoomId = '';
+    
+    // 共用遊戲狀態
+    let currentQuestions = []; // NPC模式用
+    let round = 0, scoreP1 = 0, scoreP2 = 0;
+    let timeLeft = 10, timerInterval, npcTimeout;
+    let pAnswered = false, cAnswered = false; // 單機狀態標記
+
+    window.switchScreen = function(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+        if(screenId !== 'screen-game') { clearInterval(timerInterval); clearTimeout(npcTimeout); }
+    };
+
+    // ==========================================
+    // 共用邏輯：計分與 LocalStorage
+    // ==========================================
+    function calculateScore(timeRemaining, rNum) {
+        let total = 100 + Math.floor(timeRemaining * 10);
+        return (rNum >= 5) ? total * 2 : total; // 第6與第7題(index 5,6) 乘 2
+    }
+
+    function checkAndSaveWrongWord(qObj, isWrong) {
+        if (!isWrong) return;
+        let wrongWords = JSON.parse(localStorage.getItem('gsat_wrong_words')) || [];
+        if (!wrongWords.find(w => w.word === qObj.word)) {
+            wrongWords.push({ word: qObj.word, meaning: qObj.options[qObj.correct] });
+            localStorage.setItem('gsat_wrong_words', JSON.stringify(wrongWords));
+        }
+    }
+
+    function saveHistory(resultStr, s1, s2, modeName) {
+        let history = JSON.parse(localStorage.getItem('gsat_history')) || [];
+        let dateStr = new Date().toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        history.unshift({ date: dateStr, result: resultStr, pScore: s1, cScore: s2, mode: modeName });
+        if(history.length > 20) history.pop();
+        localStorage.setItem('gsat_history', JSON.stringify(history));
+    }
+
+    // ==========================================
+    // 模式 1：單機對戰 (NPC)
+    // ==========================================
+    window.startNpcGame = function() {
+        activeMode = 'npc';
+        round = 0; scoreP1 = 0; scoreP2 = 0;
+        document.getElementById('ui-p1-name').innerHTML = `你 (P1)<br><span id="score-p1">0</span>`;
+        document.getElementById('ui-p2-name').innerHTML = `電腦關主<br><span id="score-p2">0</span>`;
+        document.getElementById('result-overlay').style.display = 'none';
+        document.getElementById('options-container').style.display = 'grid';
+        
+        currentQuestions = [...database].sort(() => Math.random() - 0.5).slice(0, 7);
+        switchScreen('screen-game');
+        nextNpcRound();
+    };
+
+    function nextNpcRound() {
+        if (round >= 7) { endNpcGame(); return; }
+        pAnswered = false; cAnswered = false; timeLeft = 10;
+        document.getElementById('game-status').innerText = " ";
+        document.getElementById('time-fill').style.width = "100%";
+        
+        let isDouble = round >= 5;
+        document.getElementById('round-info').innerHTML = `第 ${round + 1} / 7 回合 ` + (isDouble ? `<span class="double-score">(分數 x 2)</span>` : "");
+
+        const q = currentQuestions[round];
+        document.getElementById('question-text').innerText = q.word;
+
+        const optContainer = document.getElementById('options-container');
+        optContainer.innerHTML = '';
+        q.options.forEach((opt, index) => {
+            let btn = document.createElement('button');
+            btn.className = 'opt-btn'; btn.innerText = opt; btn.id = "btn-" + index;
+            btn.onclick = () => npcPlayerChoose(index);
+            optContainer.appendChild(btn);
+        });
+
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            timeLeft -= 0.1;
+            document.getElementById('time-fill').style.width = `${(timeLeft / 10) * 100}%`;
+            if (timeLeft <= 0) { timeLeft = 0; checkNpcRoundEnd(true); }
+        }, 100);
+
+        clearTimeout(npcTimeout);
+        npcTimeout = setTimeout(() => { if(!cAnswered && timeLeft > 0) doNpcAnswer(); }, Math.random() * 5000 + 2000);
+    }
+
+    function npcPlayerChoose(selectedIndex) {
+        if (pAnswered || timeLeft <= 0) return;
+        pAnswered = true;
+        let btns = document.getElementsByClassName('opt-btn');
+        for(let btn of btns) btn.disabled = true;
+
+        const q = currentQuestions[round];
+        if (selectedIndex === q.correct) {
+            document.getElementById("btn-" + selectedIndex).classList.add('correct');
+            scoreP1 += calculateScore(timeLeft, round);
+            document.getElementById('score-p1').innerText = scoreP1;
+        } else {
+            document.getElementById("btn-" + selectedIndex).classList.add('wrong');
+            checkAndSaveWrongWord(q, true);
+        }
+        checkNpcRoundEnd(false);
+    }
+
+    function doNpcAnswer() {
+        if (cAnswered || timeLeft <= 0) return;
+        cAnswered = true;
+        if (Math.random() < 0.75) {
+            scoreP2 += calculateScore(timeLeft, round);
+            document.getElementById('score-p2').innerText = scoreP2;
+        }
+        checkNpcRoundEnd(false);
+    }
+
+    function checkNpcRoundEnd(timeOut) {
+        if ((pAnswered && cAnswered) || timeOut) {
+            clearInterval(timerInterval); clearTimeout(npcTimeout);
+            const q = currentQuestions[round];
+            let btns = document.getElementsByClassName('opt-btn');
+            for(let i=0; i<btns.length; i++) {
+                btns[i].disabled = true;
+                if (i === q.correct) btns[i].classList.add('correct');
+            }
+            if (timeOut && !pAnswered) checkAndSaveWrongWord(q, true); // 超時視同錯題
+            
+            document.getElementById('game-status').innerText = "回合結算中...";
+            round++;
+            setTimeout(nextNpcRound, 2000);
+        } else if (pAnswered && !cAnswered) {
+            document.getElementById('game-status').innerText = "等待電腦作答...";
+        }
+    }
+
+    function endNpcGame() {
+        document.getElementById('options-container').style.display = 'none';
+        document.getElementById('question-text').innerText = "遊戲結束";
+        document.getElementById('time-fill').style.width = "0%";
+        document.getElementById('game-status').innerText = "";
+        
+        let result = scoreP1 > scoreP2 ? "Win" : (scoreP1 < scoreP2 ? "Lose" : "Draw");
+        document.getElementById('final-result').innerText = result === "Win" ? "🏆 勝利！" : (result === "Lose" ? "💀 敗北！" : "🤝 平手！");
+        document.getElementById('result-overlay').style.display = 'block';
+        saveHistory(result, scoreP1, scoreP2, '單機');
+    }
+
+    // ==========================================
+    // 模式 2：連線對戰 (Firebase)
+    // ==========================================
+    window.createRoom = async function() {
+        myRole = 'p1'; activeMode = 'multiplayer';
+        currentRoomId = Math.floor(10000 + Math.random() * 90000).toString();
+        document.getElementById('room-code-display').innerText = `房號：${currentRoomId}`;
+        document.getElementById('room-code-display').style.display = 'block';
+        document.getElementById('lobby-status').innerText = "等待挑戰者加入...";
+
+        const roomRef = ref(db, `rooms/${currentRoomId}`);
+        await set(roomRef, { status: 'waiting', p1: { score: 0, answered: false }, p2: { score: 0, answered: false }, q_indices: [], round: 0 });
+        listenToRoom();
+    };
+
+    window.joinRoom = async function() {
+        const inputCode = document.getElementById('room-input').value;
+        if (!inputCode) return alert("請輸入房號");
+        
+        document.getElementById('lobby-status').innerText = "連線中...";
+        const roomRef = ref(db, `rooms/${inputCode}`);
+        const snapshot = await get(roomRef);
+        
+        if (snapshot.exists() && snapshot.val().status === 'waiting') {
+            myRole = 'p2'; activeMode = 'multiplayer';
+            currentRoomId = inputCode;
+            await update(roomRef, { status: 'ready' });
+            listenToRoom();
+        } else {
+            document.getElementById('lobby-status').innerText = "房間不存在或已在遊戲中";
+        }
+    };
+
+    function listenToRoom() {
+        const roomRef = ref(db, `rooms/${currentRoomId}`);
+        onValue(roomRef, (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+
+            if (myRole === 'p1' && data.status === 'ready') {
+                let indices = Array.from({length: database.length}, (_, i) => i).sort(() => Math.random() - 0.5).slice(0, 7); // 抽7題
+                update(roomRef, { status: 'playing', q_indices: indices });
+            }
+
+            if (data.status === 'playing' && document.getElementById('screen-main').classList.contains('active')) {
+                document.getElementById('ui-p1-name').innerHTML = `關主 (P1)<br><span id="score-p1">0</span>`;
+                document.getElementById('ui-p2-name').innerHTML = `挑戰者 (P2)<br><span id="score-p2">0</span>`;
+                switchScreen('screen-game');
+            }
+
+            if (data.status === 'playing') {
+                document.getElementById('score-p1').innerText = data.p1.score;
+                document.getElementById('score-p2').innerText = data.p2.score;
+                
+                const currentRoundSpan = document.getElementById('round-info').dataset.round;
+                if (currentRoundSpan != data.round) renderMpQuestion(data.q_indices[data.round], data.round);
+
+                if (data.p1.answered && data.p2.answered) {
+                    handleMpRoundEnd(data);
+                } else if ((myRole === 'p1' && data.p2.answered) || (myRole === 'p2' && data.p1.answered)) {
+                    document.getElementById('game-status').innerText = "對手已作答，等待中...";
+                }
+            }
+
+            if (data.status === 'finished') endMpGame(data);
+        });
+    }
+
+    function renderMpQuestion(qIndex, roundNum) {
+        pAnswered = false; timeLeft = 10;
+        let isDouble = roundNum >= 5;
+        document.getElementById('round-info').innerHTML = `第 ${roundNum + 1} / 7 回合 ` + (isDouble ? `<span class="double-score">(分數 x 2)</span>` : "");
+        document.getElementById('round-info').dataset.round = roundNum;
+        document.getElementById('game-status').innerText = "";
+        
+        const q = database[qIndex];
+        document.getElementById('question-text').innerText = q.word;
+
+        const optContainer = document.getElementById('options-container');
+        optContainer.innerHTML = '';
+        q.options.forEach((opt, idx) => {
+            let btn = document.createElement('button');
+            btn.className = 'opt-btn'; btn.innerText = opt; btn.id = "btn-" + idx;
+            btn.onclick = () => submitMpAnswer(idx, qIndex, roundNum);
+            optContainer.appendChild(btn);
+        });
+
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            timeLeft -= 0.1;
+            document.getElementById('time-fill').style.width = `${(timeLeft / 10) * 100}%`;
+            if (timeLeft <= 0) {
+                timeLeft = 0; clearInterval(timerInterval);
+                if (!pAnswered) submitMpAnswer(-1, qIndex, roundNum); 
+            }
+        }, 100);
+    }
+
+    window.submitMpAnswer = async function(selectedIndex, qIndex, roundNum) {
+        if (pAnswered) return;
+        pAnswered = true;
+        clearInterval(timerInterval);
+
+        let btns = document.getElementsByClassName('opt-btn');
+        for(let btn of btns) btn.disabled = true;
+
+        const q = database[qIndex];
+        let scoreAdd = 0;
+        
+        if (selectedIndex === q.correct) {
+            document.getElementById("btn-" + selectedIndex).classList.add('correct');
+            scoreAdd = calculateScore(timeLeft, roundNum);
+        } else {
+            if (selectedIndex !== -1) document.getElementById("btn-" + selectedIndex).classList.add('wrong');
+            checkAndSaveWrongWord(q, true);
+        }
+
+        document.getElementById('game-status').innerText = "已上傳答案，等待對手...";
+        
+        const roomRef = ref(db, `rooms/${currentRoomId}`);
+        const snap = await get(roomRef);
+        const currentScore = snap.val()[myRole].score;
+
+        await update(roomRef, {
+            [`${myRole}/answered`]: true,
+            [`${myRole}/score`]: currentScore + scoreAdd
+        });
+    };
+
+    function handleMpRoundEnd(data) {
+        clearInterval(timerInterval);
+        const q = database[data.q_indices[data.round]];
+        let btns = document.getElementsByClassName('opt-btn');
+        for(let i=0; i<btns.length; i++) {
+            if (i === q.correct) btns[i].classList.add('correct');
+        }
+        document.getElementById('game-status').innerText = "回合結算！準備進入下一題...";
+
+        if (myRole === 'p1') {
+            setTimeout(() => {
+                if (data.round >= 6) {
+                    update(ref(db, `rooms/${currentRoomId}`), { status: 'finished' });
+                } else {
+                    update(ref(db, `rooms/${currentRoomId}`), { round: data.round + 1, "p1/answered": false, "p2/answered": false });
+                }
+            }, 2500);
+        }
+    }
+
+    function endMpGame(data) {
+        document.getElementById('options-container').style.display = 'none';
+        document.getElementById('question-text').innerText = "遊戲結算";
+        document.getElementById('time-fill').style.width = "0%";
+        document.getElementById('game-status').innerText = "";
+        
+        let myScore = data[myRole].score;
+        let opScore = data[myRole === 'p1' ? 'p2' : 'p1'].score;
+        let result = myScore > opScore ? "Win" : (myScore < opScore ? "Lose" : "Draw");
+        
+        document.getElementById('final-result').innerText = result === "Win" ? "🏆 你贏了！" : (result === "Lose" ? "💀 你輸了！" : "🤝 平手！");
+        document.getElementById('result-overlay').style.display = 'block';
+        
+        saveHistory(result, myScore, opScore, '連線');
+    }
+
+    // ==========================================
+    // UI 介面：錯題與紀錄渲染
+    // ==========================================
+    window.openReview = function() {
+        switchScreen('screen-review');
+        const list = document.getElementById('review-list');
+        list.innerHTML = '';
+        let wrongWords = JSON.parse(localStorage.getItem('gsat_wrong_words')) || [];
+        
+        if (wrongWords.length === 0) {
+            list.innerHTML = '<li class="data-item" style="justify-content:center; color: var(--muted);">目前沒有錯題紀錄！</li>';
+            return;
+        }
+        wrongWords.forEach(w => {
+            let li = document.createElement('li');
+            li.className = 'data-item';
+            li.innerHTML = `<span class="word-en">${w.word}</span> <span>${w.meaning}</span>`;
+            list.appendChild(li);
+        });
+    };
+
+    window.clearReview = function() {
+        if(confirm('確定要清空所有錯題紀錄嗎？')) {
+            localStorage.removeItem('gsat_wrong_words');
+            openReview();
+        }
+    };
+
+    window.openHistory = function() {
+        switchScreen('screen-history');
+        const list = document.getElementById('history-list');
+        list.innerHTML = '';
+        let history = JSON.parse(localStorage.getItem('gsat_history')) || [];
+        
+        if (history.length === 0) {
+            list.innerHTML = '<li class="data-item" style="justify-content:center; color: var(--muted);">尚無對戰紀錄</li>';
+            return;
+        }
+        history.forEach(h => {
+            let cls = h.result === "Win" ? "history-win" : (h.result === "Lose" ? "history-lose" : "history-draw");
+            let resultTxt = h.result === "Win" ? "勝利" : (h.result === "Lose" ? "敗北" : "平手");
+            let li = document.createElement('li');
+            li.className = `data-item ${cls}`;
+            li.innerHTML = `
+                <div>${h.date} <br><span style="font-size:0.85rem; color:var(--muted)">[${h.mode}]</span></div>
+                <div style="font-size:1.1rem">${h.pScore} : ${h.cScore} <strong style="margin-left:10px">${resultTxt}</strong></div>
+            `;
+            list.appendChild(li);
+        });
+    };
+</script>
+</body>
+</html>
