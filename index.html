@@ -164,7 +164,7 @@
     
     let currentRoomData = null; 
     let isRoundEnding = false;
-    let isStarting = false; // 新增倒數狀態鎖
+    let isStarting = false;
 
     if(myName) document.getElementById('player-name').value = myName;
     document.getElementById('player-name').addEventListener('input', (e) => {
@@ -287,6 +287,9 @@
         }
     };
 
+    // ==========================================
+    // 戰績清單
+    // ==========================================
     window.renderHistory = function() {
         const list = document.getElementById('history-list');
         list.innerHTML = '';
@@ -295,25 +298,26 @@
         history.forEach(h => {
             let color = h.result === "Win" ? "var(--primary)" : (h.result === "Lose" ? "var(--danger)" : "var(--muted)");
             let resultTxt = h.result === "Win" ? "勝利" : (h.result === "Lose" ? "敗北" : "平手");
+            let opName = h.opponent ? h.opponent : (h.mode === "單機" ? "電腦關主" : "未知對手"); // 舊戰績防呆
             let li = document.createElement('li');
             li.className = 'vocab-item';
             li.style.borderLeft = `5px solid ${color}`;
-            li.innerHTML = `<div>${h.date} <br><span style="font-size:0.85rem; color:var(--muted)">[${h.mode}]</span></div>
+            li.innerHTML = `<div>${h.date} <br><span style="font-size:0.85rem; color:var(--muted)">[${h.mode}] vs ${opName}</span></div>
                             <div style="font-size:1.1rem">${h.pScore} : ${h.cScore} <strong style="margin-left:10px">${resultTxt}</strong></div>`;
             list.appendChild(li);
         });
     };
 
-    function saveHistory(resultStr, s1, s2, modeName) {
+    function saveHistory(resultStr, s1, s2, modeName, opponentName) {
         let history = JSON.parse(localStorage.getItem('gsat_history')) || [];
         let dateStr = new Date().toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-        history.unshift({ date: dateStr, result: resultStr, pScore: s1, cScore: s2, mode: modeName });
+        history.unshift({ date: dateStr, result: resultStr, pScore: s1, cScore: s2, mode: modeName, opponent: opponentName });
         if(history.length > 20) history.pop();
         localStorage.setItem('gsat_history', JSON.stringify(history));
     }
 
     // ==========================================
-    // 模式 1：單機對戰 (加入 3 秒倒數)
+    // 模式 1：單機對戰
     // ==========================================
     window.startNpcGame = function() {
         if (!database || database.length === 0) return alert("題庫未載入！");
@@ -331,7 +335,6 @@
         document.getElementById('main-nav').style.display = 'none'; 
         switchTab('screen-game', null);
         
-        // 進入單機倒數
         document.getElementById('options-container').style.display = 'none';
         document.getElementById('game-status').innerText = "";
         document.getElementById('round-info').innerText = "準備中...";
@@ -369,6 +372,7 @@
             let btn = document.createElement('button');
             btn.className = 'opt-btn'; 
             btn.innerText = opt;
+            btn.id = "btn-" + idx;
             btn.onclick = () => {
                 pAnswered = true;
                 playerChoiceIndex = idx;
@@ -413,12 +417,14 @@
         if ((pAnswered && cAnswered) || timeOut) {
             clearInterval(timerInterval); clearTimeout(npcTimeout);
             const q = currentQuestions[round];
-            let btns = document.getElementsByClassName('opt-btn');
             
-            for(let i=0; i<btns.length; i++) {
-                btns[i].disabled = true;
-                if (i === q.correct) btns[i].classList.add('correct');
-                if (i === npcChoiceIndex && !timeOut) btns[i].classList.add('op-selected');
+            for(let i=0; i<4; i++) {
+                let btn = document.getElementById("btn-" + i);
+                if (btn) {
+                    btn.disabled = true;
+                    if (i === q.correct) btn.classList.add('correct');
+                    if (i === npcChoiceIndex && !timeOut) btn.classList.add('op-selected');
+                }
             }
             
             if (playerChoiceIndex !== q.correct || timeOut) {
@@ -444,11 +450,11 @@
         let resText = result === "Win" ? "🏆 你贏了！" : (result === "Lose" ? "💀 挑戰失敗！" : "🤝 平手！");
         document.getElementById('final-result').innerText = resText;
         document.getElementById('result-overlay').style.display = 'block';
-        saveHistory(result, scoreP1, scoreP2, "單機");
+        saveHistory(result, scoreP1, scoreP2, "單機", "電腦關主");
     }
 
     // ==========================================
-    // 模式 2：連線對戰 (加入 3 秒倒數)
+    // 模式 2：連線對戰
     // ==========================================
     window.createRoom = async function() {
         myName = document.getElementById('player-name').value || '房主P1';
@@ -494,7 +500,6 @@
                 update(roomRef, { status: 'playing', q_indices: indices });
             }
 
-            // 進入遊戲畫面並執行倒數
             if (data.status === 'playing' && document.getElementById('screen-main').classList.contains('active')) {
                 document.getElementById('ui-p1-name').innerHTML = `${data.p1.name} (P1)<br><span id="score-p1">0</span>`;
                 document.getElementById('ui-p2-name').innerHTML = `${data.p2.name} (P2)<br><span id="score-p2">0</span>`;
@@ -521,10 +526,9 @@
                         renderMpQuestion(data.q_indices[data.round], data.round);
                     }
                 }, 1000);
-                return; // 倒數期間跳出，不執行下方邏輯
+                return; 
             }
 
-            // 正常回合監聽
             if (data.status === 'playing' && !isStarting) {
                 document.getElementById('score-p1').innerText = data.p1.score;
                 document.getElementById('score-p2').innerText = data.p2.score;
@@ -611,10 +615,12 @@
         let opChoice = data[opRole].choice;
         let myChoice = data[myRole].choice;
         
-        let btns = document.getElementsByClassName('opt-btn');
-        for(let i=0; i<btns.length; i++) {
-            if (i === q.correct) btns[i].classList.add('correct');
-            if (i === opChoice && opChoice !== -1) btns[i].classList.add('op-selected');
+        for(let i=0; i<4; i++) {
+            let btn = document.getElementById("btn-" + i);
+            if (btn) {
+                if (i === q.correct) btn.classList.add('correct');
+                if (i === opChoice && opChoice !== -1) btn.classList.add('op-selected');
+            }
         }
         
         if (myChoice !== q.correct) {
@@ -648,7 +654,7 @@
         
         document.getElementById('final-result').innerText = resText;
         document.getElementById('result-overlay').style.display = 'block';
-        saveHistory(result, myScore, opScore, "連線");
+        saveHistory(result, myScore, opScore, "連線", opName);
     }
 </script>
 </body>
