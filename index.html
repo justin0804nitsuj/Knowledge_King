@@ -34,11 +34,14 @@
         .timer-bar { width: 100%; height: 10px; background: #333; border-radius: 5px; margin-bottom: 10px; overflow: hidden; }
         #time-fill { height: 100%; width: 100%; background: var(--primary); transition: width 0.1s linear; }
         .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .opt-btn { background: #2a3b5c; color: white; border: none; padding: 15px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; transition: 0.2s; border: 2px solid transparent; }
+        .opt-btn { background: #2a3b5c; color: white; border: none; padding: 15px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; transition: 0.2s; border: 3px solid transparent; }
         .opt-btn:hover:not(:disabled) { border-color: var(--primary); background: #3a4b6c; }
         .opt-btn:disabled { cursor: not-allowed; opacity: 0.8; }
-        .correct { background: var(--primary) !important; color: #1a1a2e !important; font-weight: bold; }
-        .wrong { background: var(--danger) !important; }
+        .correct { background: var(--primary) !important; color: #1a1a2e !important; font-weight: bold; border-color: var(--primary) !important; }
+        .wrong { background: var(--danger) !important; border-color: var(--danger) !important; }
+        
+        /* 對手選擇的專屬外框樣式 */
+        .op-selected { border: 3px dashed var(--highlight) !important; box-shadow: 0 0 10px rgba(249, 211, 66, 0.5); }
         
         .vocab-list { list-style: none; padding: 0; max-height: 400px; overflow-y: auto; margin-bottom: 15px; }
         .vocab-item { background: #0f3460; margin-bottom: 8px; padding: 12px 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
@@ -50,6 +53,17 @@
         .action-btn:hover { transform: scale(1.2); }
         .star-active { color: var(--star); text-shadow: 0 0 8px rgba(255,215,0,0.6); }
         .star-inactive { color: #555; }
+
+        /* 手機版響應式設計 */
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .app-container { padding: 15px; }
+            .nav-btn { font-size: 1rem; padding: 8px 5px; }
+            .question-box { font-size: 1.6rem; padding: 20px 10px; }
+            .options { grid-template-columns: 1fr; } /* 選項改為單行垂直排列 */
+            .input-group { flex-direction: column; }
+            #diff-select { margin-top: 5px; }
+        }
     </style>
 </head>
 <body>
@@ -150,7 +164,6 @@
     let playerChoiceIndex = -1, npcChoiceIndex = -1;
     let myName = localStorage.getItem('gsat_username') || '';
     
-    // 【修復核心】加入連線狀態快取與結算防呆鎖
     let currentRoomData = null; 
     let isRoundEnding = false;
 
@@ -178,7 +191,7 @@
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(screenId).classList.add('active');
-        if (btnElement) btnElement.classList.add('active'); // 防呆：確保不是從遊戲內呼叫時報錯
+        if (btnElement) btnElement.classList.add('active'); 
         
         if (screenId !== 'screen-game') { 
             clearInterval(timerInterval); 
@@ -213,7 +226,7 @@
     }
 
     // ==========================================
-    // 單字筆記本系統 (CRUD)
+    // 單字筆記本系統
     // ==========================================
     window.renderVocab = function() {
         const list = document.getElementById('vocab-list');
@@ -343,7 +356,9 @@
         optContainer.innerHTML = '';
         q.options.forEach((opt, idx) => {
             let btn = document.createElement('button');
-            btn.className = 'opt-btn'; btn.innerText = opt;
+            btn.className = 'opt-btn'; 
+            btn.innerText = opt;
+            btn.id = "btn-" + idx;
             btn.onclick = () => {
                 pAnswered = true;
                 playerChoiceIndex = idx;
@@ -393,15 +408,7 @@
             for(let i=0; i<btns.length; i++) {
                 btns[i].disabled = true;
                 if (i === q.correct) btns[i].classList.add('correct');
-                
-                if (i === npcChoiceIndex && !timeOut) {
-                    if (i !== q.correct) {
-                        btns[i].style.border = "3px dashed #f9d342";
-                        btns[i].innerHTML += " <br><span style='color:#f9d342; font-size:0.95rem;'>(電腦選此)</span>";
-                    } else {
-                        btns[i].innerHTML += " <br><span style='color:#1a1a2e; font-size:0.95rem;'>(電腦也選此)</span>";
-                    }
-                }
+                if (i === npcChoiceIndex && !timeOut) btns[i].classList.add('op-selected');
             }
             
             if (playerChoiceIndex !== q.correct || timeOut) {
@@ -418,7 +425,7 @@
     }
 
     function endNpcGame() {
-        if (document.getElementById('result-overlay').style.display === 'block') return; // 防呆
+        if (document.getElementById('result-overlay').style.display === 'block') return; 
         document.getElementById('options-container').style.display = 'none';
         document.getElementById('question-text').innerText = "結算中...";
         document.getElementById('time-fill').style.width = "0%";
@@ -431,7 +438,7 @@
     }
 
     // ==========================================
-    // 模式 2：連線對戰 (修復防卡死鎖)
+    // 模式 2：連線對戰
     // ==========================================
     window.createRoom = async function() {
         myName = document.getElementById('player-name').value || '房主P1';
@@ -467,7 +474,7 @@
     function listenToRoom() {
         const roomRef = ref(db, `rooms/${currentRoomId}`);
         onValue(roomRef, (snap) => {
-            currentRoomData = snap.val(); // ★ 把最新的資料快取起來，避免 await get()
+            currentRoomData = snap.val(); 
             const data = currentRoomData;
             if (!data) return;
 
@@ -489,13 +496,11 @@
                 document.getElementById('score-p2').innerText = data.p2.score;
                 
                 const curRound = document.getElementById('round-info').dataset.round;
-                // 新回合開始，解鎖
                 if (curRound != data.round) {
                     isRoundEnding = false;
                     renderMpQuestion(data.q_indices[data.round], data.round);
                 }
 
-                // ★ 防呆鎖定：避免短時間內重複觸發回合結算
                 if (data.p1.answered && data.p2.answered) {
                     if (!isRoundEnding) {
                         isRoundEnding = true;
@@ -526,7 +531,7 @@
             let btn = document.createElement('button');
             btn.className = 'opt-btn'; 
             btn.innerText = opt;
-            btn.id = "btn-" + idx; // 補上這行，讓系統能找到按鈕並變色
+            btn.id = "btn-" + idx;
             btn.onclick = () => submitMpAnswer(idx, qIndex, roundNum);
             optContainer.appendChild(btn);
         });
@@ -538,7 +543,7 @@
             if (timeLeft <= 0) { timeLeft = 0; clearInterval(timerInterval); if (!pAnswered) submitMpAnswer(-1, qIndex, roundNum); }
         }, 100);
     }
-    // ★ 移除導致卡死的 await get() 寫法，改用本地的 currentRoomData
+
     window.submitMpAnswer = async function(selectedIndex, qIndex, roundNum) {
         if (pAnswered) return;
         pAnswered = true;
@@ -575,15 +580,7 @@
         let btns = document.getElementsByClassName('opt-btn');
         for(let i=0; i<btns.length; i++) {
             if (i === q.correct) btns[i].classList.add('correct');
-            
-            if (i === opChoice && opChoice !== -1) {
-                if (i !== q.correct) {
-                    btns[i].style.border = "3px dashed #f9d342";
-                    btns[i].innerHTML += " <br><span style='color:#f9d342; font-size:0.95rem;'>(對手選此)</span>";
-                } else {
-                    btns[i].innerHTML += " <br><span style='color:#1a1a2e; font-size:0.95rem;'>(對手也選此)</span>";
-                }
-            }
+            if (i === opChoice && opChoice !== -1) btns[i].classList.add('op-selected');
         }
         
         if (myChoice !== q.correct) {
@@ -601,7 +598,7 @@
     }
 
     function endMpGame(data) {
-        if (document.getElementById('result-overlay').style.display === 'block') return; // 防呆
+        if (document.getElementById('result-overlay').style.display === 'block') return; 
         document.getElementById('options-container').style.display = 'none';
         document.getElementById('question-text').innerText = "遊戲結算";
         document.getElementById('time-fill').style.width = "0%";
