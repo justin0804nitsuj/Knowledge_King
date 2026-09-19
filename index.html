@@ -524,7 +524,9 @@
         optContainer.innerHTML = '';
         q.options.forEach((opt, idx) => {
             let btn = document.createElement('button');
-            btn.className = 'opt-btn'; btn.innerText = opt;
+            btn.className = 'opt-btn'; 
+            btn.innerText = opt;
+            btn.id = "btn-" + idx; // 補上這行，讓系統能找到按鈕並變色
             btn.onclick = () => submitMpAnswer(idx, qIndex, roundNum);
             optContainer.appendChild(btn);
         });
@@ -536,7 +538,6 @@
             if (timeLeft <= 0) { timeLeft = 0; clearInterval(timerInterval); if (!pAnswered) submitMpAnswer(-1, qIndex, roundNum); }
         }, 100);
     }
-
     // ★ 移除導致卡死的 await get() 寫法，改用本地的 currentRoomData
     window.submitMpAnswer = async function(selectedIndex, qIndex, roundNum) {
         if (pAnswered) return;
