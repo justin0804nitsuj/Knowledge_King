@@ -23,7 +23,7 @@
         
         /* 導覽列 */
         .nav-bar { display: flex; justify-content: space-around; background: var(--card-bg); padding: 10px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .nav-btn { background: transparent; border: none; color: var(--text-muted); font-size: 1rem; font-weight: bold; cursor: pointer; padding: 10px 15px; border-radius: 8px; transition: 0.2s; }
+        .nav-btn { background: transparent; border: none; color: var(--text-muted); font-size: 1.1rem; font-weight: bold; cursor: pointer; padding: 10px 15px; border-radius: 8px; transition: 0.2s; }
         .nav-btn.active { color: var(--primary); background: #ebf8ff; }
         .nav-btn:hover:not(.active) { background: var(--bg-light); }
 
@@ -62,7 +62,7 @@
         /* 計時器與時間標記 */
         .timer-bar { width: 100%; height: 10px; background: var(--border-light); border-radius: 5px; margin-bottom: 15px; overflow: hidden; position: relative; }
         #time-fill { height: 100%; width: 100%; background: var(--primary); transition: width 0.1s linear; float: left; }
-        .time-marker { position: absolute; top: 0; bottom: 0; width: 4px; background: var(--star); z-index: 10; }
+        .time-marker { position: absolute; top: 0; bottom: 0; width: 4px; background: var(--star); z-index: 10; border-radius: 2px; }
         
         .options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .opt-btn { background: var(--card-bg); color: var(--text-main); border: 2px solid var(--border-light); padding: 15px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; transition: 0.2s; font-weight: bold; position: relative; }
@@ -70,7 +70,7 @@
         .opt-btn:disabled { cursor: not-allowed; opacity: 0.8; }
         .correct { background: var(--success) !important; color: white !important; border-color: var(--success) !important; }
         .wrong { background: var(--danger) !important; color: white !important; border-color: var(--danger) !important; }
-        .op-selected { border: 3px dashed var(--star) !important; box-shadow: 0 0 10px rgba(214, 158, 46, 0.3); }
+        .op-selected { border: 3px dashed var(--star) !important; box-shadow: 0 0 10px rgba(214, 158, 46, 0.4); }
         
         /* 列表項目 */
         .data-list { list-style: none; padding: 0; margin: 0; max-height: 400px; overflow-y: auto; }
@@ -145,7 +145,7 @@
             <div class="card-header"><h3 class="card-title">玩家設定</h3></div>
             <div class="input-group" style="margin-bottom: 0;">
                 <input type="text" id="setting-name" class="input-box" placeholder="輸入你的暱稱" maxlength="10">
-                <button class="btn btn-outline" style="width:auto; margin:0;" onclick="saveName()">儲存</button>
+                <button class="btn btn-outline" style="width:auto; margin:0;" onclick="saveName()">儲存暱稱</button>
             </div>
         </div>
 
@@ -156,7 +156,7 @@
                 <option value="2" selected>普通 (適中)</option>
                 <option value="3">困難 (長度 ≥ 9)</option>
             </select>
-            <button class="btn" id="btn-npc" onclick="startNpcGame()" disabled>開始練習 (vs 電腦)</button>
+            <button class="btn" id="btn-npc" onclick="startNpcGame()" disabled>開始單機練習 (vs 電腦)</button>
         </div>
 
         <div class="card">
@@ -171,7 +171,7 @@
             <hr style="border:none; border-top:1px solid var(--border-light); margin: 15px 0;">
             <div class="input-group" style="margin-bottom:0;">
                 <input type="text" id="room-input" class="input-box" placeholder="輸入5碼房號" maxlength="5">
-                <button class="btn" id="btn-join" style="width: auto; margin-bottom: 0;" onclick="joinRoom()" disabled>加入</button>
+                <button class="btn" id="btn-join" style="width: auto; margin-bottom: 0;" onclick="joinRoom()" disabled>加入房間</button>
             </div>
             <div id="lobby-status" style="text-align:center; margin-top:15px; color:var(--text-muted);"></div>
         </div>
@@ -238,10 +238,10 @@
     const db = getDatabase(app);
 
     // ==========================================
-    // 全域變數宣告 (修復 activeMode 報錯)
+    // 全域變數宣告 (防止未定義錯誤)
     // ==========================================
     let database = [];
-    window.activeMode = ''; // 設為 window 層級避免 module 嚴格模式出錯
+    window.activeMode = ''; // 使用 window 層級變數確保所有函式都能讀取
     let myRole = '', currentRoomId = '';
     let currentQuestions = []; 
     let round = 0, scoreP1 = 0, scoreP2 = 0, timeLeft = 10;
@@ -275,6 +275,7 @@
         }
     };
     
+    // 跨日重置
     if (uData.daily.date !== new Date().toDateString()) {
         uData.daily.date = new Date().toDateString();
         uData.daily.learned = 0;
@@ -312,12 +313,14 @@
             btnBoss.innerText = "⚔️ 挑戰 BOSS"; btnBoss.className = "btn btn-danger";
         }
     }
+    updateDashboardUI(); // 初始渲染
 
     window.saveName = function() {
         let newName = document.getElementById('setting-name').value.trim();
         if(newName) { uData.name = newName; saveData(); alert("名稱已更新！"); }
     };
 
+    // 載入題庫
     async function loadDatabase() {
         try {
             const response = await fetch('words.json');
@@ -326,7 +329,6 @@
             document.getElementById('btn-npc').disabled = false;
             document.getElementById('btn-create').disabled = false;
             document.getElementById('btn-join').disabled = false;
-            updateDashboardUI(); 
         } catch (error) {
             document.getElementById('db-status').innerText = "❌ 題庫載入失敗！請確認檔案路徑。";
         }
@@ -358,7 +360,6 @@
         return (rNum >= 5) ? total * 2 : total;
     }
 
-    // 儲存錯題 (相容舊有設計)
     function checkAndSaveMistake(qObj) {
         let vocabList = JSON.parse(localStorage.getItem('gsat_vocab')) || [];
         if (!vocabList.find(w => w.word === qObj.word)) {
@@ -371,7 +372,8 @@
     function addTimeMarker(timeVal) {
         let marker = document.createElement('div');
         marker.className = 'time-marker';
-        marker.style.left = `${(timeVal / 10) * 100}%`;
+        // 算出進度條的百分比位置
+        marker.style.left = Math.max(0, ((10 - timeVal) / 10) * 100) + '%';
         document.getElementById('timer-container').appendChild(marker);
     }
 
@@ -501,13 +503,15 @@
         optContainer.innerHTML = '';
         q.options.forEach((opt, idx) => {
             let btn = document.createElement('button');
-            btn.className = 'opt-btn'; btn.innerText = opt;
+            btn.className = 'opt-btn'; btn.innerText = opt; btn.id = "btn-" + idx;
             btn.onclick = () => {
                 if (pAnswered) return;
                 pAnswered = true;
                 addTimeMarker(timeLeft);
+                clearInterval(timerInterval); // Boss單人作答後直接停止
                 
                 for(let b of document.getElementsByClassName('opt-btn')) b.disabled = true;
+                
                 if (idx === q.correct) {
                     btn.classList.add('correct');
                     bossCorrectCount++;
@@ -518,7 +522,6 @@
                     bossWrongWordsTemp.push(q);
                     checkAndSaveMistake(q);
                 }
-                clearInterval(timerInterval); // Boss戰單人即可結算
                 document.getElementById('game-status').innerText = "準備進入下一題...";
                 setTimeout(() => { bossRound++; nextBossRound(); }, 1500);
             };
@@ -565,7 +568,7 @@
     }
 
     // ==========================================
-    // 單字筆記本與戰績 (CRUD)
+    // 單字筆記本與戰績 (獨立儲存不覆蓋)
     // ==========================================
     window.renderVocab = function() {
         const list = document.getElementById('vocab-list');
@@ -618,6 +621,13 @@
         localStorage.setItem('gsat_vocab', JSON.stringify(vList)); renderVocab();
     };
 
+    window.clearVocab = function() {
+        if(confirm("確定要清空整本單字筆記嗎？(此操作無法復原)")) {
+            localStorage.removeItem('gsat_vocab');
+            renderVocab();
+        }
+    };
+
     window.renderHistory = function() {
         const list = document.getElementById('history-list');
         list.innerHTML = '';
@@ -647,7 +657,7 @@
     }
 
     // ==========================================
-    // 單機與連線對戰
+    // 模式 1：單機對戰
     // ==========================================
     window.startNpcGame = function() {
         if (!database.length) return alert("題庫未載入！");
@@ -708,7 +718,9 @@
             btn.onclick = () => {
                 if (pAnswered) return;
                 pAnswered = true; playerChoiceIndex = idx;
-                addTimeMarker(timeLeft); // 刻下時間標記，計時器繼續走
+                
+                // 單機對戰：標下時間記號，但不清除 timerInterval，讓計時條繼續跑
+                addTimeMarker(timeLeft); 
                 
                 for(let b of document.getElementsByClassName('opt-btn')) b.disabled = true;
                 if (idx === q.correct) {
@@ -749,7 +761,7 @@
 
     function checkNpcRoundEnd(timeOut) {
         if ((pAnswered && cAnswered) || timeOut) {
-            clearInterval(timerInterval); clearTimeout(npcTimeout);
+            clearInterval(timerInterval); clearTimeout(npcTimeout); // 雙方都作答完畢才強制停止計時器
             const q = currentQuestions[round];
             for(let i=0; i<4; i++) {
                 let btn = document.getElementById("btn-" + i);
@@ -786,6 +798,9 @@
         saveHistory(result, scoreP1, scoreP2, "單機", "電腦關主");
     }
 
+    // ==========================================
+    // 模式 2：連線對戰
+    // ==========================================
     window.createRoom = async function() {
         let diff = parseInt(document.getElementById('diff-select').value);
         window.activeMode = 'multiplayer';
@@ -905,18 +920,22 @@
     window.submitMpAnswer = async function(selectedIndex, qIndex, roundNum) {
         if (pAnswered) return;
         pAnswered = true; 
-        // 在連線對戰時，不清除計時器，讓計時條繼續跑
+        
+        // 連線對戰：標記作答時間，但不清除計時器，讓計時條繼續跑
         if (selectedIndex !== -1) addTimeMarker(timeLeft);
 
         for(let btn of document.getElementsByClassName('opt-btn')) btn.disabled = true;
 
         const q = database[qIndex];
         let scoreAdd = 0;
+        
+        // 使用安全的方式修改按鈕樣式，防呆
+        let selBtn = document.getElementById("btn-" + selectedIndex);
         if (selectedIndex === q.correct) {
-            document.getElementById("btn-" + selectedIndex).classList.add('correct');
+            selBtn?.classList.add('correct');
             scoreAdd = calculateScore(timeLeft, roundNum);
         } else {
-            if (selectedIndex !== -1) document.getElementById("btn-" + selectedIndex).classList.add('wrong');
+            if (selectedIndex !== -1) selBtn?.classList.add('wrong');
             checkAndSaveMistake(q);
         }
 
@@ -926,7 +945,7 @@
     };
 
     function handleMpRoundEnd(data) {
-        clearInterval(timerInterval); // 雙方皆作答後，強制停止計時器
+        clearInterval(timerInterval); // 雙方皆作答後才停止計時器
         const q = database[data.q_indices[data.round]];
         let opRole = myRole === 'p1' ? 'p2' : 'p1';
         let opChoice = data[opRole].choice, myChoice = data[myRole].choice;
