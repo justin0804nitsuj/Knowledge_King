@@ -23,7 +23,7 @@
         
         /* 導覽列 */
         .nav-bar { display: flex; justify-content: space-around; background: var(--card-bg); padding: 10px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .nav-btn { background: transparent; border: none; color: var(--text-muted); font-size: 1rem; font-weight: bold; cursor: pointer; padding: 10px 15px; border-radius: 8px; transition: 0.2s; }
+        .nav-btn { background: transparent; border: none; color: var(--text-muted); font-size: 1.1rem; font-weight: bold; cursor: pointer; padding: 10px 15px; border-radius: 8px; transition: 0.2s; }
         .nav-btn.active { color: var(--primary); background: #ebf8ff; }
         .nav-btn:hover:not(.active) { background: var(--bg-light); }
 
@@ -40,7 +40,8 @@
         .input-box:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.2); }
         
         .btn { background: var(--primary); color: white; border: none; padding: 15px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; width: 100%; text-align: center; }
-        .btn:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(43, 108, 176, 0.2); }
+        .btn:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(43, 108, 176, 0.2); }
+        .btn:disabled { background: var(--text-muted); cursor: not-allowed; opacity: 0.7; }
         .btn-success { background: var(--success); }
         .btn-danger { background: var(--danger); }
         .btn-outline { background: transparent; border: 2px solid var(--border-light); color: var(--text-muted); }
@@ -52,6 +53,10 @@
         .points-badge { background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 1.1rem; display: flex; align-items: center; gap: 5px; }
 
         /* 遊戲區UI */
+        .scoreboard { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 1.2rem; font-weight: bold; border-bottom: 1px solid var(--border-light); padding-bottom: 10px;}
+        .player1-ui { color: var(--primary); }
+        .player2-ui { color: var(--danger); text-align: right; }
+        .round-info { text-align: center; margin-bottom: 15px; color: var(--text-muted); font-size: 1.1rem; }
         .question-box { background: var(--bg-light); padding: 30px 20px; text-align: center; font-size: 2.2rem; border-radius: 8px; margin-bottom: 20px; font-weight: bold; color: var(--primary); border: 1px solid var(--border-light); }
         .timer-bar { width: 100%; height: 8px; background: var(--border-light); border-radius: 4px; margin-bottom: 15px; overflow: hidden; }
         #time-fill { height: 100%; width: 100%; background: var(--primary); transition: width 0.1s linear; }
@@ -73,7 +78,6 @@
         .star-active { color: var(--star); }
         .star-inactive { color: var(--border-light); }
 
-        /* 進度條 (任務用) */
         .progress-track { width: 100%; height: 12px; background: var(--border-light); border-radius: 6px; overflow: hidden; margin-top: 10px; }
         .progress-fill { height: 100%; background: var(--success); transition: width 0.3s ease; }
 
@@ -86,7 +90,7 @@
 <body>
 
 <div class="app-container">
-    <!-- 全域個人資料列 -->
+    <!-- 個人資料列 -->
     <div class="profile-bar">
         <div class="profile-info">
             <span style="font-size: 1.5rem;">👤</span>
@@ -101,16 +105,16 @@
     <!-- 導覽列 -->
     <div class="nav-bar" id="main-nav">
         <button class="nav-btn active" onclick="switchTab('screen-dashboard', this)">主頁/任務</button>
-        <button class="nav-btn" onclick="switchTab('screen-multi', this)">連線對戰</button>
+        <button class="nav-btn" onclick="switchTab('screen-battle', this)">對戰大廳</button>
         <button class="nav-btn" onclick="switchTab('screen-vocab', this); renderVocab();">筆記本</button>
     </div>
 
-    <!-- 1. 儀表板 (任務與單機) -->
+    <!-- 1. 儀表板 (任務) -->
     <div id="screen-dashboard" class="screen active">
-        <!-- 每日任務卡片 -->
+        <!-- 每日任務 -->
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">📅 每日單字學習任務</h3>
+                <h3 class="card-title">📅 每日單字學習</h3>
                 <span style="color:var(--success); font-weight:bold;">+50 💎</span>
             </div>
             <p style="margin: 0 0 10px 0; color: var(--text-muted);">瀏覽並學習 10 個全新的進階單字。</p>
@@ -122,36 +126,45 @@
             <button class="btn btn-success" id="btn-daily-task" style="margin-top: 15px;" onclick="startDailyTask()">開始學習</button>
         </div>
 
-        <!-- Boss 討伐戰卡片 -->
+        <!-- Boss 討伐戰 -->
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title" style="color:var(--danger);">⚔️ BOSS 討伐戰 (Lv.<span id="boss-level-ui">1</span>)</h3>
                 <span style="color:var(--danger); font-weight:bold;">+<span id="boss-reward-ui">100</span> 💎</span>
             </div>
-            <p style="margin: 0 0 15px 0; color: var(--text-muted);">連續作答 10 題，正確率須達 90% 以上。失敗將遭受單字記憶懲罰。</p>
+            <p style="margin: 0 0 15px 0; color: var(--text-muted);">連續作答 10 題，正確率須達 90%。失敗將遭受單字記憶懲罰。</p>
             <button class="btn btn-danger" id="btn-boss-raid" onclick="startBossRaid()">挑戰 BOSS</button>
-        </div>
-
-        <!-- 單機練習設定 -->
-        <div class="card">
-            <h3 class="card-title" style="margin-bottom:15px;">練習設定</h3>
-            <div class="input-group" style="margin-bottom: 0;">
-                <input type="text" id="setting-name" class="input-box" placeholder="修改暱稱" maxlength="10">
-                <button class="btn btn-outline" style="width:auto; margin:0;" onclick="saveName()">儲存</button>
-            </div>
         </div>
     </div>
 
-    <!-- 2. 連線大廳 -->
-    <div id="screen-multi" class="screen">
+    <!-- 2. 對戰大廳 -->
+    <div id="screen-battle" class="screen">
         <div class="card">
-            <div class="card-header"><h3 class="card-title">連線對戰設定</h3></div>
+            <div class="card-header"><h3 class="card-title">玩家設定</h3></div>
+            <div class="input-group" style="margin-bottom: 0;">
+                <input type="text" id="setting-name" class="input-box" placeholder="輸入你的暱稱" maxlength="10">
+                <button class="btn btn-outline" style="width:auto; margin:0;" onclick="saveName()">儲存暱稱</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">單機練習</h3></div>
+            <select id="diff-select-npc" class="input-box" style="margin-bottom:15px; width:100%;">
+                <option value="1">簡單 (長度 ≤ 5)</option>
+                <option value="2" selected>普通 (適中)</option>
+                <option value="3">困難 (長度 ≥ 9)</option>
+            </select>
+            <button class="btn" id="btn-npc" onclick="startNpcGame()" disabled>開始單機練習 (vs 電腦)</button>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">📡 遠端連線對戰</h3></div>
             <select id="diff-select" class="input-box" style="margin-bottom:15px; width:100%;">
                 <option value="1">簡單 (長度 ≤ 5)</option>
                 <option value="2" selected>普通 (適中)</option>
                 <option value="3">困難 (長度 ≥ 9)</option>
             </select>
-            <button class="btn btn-danger" id="btn-create" onclick="createRoom()" disabled>建立房間 (身為關主)</button>
+            <button class="btn btn-danger" id="btn-create" onclick="createRoom()" disabled>建立房間 (我是關主)</button>
             <div id="room-code-display" style="text-align: center; font-size: 1.5rem; color: var(--danger); margin-bottom: 15px; display: none; font-weight:bold;"></div>
             <hr style="border:none; border-top:1px solid var(--border-light); margin: 15px 0;">
             <div class="input-group" style="margin-bottom:0;">
@@ -179,7 +192,7 @@
         </div>
     </div>
 
-    <!-- 4. 學習與對戰通用畫面 (核心遊戲區) -->
+    <!-- 4. 遊戲區 (通用) -->
     <div id="screen-game" class="screen">
         <div class="card" style="border: 2px solid var(--primary);">
             <div class="scoreboard" id="game-scoreboard">
@@ -222,60 +235,70 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    // 全域變數修復
     let database = [];
+    let activeMode = '', myRole = '', currentRoomId = '';
+    let currentQuestions = []; 
+    let round = 0, scoreP1 = 0, scoreP2 = 0, timeLeft = 10;
+    let timerInterval, npcTimeout;
+    let pAnswered = false, cAnswered = false;
+    let playerChoiceIndex = -1, npcChoiceIndex = -1;
     
+    // Boss 討伐戰變數
+    let bossQuestions = [];
+    let bossRound = 0;
+    let bossCorrectCount = 0;
+    let bossWrongWordsTemp = [];
+    let bossCorrectWordsTemp = [];
+    
+    // 每日任務變數
+    let dailyQuestions = [];
+    let dailyIndex = 0;
+
+    // 連線對戰變數
+    let currentRoomData = null; 
+    let isRoundEnding = false;
+    let isStarting = false;
+
     // ==========================================
-    // 資料持久化系統 (Data Manager)
+    // 資料持久化系統 (不覆蓋舊有戰績與單字)
     // ==========================================
-    function initData() {
-        let data = JSON.parse(localStorage.getItem('gsat_master_data'));
-        let today = new Date().toDateString();
-        
-        if (!data) {
-            // 遷移舊版資料，或建立全新架構
-            data = {
-                name: localStorage.getItem('gsat_username') || '學測戰士',
-                points: 0,
-                vocab: JSON.parse(localStorage.getItem('gsat_vocab')) || [],
-                history: JSON.parse(localStorage.getItem('gsat_history')) || [],
-                daily: { date: today, learned: 0, target: 10 },
-                boss: { level: 1, failedWords: [], pastCorrect: [] }
-            };
-        }
-        
-        // 跨日重置每日任務
-        if (data.daily.date !== today) {
-            data.daily.date = today;
-            data.daily.learned = 0;
-        }
-        return data;
+    let uData = {
+        name: localStorage.getItem('gsat_username') || '學測戰士',
+        points: parseInt(localStorage.getItem('gsat_points')) || 0,
+        daily: JSON.parse(localStorage.getItem('gsat_daily')) || { date: new Date().toDateString(), learned: 0, target: 10 },
+        boss: JSON.parse(localStorage.getItem('gsat_boss')) || { level: 1, failedWords: [], pastCorrect: [] }
+    };
+    
+    // 跨日重置
+    let today = new Date().toDateString();
+    if (uData.daily.date !== today) {
+        uData.daily.date = today;
+        uData.daily.learned = 0;
+        saveData();
     }
-    
-    let uData = initData();
-    
+
     function saveData() {
-        localStorage.setItem('gsat_master_data', JSON.stringify(uData));
+        localStorage.setItem('gsat_username', uData.name);
+        localStorage.setItem('gsat_points', uData.points.toString());
+        localStorage.setItem('gsat_daily', JSON.stringify(uData.daily));
+        localStorage.setItem('gsat_boss', JSON.stringify(uData.boss));
         updateDashboardUI();
     }
 
-    // UI 更新
     function updateDashboardUI() {
         document.getElementById('ui-username').innerText = uData.name;
         document.getElementById('setting-name').value = uData.name;
         document.getElementById('ui-points').innerText = uData.points;
         
-        // 每日任務 UI
         document.getElementById('task-progress-text').innerText = `${uData.daily.learned} / ${uData.daily.target}`;
         document.getElementById('task-progress-fill').style.width = `${(uData.daily.learned / uData.daily.target) * 100}%`;
         let btnDaily = document.getElementById('btn-daily-task');
         if (uData.daily.learned >= uData.daily.target) {
             btnDaily.innerText = "✅ 今日已完成";
             btnDaily.disabled = true;
-            btnDaily.style.background = "var(--border-light)";
-            btnDaily.style.color = "var(--text-muted)";
         }
 
-        // Boss 討伐戰 UI
         document.getElementById('boss-level-ui').innerText = uData.boss.level;
         document.getElementById('boss-reward-ui').innerText = uData.boss.level * 100;
         let btnBoss = document.getElementById('btn-boss-raid');
@@ -295,17 +318,15 @@
         if(newName) { uData.name = newName; saveData(); alert("名稱已儲存！"); }
     };
 
-    // ==========================================
-    // 題庫載入與共用邏輯
-    // ==========================================
     async function loadDatabase() {
         try {
             const response = await fetch('words.json');
             database = await response.json();
             document.getElementById('db-status').innerText = `✅ 題庫已就緒 (共 ${database.length} 字)`;
+            document.getElementById('btn-npc').disabled = false;
             document.getElementById('btn-create').disabled = false;
             document.getElementById('btn-join').disabled = false;
-            updateDashboardUI(); // 初始化畫面
+            updateDashboardUI(); 
         } catch (error) {
             document.getElementById('db-status').innerText = "❌ 題庫載入失敗！請確認檔案路徑。";
         }
@@ -317,31 +338,46 @@
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(screenId).classList.add('active');
         if (btnElement) btnElement.classList.add('active'); 
+        if (screenId !== 'screen-game') { clearInterval(timerInterval); clearTimeout(npcTimeout); }
     };
 
+    function getIndicesByDifficulty(targetDiff) {
+        let validIndices = [];
+        database.forEach((q, index) => {
+            let len = q.word.length;
+            if (targetDiff === 1 && len <= 5) validIndices.push(index);
+            else if (targetDiff === 2 && len >= 6 && len <= 8) validIndices.push(index);
+            else if (targetDiff === 3 && len >= 9) validIndices.push(index);
+        });
+        if (validIndices.length < 7) validIndices = database.map((_, i) => i);
+        return validIndices.sort(() => Math.random() - 0.5).slice(0, 7);
+    }
+
+    function calculateScore(timeRemaining, rNum) {
+        let total = 100 + Math.floor(timeRemaining * 10);
+        return (rNum >= 5) ? total * 2 : total;
+    }
+
+    // 將錯題寫入傳統 localStorage，不影響舊資料
     function checkAndSaveMistake(qObj) {
-        if (!uData.vocab.find(w => w.word === qObj.word)) {
-            uData.vocab.unshift({ word: qObj.word, meaning: qObj.options[qObj.correct], star: false });
-            saveData();
+        let vocabList = JSON.parse(localStorage.getItem('gsat_vocab')) || [];
+        if (!vocabList.find(w => w.word === qObj.word)) {
+            vocabList.unshift({ word: qObj.word, meaning: qObj.options[qObj.correct], star: false });
+            localStorage.setItem('gsat_vocab', JSON.stringify(vocabList));
         }
     }
 
     // ==========================================
-    // 每日任務：單字學習卡片
+    // 每日任務：單字學習
     // ==========================================
-    let dailyQuestions = [];
-    let dailyIndex = 0;
-
     window.startDailyTask = function() {
         if (!database.length) return alert("題庫未載入！");
-        // 隨機抽10題新的
         dailyQuestions = [...database].sort(() => Math.random() - 0.5).slice(0, 10);
         dailyIndex = 0;
         
         document.getElementById('main-nav').style.display = 'none';
         switchTab('screen-game', null);
         
-        // 隱藏對戰UI，顯示學習UI
         document.getElementById('game-scoreboard').style.display = 'none';
         document.getElementById('timer-container').style.display = 'none';
         document.getElementById('options-container').style.display = 'none';
@@ -363,7 +399,6 @@
         if (dailyIndex < 10) {
             renderDailyWord();
         } else {
-            // 完成任務
             uData.daily.learned = 10;
             uData.points += 50;
             saveData();
@@ -379,18 +414,11 @@
     // ==========================================
     // BOSS 討伐戰邏輯
     // ==========================================
-    let bossQuestions = [];
-    let bossRound = 0;
-    let bossCorrectCount = 0;
-    let bossWrongWordsTemp = [];
-    let bossCorrectWordsTemp = [];
-
     window.startBossRaid = function() {
         if (!database.length) return alert("題庫未載入！");
 
-        // 若有懲罰，進入複習模式
         if (uData.boss.failedWords.length > 0) {
-            dailyQuestions = uData.boss.failedWords; // 借用 daily 的 UI 變數
+            dailyQuestions = uData.boss.failedWords; 
             dailyIndex = 0;
             document.getElementById('main-nav').style.display = 'none';
             switchTab('screen-game', null);
@@ -407,35 +435,29 @@
                     document.getElementById('question-text').innerText = dailyQuestions[dailyIndex].word;
                     document.getElementById('learning-meaning').innerText = dailyQuestions[dailyIndex].options[dailyQuestions[dailyIndex].correct];
                 } else {
-                    // 複習完畢，解除懲罰
                     uData.boss.failedWords = [];
                     saveData();
                     alert("複習完畢！準備重新挑戰 BOSS！");
                     window.location.reload();
                 }
             };
-            
-            // 渲染第一個字
             document.getElementById('round-info').innerText = `懲罰複習 (1 / ${dailyQuestions.length})`;
             document.getElementById('question-text').innerText = dailyQuestions[0].word;
             document.getElementById('learning-meaning').innerText = dailyQuestions[0].options[dailyQuestions[0].correct];
             return;
         }
 
-        // 正常討伐戰 (抽10題)
         activeMode = 'boss';
         bossRound = 0; bossCorrectCount = 0;
         bossWrongWordsTemp = []; bossCorrectWordsTemp = [];
         
-        // 過濾掉曾經答對的字
         let availablePool = database.filter(q => !uData.boss.pastCorrect.includes(q.word));
-        if(availablePool.length < 10) availablePool = database; // 防呆
+        if(availablePool.length < 10) availablePool = database;
         bossQuestions = availablePool.sort(() => Math.random() - 0.5).slice(0, 10);
 
         document.getElementById('main-nav').style.display = 'none';
         switchTab('screen-game', null);
         
-        // 設定單人打Boss的 UI
         document.getElementById('ui-p1-game').innerHTML = `討伐進度<br><span id="score-p1" style="color:var(--text-main)">0/10</span>`;
         document.getElementById('ui-p2-game').innerHTML = `Boss Lv.${uData.boss.level}<br><span id="score-p2">😈</span>`;
         document.getElementById('options-container').style.display = 'grid';
@@ -471,7 +493,6 @@
                     bossWrongWordsTemp.push(q);
                     checkAndSaveMistake(q);
                 }
-                
                 clearInterval(timerInterval);
                 document.getElementById('game-status').innerText = "準備進入下一題...";
                 setTimeout(() => { bossRound++; nextBossRound(); }, 1500);
@@ -501,18 +522,17 @@
         document.getElementById('question-text').innerText = "討伐結算";
         document.getElementById('time-fill').style.width = "0%";
         
-        let win = bossCorrectCount >= 9; // 90% 正確率
+        let win = bossCorrectCount >= 9; 
         
         if (win) {
             let reward = uData.boss.level * 100;
             uData.points += reward;
             uData.boss.level += 1;
-            uData.boss.pastCorrect = []; // 過關後重置保護名單
+            uData.boss.pastCorrect = []; 
             document.getElementById('final-result').innerText = "🏆 討伐成功！";
             document.getElementById('result-subtext').innerText = `獲得 ${reward} 💎！準備迎接下一難度。`;
         } else {
             uData.boss.failedWords = bossWrongWordsTemp;
-            // 答對的加入保護名單，下次不會考
             uData.boss.pastCorrect = [...new Set([...uData.boss.pastCorrect, ...bossCorrectWordsTemp])]; 
             document.getElementById('final-result').innerHTML = "<span style='color:var(--danger)'>💀 討伐失敗</span>";
             document.getElementById('result-subtext').innerText = `正確率不足 90%。下次挑戰前需接受單字記憶懲罰。`;
@@ -523,17 +543,18 @@
     }
 
     // ==========================================
-    // 單字筆記本與戰績 (CRUD 綁定 localStorage)
+    // 單字筆記本與戰績 (CRUD)
     // ==========================================
     window.renderVocab = function() {
         const list = document.getElementById('vocab-list');
         list.innerHTML = '';
-        if (uData.vocab.length === 0) {
+        let vocabList = JSON.parse(localStorage.getItem('gsat_vocab')) || [];
+        if (vocabList.length === 0) {
             list.innerHTML = '<li style="text-align:center; color:var(--text-muted); padding:20px;">筆記本是空的！對戰選錯的單字會自動出現在這。</li>';
             return;
         }
-        uData.vocab.sort((a, b) => (a.star === b.star) ? 0 : a.star ? -1 : 1);
-        uData.vocab.forEach((v) => {
+        vocabList.sort((a, b) => (a.star === b.star) ? 0 : a.star ? -1 : 1);
+        vocabList.forEach((v) => {
             let li = document.createElement('li');
             li.className = 'data-item';
             let starClass = v.star ? 'star-active' : 'star-inactive';
@@ -552,42 +573,189 @@
         let word = document.getElementById('new-word').value.trim();
         let meaning = document.getElementById('new-meaning').value.trim();
         if(!word || !meaning) return alert("請輸入單字與解釋！");
-        if(!uData.vocab.find(w => w.word === word)) {
-            uData.vocab.unshift({ word: word, meaning: meaning, star: true }); 
-            saveData();
+        let vocabList = JSON.parse(localStorage.getItem('gsat_vocab')) || [];
+        if(!vocabList.find(w => w.word === word)) {
+            vocabList.unshift({ word: word, meaning: meaning, star: true }); 
+            localStorage.setItem('gsat_vocab', JSON.stringify(vocabList));
         }
         document.getElementById('new-word').value = '';
         document.getElementById('new-meaning').value = '';
         renderVocab();
     };
 
-    window.toggleStar = function(w) { let idx = uData.vocab.findIndex(x => x.word === w); if(idx>-1) uData.vocab[idx].star = !uData.vocab[idx].star; saveData(); renderVocab(); };
-    window.deleteVocab = function(w) { uData.vocab = uData.vocab.filter(x => x.word !== w); saveData(); renderVocab(); };
+    window.toggleStar = function(targetWord) {
+        let vocabList = JSON.parse(localStorage.getItem('gsat_vocab')) || [];
+        let index = vocabList.findIndex(w => w.word === targetWord);
+        if(index > -1) vocabList[index].star = !vocabList[index].star;
+        localStorage.setItem('gsat_vocab', JSON.stringify(vocabList));
+        renderVocab();
+    };
+
+    window.deleteVocab = function(targetWord) {
+        let vocabList = JSON.parse(localStorage.getItem('gsat_vocab')) || [];
+        vocabList = vocabList.filter(w => w.word !== targetWord);
+        localStorage.setItem('gsat_vocab', JSON.stringify(vocabList));
+        renderVocab();
+    };
 
     window.renderHistory = function() {
         const list = document.getElementById('history-list');
         list.innerHTML = '';
-        if (uData.history.length === 0) { list.innerHTML = '<li style="text-align:center; color:var(--text-muted); padding:20px;">尚無對戰紀錄</li>'; return; }
-        uData.history.forEach(h => {
+        let history = JSON.parse(localStorage.getItem('gsat_history')) || [];
+        if (history.length === 0) { list.innerHTML = '<li style="text-align:center; color:var(--text-muted); padding:20px;">尚無對戰紀錄</li>'; return; }
+        
+        history.forEach(h => {
             let color = h.result === "Win" ? "var(--success)" : (h.result === "Lose" ? "var(--danger)" : "var(--text-muted)");
             let resultTxt = h.result === "Win" ? "勝利" : (h.result === "Lose" ? "敗北" : "平手");
+            let opName = h.opponent ? h.opponent : (h.mode === "單機" ? "電腦關主" : "未知對手"); 
             let li = document.createElement('li');
             li.className = 'data-item';
             li.style.borderLeft = `5px solid ${color}`;
             li.style.paddingLeft = '10px';
-            li.innerHTML = `<div><span style="font-size:0.85rem; color:var(--text-muted)">${h.date} [${h.mode}] vs ${h.opponent}</span><br><strong>${h.pScore} : ${h.cScore}</strong></div>
+            li.innerHTML = `<div><span style="font-size:0.85rem; color:var(--text-muted)">${h.date} [${h.mode}] vs ${opName}</span><br><strong>${h.pScore} : ${h.cScore}</strong></div>
                             <strong style="color:${color}">${resultTxt}</strong>`;
             list.appendChild(li);
         });
     };
 
+    function saveHistory(resultStr, s1, s2, modeName, opponentName) {
+        let history = JSON.parse(localStorage.getItem('gsat_history')) || [];
+        let dateStr = new Date().toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        history.unshift({ date: dateStr, result: resultStr, pScore: s1, cScore: s2, mode: modeName, opponent: opponentName });
+        if(history.length > 20) history.pop();
+        localStorage.setItem('gsat_history', JSON.stringify(history));
+    }
+
     // ==========================================
-    // 遠端連線對戰 (保留完整機制並套用新變數)
+    // 單機與連線對戰
     // ==========================================
-    let currentRoomData = null; 
-    let isRoundEnding = false;
-    let isStarting = false;
-    let multiplayerQuestions = [];
+    window.startNpcGame = function() {
+        if (!database.length) return alert("題庫未載入！");
+        let diff = parseInt(document.getElementById('diff-select-npc').value);
+        
+        activeMode = 'npc'; round = 0; scoreP1 = 0; scoreP2 = 0;
+        document.getElementById('ui-p1-game').innerHTML = `${uData.name}<br><span id="score-p1">0</span>`;
+        document.getElementById('ui-p2-game').innerHTML = `電腦關主<br><span id="score-p2">0</span>`;
+        document.getElementById('result-overlay').style.display = 'none';
+        
+        currentQuestions = getIndicesByDifficulty(diff).map(i => database[i]);
+        
+        document.getElementById('main-nav').style.display = 'none'; 
+        switchTab('screen-game', null);
+        
+        document.getElementById('options-container').style.display = 'none';
+        document.getElementById('game-status').innerText = "";
+        document.getElementById('round-info').innerText = "準備中...";
+        document.getElementById('time-fill').style.width = "100%";
+        
+        let countdown = 3;
+        document.getElementById('question-text').innerHTML = `<span style="color:var(--primary);">倒數 ${countdown} 秒...</span>`;
+        
+        let cdInterval = setInterval(() => {
+            countdown--;
+            if (countdown > 0) document.getElementById('question-text').innerHTML = `<span style="color:var(--primary);">倒數 ${countdown} 秒...</span>`;
+            else {
+                clearInterval(cdInterval);
+                document.getElementById('options-container').style.display = 'grid';
+                nextNpcRound();
+            }
+        }, 1000);
+    };
+
+    function nextNpcRound() {
+        if (round >= 7) return endNpcGame();
+        pAnswered = false; cAnswered = false; timeLeft = 10;
+        playerChoiceIndex = -1; npcChoiceIndex = -1;
+        document.getElementById('game-status').innerText = " ";
+        let isDouble = round >= 5;
+        document.getElementById('round-info').innerHTML = `第 ${round + 1} / 7 回合 ` + (isDouble ? `<span class="double-score">(雙倍積分)</span>` : "");
+        
+        const q = currentQuestions[round];
+        document.getElementById('question-text').innerText = q.word;
+
+        const optContainer = document.getElementById('options-container');
+        optContainer.innerHTML = '';
+        q.options.forEach((opt, idx) => {
+            let btn = document.createElement('button');
+            btn.className = 'opt-btn'; btn.innerText = opt; btn.id = "btn-" + idx;
+            btn.onclick = () => {
+                pAnswered = true; playerChoiceIndex = idx;
+                for(let b of document.getElementsByClassName('opt-btn')) b.disabled = true;
+                if (idx === q.correct) {
+                    btn.classList.add('correct');
+                    scoreP1 += calculateScore(timeLeft, round);
+                    document.getElementById('score-p1').innerText = scoreP1;
+                } else {
+                    btn.classList.add('wrong');
+                    checkAndSaveMistake(q);
+                }
+                checkNpcRoundEnd(false);
+            };
+            optContainer.appendChild(btn);
+        });
+
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            timeLeft -= 0.1;
+            document.getElementById('time-fill').style.width = `${(timeLeft / 10) * 100}%`;
+            if (timeLeft <= 0) { timeLeft = 0; clearInterval(timerInterval); checkNpcRoundEnd(true); }
+        }, 100);
+        
+        clearTimeout(npcTimeout);
+        npcTimeout = setTimeout(() => {
+            if(cAnswered || timeLeft <= 0) return;
+            cAnswered = true;
+            if (Math.random() < 0.75) { 
+                scoreP2 += calculateScore(timeLeft, round); 
+                document.getElementById('score-p2').innerText = scoreP2; 
+                npcChoiceIndex = currentQuestions[round].correct;
+            } else {
+                let wrongIndices = [0,1,2,3].filter(i => i !== currentQuestions[round].correct);
+                npcChoiceIndex = wrongIndices[Math.floor(Math.random() * wrongIndices.length)];
+            }
+            checkNpcRoundEnd(false);
+        }, Math.random() * 5000 + 2000);
+    }
+
+    function checkNpcRoundEnd(timeOut) {
+        if ((pAnswered && cAnswered) || timeOut) {
+            clearInterval(timerInterval); clearTimeout(npcTimeout);
+            const q = currentQuestions[round];
+            for(let i=0; i<4; i++) {
+                let btn = document.getElementById("btn-" + i);
+                if (btn) {
+                    btn.disabled = true;
+                    if (i === q.correct) btn.classList.add('correct');
+                    if (i === npcChoiceIndex && !timeOut) btn.classList.add('op-selected');
+                }
+            }
+            if (playerChoiceIndex !== q.correct || timeOut) {
+                document.getElementById('game-status').innerHTML = "回合結算！<span style='color:var(--danger);'>錯題已記錄</span>";
+                if (timeOut) checkAndSaveMistake(q);
+            } else document.getElementById('game-status').innerText = "回合結算！準備進入下一題...";
+            
+            round++; setTimeout(nextNpcRound, 2500);
+        } else if (pAnswered && !cAnswered) document.getElementById('game-status').innerText = "等待電腦作答...";
+    }
+
+    function endNpcGame() {
+        if (document.getElementById('result-overlay').style.display === 'block') return; 
+        document.getElementById('options-container').style.display = 'none';
+        document.getElementById('question-text').innerText = "結算中...";
+        document.getElementById('time-fill').style.width = "0%";
+        document.getElementById('game-status').innerText = "";
+        
+        let result = scoreP1 > scoreP2 ? "Win" : (scoreP1 < scoreP2 ? "Lose" : "Draw");
+        document.getElementById('final-result').innerText = result === "Win" ? "🏆 你贏了！" : (result === "Lose" ? "💀 挑戰失敗！" : "🤝 平手！");
+        
+        let reward = result === "Win" ? 30 : 10;
+        uData.points += reward;
+        saveData();
+        document.getElementById('result-subtext').innerText = `獲得 ${reward} 💎練習獎勵！`;
+        
+        document.getElementById('result-overlay').style.display = 'block';
+        saveHistory(result, scoreP1, scoreP2, "單機", "電腦關主");
+    }
 
     window.createRoom = async function() {
         let diff = parseInt(document.getElementById('diff-select').value);
@@ -624,16 +792,7 @@
 
             if (myRole === 'p1' && data.status === 'ready') {
                 let finalDiff = Math.round((data.p1.diff + data.p2.diff) / 2); 
-                let validIndices = [];
-                database.forEach((q, index) => {
-                    let len = q.word.length;
-                    if (finalDiff === 1 && len <= 5) validIndices.push(index);
-                    else if (finalDiff === 2 && len >= 6 && len <= 8) validIndices.push(index);
-                    else if (finalDiff === 3 && len >= 9) validIndices.push(index);
-                });
-                if (validIndices.length < 7) validIndices = database.map((_, i) => i);
-                let indices = validIndices.sort(() => Math.random() - 0.5).slice(0, 7);
-                update(roomRef, { status: 'playing', q_indices: indices });
+                update(roomRef, { status: 'playing', q_indices: getIndicesByDifficulty(finalDiff) });
             }
 
             if (data.status === 'playing' && document.getElementById('screen-main').classList.contains('active')) {
@@ -653,8 +812,7 @@
                     countdown--;
                     if (countdown > 0) document.getElementById('question-text').innerHTML = `<span style="color:var(--primary);">倒數 ${countdown} 秒...</span>`;
                     else {
-                        clearInterval(cdInterval);
-                        isStarting = false;
+                        clearInterval(cdInterval); isStarting = false;
                         document.getElementById('options-container').style.display = 'grid';
                         renderMpQuestion(data.q_indices[data.round], data.round);
                     }
@@ -666,15 +824,10 @@
                 document.getElementById('score-p1').innerText = data.p1.score;
                 document.getElementById('score-p2').innerText = data.p2.score;
                 const curRound = document.getElementById('round-info').dataset.round;
-                if (curRound != data.round) {
-                    isRoundEnding = false;
-                    renderMpQuestion(data.q_indices[data.round], data.round);
-                }
+                if (curRound != data.round) { isRoundEnding = false; renderMpQuestion(data.q_indices[data.round], data.round); }
+
                 if (data.p1.answered && data.p2.answered) {
-                    if (!isRoundEnding) {
-                        isRoundEnding = true;
-                        handleMpRoundEnd(data);
-                    }
+                    if (!isRoundEnding) { isRoundEnding = true; handleMpRoundEnd(data); }
                 } else if ((myRole === 'p1' && data.p2.answered) || (myRole === 'p2' && data.p1.answered)) {
                     document.getElementById('game-status').innerText = "對手已作答，等待中...";
                 }
@@ -744,7 +897,7 @@
         }
         
         if (myChoice !== q.correct) {
-            document.getElementById('game-status').innerHTML = "回合結算！<span style='color:var(--danger);'>錯題已自動加入筆記本</span>";
+            document.getElementById('game-status').innerHTML = "回合結算！<span style='color:var(--danger);'>錯題已記錄</span>";
         } else document.getElementById('game-status').innerText = "回合結算！準備進入下一題...";
 
         if (myRole === 'p1') {
@@ -768,18 +921,13 @@
         let result = myScore > opScore ? "Win" : (myScore < opScore ? "Lose" : "Draw");
         document.getElementById('final-result').innerText = result === "Win" ? "🏆 你贏了！" : (result === "Lose" ? `💀 敗給了 ${opName}` : "🤝 平手！");
         
-        // 對戰結束獲得積分
         let mpReward = result === "Win" ? 80 : 30;
-        document.getElementById('result-subtext').innerText = `獲得 ${mpReward} 💎對戰獎勵！`;
         uData.points += mpReward;
         saveData();
+        document.getElementById('result-subtext').innerText = `獲得 ${mpReward} 💎對戰獎勵！`;
 
         document.getElementById('result-overlay').style.display = 'block';
-        
-        let dateStr = new Date().toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-        uData.history.unshift({ date: dateStr, result: result, pScore: myScore, cScore: opScore, mode: "連線", opponent: opName });
-        if(uData.history.length > 20) uData.history.pop();
-        saveData();
+        saveHistory(result, myScore, opScore, "連線", opName);
     }
 </script>
 </body>
