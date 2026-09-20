@@ -60,9 +60,9 @@
         .question-box { background: var(--bg-light); padding: 30px 20px; text-align: center; font-size: 2.2rem; border-radius: 8px; margin-bottom: 20px; font-weight: bold; color: var(--primary); border: 1px solid var(--border-light); }
         
         /* 計時器與時間標記 */
-        .timer-bar { width: 100%; height: 10px; background: var(--border-light); border-radius: 5px; margin-bottom: 15px; overflow: hidden; position: relative; }
+        .timer-bar { width: 100%; height: 8px; background: var(--border-light); border-radius: 4px; margin-bottom: 15px; overflow: hidden; position: relative; }
         #time-fill { height: 100%; width: 100%; background: var(--primary); transition: width 0.1s linear; float: left; }
-        .time-marker { position: absolute; top: 0; bottom: 0; width: 4px; background: var(--star); z-index: 10; border-radius: 2px; }
+        .time-marker { position: absolute; top: 0; bottom: 0; width: 4px; background: var(--star); z-index: 10; border-radius: 2px; transform: translateX(-50%); box-shadow: 0 0 5px rgba(214, 158, 46, 0.8); }
         
         .options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .opt-btn { background: var(--card-bg); color: var(--text-main); border: 2px solid var(--border-light); padding: 15px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; transition: 0.2s; font-weight: bold; position: relative; }
@@ -238,10 +238,10 @@
     const db = getDatabase(app);
 
     // ==========================================
-    // 全域變數宣告 (防止未定義錯誤)
+    // 全域變數宣告
     // ==========================================
     let database = [];
-    window.activeMode = ''; // 使用 window 層級變數確保所有函式都能讀取
+    window.activeMode = ''; 
     let myRole = '', currentRoomId = '';
     let currentQuestions = []; 
     let round = 0, scoreP1 = 0, scoreP2 = 0, timeLeft = 10;
@@ -313,14 +313,13 @@
             btnBoss.innerText = "⚔️ 挑戰 BOSS"; btnBoss.className = "btn btn-danger";
         }
     }
-    updateDashboardUI(); // 初始渲染
+    updateDashboardUI(); 
 
     window.saveName = function() {
         let newName = document.getElementById('setting-name').value.trim();
         if(newName) { uData.name = newName; saveData(); alert("名稱已更新！"); }
     };
 
-    // 載入題庫
     async function loadDatabase() {
         try {
             const response = await fetch('words.json');
@@ -368,12 +367,11 @@
         }
     }
 
-    // 建立作答時間刻度
+    // 建立作答時間刻度 (標示在剩餘時間對應的百分比位置)
     function addTimeMarker(timeVal) {
         let marker = document.createElement('div');
         marker.className = 'time-marker';
-        // 算出進度條的百分比位置
-        marker.style.left = Math.max(0, ((10 - timeVal) / 10) * 100) + '%';
+        marker.style.left = `${(timeVal / 10) * 100}%`;
         document.getElementById('timer-container').appendChild(marker);
     }
 
@@ -503,12 +501,12 @@
         optContainer.innerHTML = '';
         q.options.forEach((opt, idx) => {
             let btn = document.createElement('button');
-            btn.className = 'opt-btn'; btn.innerText = opt; btn.id = "btn-" + idx;
+            btn.className = 'opt-btn'; btn.innerText = opt;
             btn.onclick = () => {
                 if (pAnswered) return;
                 pAnswered = true;
                 addTimeMarker(timeLeft);
-                clearInterval(timerInterval); // Boss單人作答後直接停止
+                clearInterval(timerInterval); 
                 
                 for(let b of document.getElementsByClassName('opt-btn')) b.disabled = true;
                 
@@ -568,7 +566,7 @@
     }
 
     // ==========================================
-    // 單字筆記本與戰績 (獨立儲存不覆蓋)
+    // 單字筆記本與戰績 (CRUD)
     // ==========================================
     window.renderVocab = function() {
         const list = document.getElementById('vocab-list');
@@ -657,7 +655,7 @@
     }
 
     // ==========================================
-    // 模式 1：單機對戰
+    // 單機與連線對戰
     // ==========================================
     window.startNpcGame = function() {
         if (!database.length) return alert("題庫未載入！");
@@ -719,7 +717,6 @@
                 if (pAnswered) return;
                 pAnswered = true; playerChoiceIndex = idx;
                 
-                // 單機對戰：標下時間記號，但不清除 timerInterval，讓計時條繼續跑
                 addTimeMarker(timeLeft); 
                 
                 for(let b of document.getElementsByClassName('opt-btn')) b.disabled = true;
@@ -761,7 +758,7 @@
 
     function checkNpcRoundEnd(timeOut) {
         if ((pAnswered && cAnswered) || timeOut) {
-            clearInterval(timerInterval); clearTimeout(npcTimeout); // 雙方都作答完畢才強制停止計時器
+            clearInterval(timerInterval); clearTimeout(npcTimeout); 
             const q = currentQuestions[round];
             for(let i=0; i<4; i++) {
                 let btn = document.getElementById("btn-" + i);
@@ -799,7 +796,7 @@
     }
 
     // ==========================================
-    // 模式 2：連線對戰
+    // 連線對戰 (修復 screen-battle 卡死)
     // ==========================================
     window.createRoom = async function() {
         let diff = parseInt(document.getElementById('diff-select').value);
@@ -841,7 +838,8 @@
                 update(roomRef, { status: 'playing', q_indices: getIndicesByDifficulty(finalDiff) });
             }
 
-            if (data.status === 'playing' && document.getElementById('screen-main').classList.contains('active')) {
+            // 修改這裡：判斷 screen-battle (對戰大廳) 是否為 active
+            if (data.status === 'playing' && document.getElementById('screen-battle').classList.contains('active')) {
                 document.getElementById('ui-p1-game').innerHTML = `${data.p1.name} (P1)<br><span id="score-p1">0</span>`;
                 document.getElementById('ui-p2-game').innerHTML = `${data.p2.name} (P2)<br><span id="score-p2">0</span>`;
                 document.getElementById('main-nav').style.display = 'none';
@@ -921,15 +919,12 @@
         if (pAnswered) return;
         pAnswered = true; 
         
-        // 連線對戰：標記作答時間，但不清除計時器，讓計時條繼續跑
         if (selectedIndex !== -1) addTimeMarker(timeLeft);
 
         for(let btn of document.getElementsByClassName('opt-btn')) btn.disabled = true;
 
         const q = database[qIndex];
         let scoreAdd = 0;
-        
-        // 使用安全的方式修改按鈕樣式，防呆
         let selBtn = document.getElementById("btn-" + selectedIndex);
         if (selectedIndex === q.correct) {
             selBtn?.classList.add('correct');
@@ -945,7 +940,7 @@
     };
 
     function handleMpRoundEnd(data) {
-        clearInterval(timerInterval); // 雙方皆作答後才停止計時器
+        clearInterval(timerInterval);
         const q = database[data.q_indices[data.round]];
         let opRole = myRole === 'p1' ? 'p2' : 'p1';
         let opChoice = data[opRole].choice, myChoice = data[myRole].choice;
