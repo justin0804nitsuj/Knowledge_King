@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0",
+  "vocabularyVersion": "1.0.0",
+  "totalWords": 6012,
+  "totalDefinitions": 9149,
+  "multiDefinitionWordCount": 2143,
+  "sourceRepository": "https://github.com/justin0804nitsuj/egg",
+  "levels": {
+    "1": {
+      "file": "level-1.json",
+      "wordCount": 1002,
+      "hash": "84b5bb1b"
+    },
+    "2": {
+      "file": "level-2.json",
+      "wordCount": 1002,
+      "hash": "31cf3559"
+    },
+    "3": {
+      "file": "level-3.json",
+      "wordCount": 1002,
+      "hash": "445695f4"
+    },
+    "4": {
+      "file": "level-4.json",
+      "wordCount": 1002,
+      "hash": "4f656a1d"
+    },
+    "5": {
+      "file": "level-5.json",
+      "wordCount": 1002,
+      "hash": "2672e7a8"
+    },
+    "6": {
+      "file": "level-6.json",
+      "wordCount": 1002,
+      "hash": "d6ae415f"
+    }
+  }
+}
