@@ -25,6 +25,7 @@ export async function saveMistakes(mistakes) {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(mistakes));
   } catch (err) {
     console.error('Failed to save mistakes', err);
+    throw err;
   }
 }
 

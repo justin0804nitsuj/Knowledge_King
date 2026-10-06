@@ -7,11 +7,16 @@
 
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.justin.knowledgeking"
     },
     "android": {
+      "package": "com.justin.knowledgeking"
     },
     "web": {
-    }
+    },
+    "plugins": [
+      "react-native-nitro-google-signin"
+    ]
   }
 }

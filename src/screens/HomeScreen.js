@@ -5,10 +5,12 @@ import { theme } from '../theme';
 import { loadPlayerProgress } from '../storage/playerProgressStorage';
 import { getPlayerLevelInfo } from '../domain/player/levelSystem';
 import { loadMistakes, getActiveMistakes } from '../storage/mistakeStorage';
+import { useAuth } from '../context/AuthContext';
 
 export default function HomeScreen({ navigation }) {
   const [playerInfo, setPlayerInfo] = useState(null);
   const [mistakeCount, setMistakeCount] = useState(0);
+  const { user, isSignedIn } = useAuth();
 
   useFocusEffect(
     useCallback(() => {
@@ -37,6 +39,7 @@ export default function HomeScreen({ navigation }) {
 
       {/* Level Card */}
       <View style={styles.levelCard}>
+        <Text style={styles.identityText}>{isSignedIn ? user?.displayName : 'Guest'}</Text>
         <Text style={styles.levelTitle}>Player Level {level}</Text>
         <Text style={styles.xpText}>{Math.floor(xpIntoCurrentLevel)} / {xpRequiredForNextLevel} XP</Text>
         <View style={styles.progressBarBg}>
@@ -128,6 +131,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     marginBottom: theme.spacing.large,
+  },
+  identityText: {
+    fontSize: 14,
+    color: theme.colors.textMuted,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   levelTitle: {
     fontSize: 24,

@@ -6,11 +6,13 @@ import { resetCampaignProgress } from '../storage/campaignStorage';
 import { loadPlayerProgress } from '../storage/playerProgressStorage';
 import { loadBattleHistory } from '../storage/battleHistoryStorage';
 import { getPlayerLevelInfo } from '../domain/player/levelSystem';
+import { useAuth } from '../context/AuthContext';
 
 export default function ProfileScreen({ navigation }) {
   const [playerInfo, setPlayerInfo] = useState(null);
   const [recentBattles, setRecentBattles] = useState([]);
-
+  const { user, isSignedIn, signInWithGoogle, signOut, isInitializing } = useAuth();
+  
   useFocusEffect(
     useCallback(() => {
       async function loadData() {
@@ -42,7 +44,23 @@ export default function ProfileScreen({ navigation }) {
     );
   };
 
-  if (!playerInfo) {
+  const handleLogin = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (e) {
+      Alert.alert('Sign-In Error', e.message);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (e) {
+      Alert.alert('Sign-Out Error', e.message);
+    }
+  };
+
+  if (!playerInfo || isInitializing) {
     return <View style={styles.container}><Text>Loading...</Text></View>;
   }
 
@@ -59,10 +77,30 @@ export default function ProfileScreen({ navigation }) {
       <View style={styles.headerCard}>
         <View style={styles.avatarPlaceholder}><Text style={styles.avatarText}>L{level}</Text></View>
         <View style={styles.headerInfo}>
-          <Text style={styles.playerName}>Guest Player</Text>
+          <Text style={styles.playerName}>{isSignedIn ? user?.displayName : 'Local Player'}</Text>
+          {isSignedIn && <Text style={styles.playerEmail}>{user?.email}</Text>}
           <Text style={styles.playerXp}>Total XP: {playerInfo.totalXp}</Text>
           <Text style={styles.playerStreak}>Streak: {playerInfo.daily.streak} Days</Text>
         </View>
+      </View>
+
+      <View style={styles.authCard}>
+        {isSignedIn ? (
+          <>
+            <Text style={styles.authStatus}>Signed in with Google</Text>
+            <TouchableOpacity style={styles.signOutBtn} onPress={handleLogout}>
+              <Text style={styles.signOutBtnText}>Sign Out</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <Text style={styles.authStatus}>You are currently a Guest.</Text>
+            <TouchableOpacity style={styles.googleBtn} onPress={handleLogin}>
+              <Text style={styles.googleBtnText}>Sign in with Google</Text>
+            </TouchableOpacity>
+            <Text style={styles.guestHelpText}>Continue as Guest to play offline.</Text>
+          </>
+        )}
       </View>
 
       <View style={styles.statsCard}>
@@ -170,6 +208,59 @@ const styles = StyleSheet.create({
     color: '#DD6B20',
     fontWeight: 'bold',
     marginTop: 4,
+  },
+  playerEmail: {
+    fontSize: 14,
+    color: theme.colors.textMuted,
+    marginBottom: 4,
+  },
+  authCard: {
+    backgroundColor: theme.colors.card,
+    borderRadius: 12,
+    padding: theme.spacing.large,
+    marginBottom: theme.spacing.large,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+  },
+  authStatus: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: theme.colors.textMain,
+    marginBottom: 12,
+  },
+  googleBtn: {
+    backgroundColor: '#DB4437',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+  },
+  googleBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  guestHelpText: {
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    marginTop: 8,
+  },
+  signOutBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: theme.colors.danger,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+  },
+  signOutBtnText: {
+    color: theme.colors.danger,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   statsCard: {
     backgroundColor: theme.colors.card,

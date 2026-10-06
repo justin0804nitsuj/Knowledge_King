@@ -188,5 +188,64 @@ describe('Player Progression Domain', () => {
       const pAfterSecond = JSON.parse(mockStorage['@KnowledgeKing:playerProgress']);
       expect(pAfterSecond.totalXp).toBe(xpAfterFirst);
     });
+
+    it('partial failure recovers cleanly and does not duplicate state', async () => {
+      const finalState = {
+        status: BATTLE_STATES.VICTORY,
+        correctCount: 4,
+        wrongCount: 1,
+        timeoutCount: 0,
+        questionNumber: 5,
+        maxCombo: 4,
+        score: 100,
+        correctTargetIds: [],
+        wrongTargetIds: ['word-wrong'],
+        timeoutTargetIds: []
+      };
+
+      // Force failure on mistake storage
+      let callCount = 0;
+      const originalSetItem = AsyncStorage.setItem;
+      AsyncStorage.setItem.mockImplementation(async (key, value) => {
+        if (key === '@KnowledgeKing:mistakes') {
+          callCount++;
+          if (callCount === 1) {
+            throw new Error('Injected network/storage failure');
+          }
+        }
+        mockStorage[key] = value;
+      });
+
+      // 1. Initial process throws partway
+      await expect(processBattleResult('battle_partial', finalState, 'L1-S1'))
+        .rejects
+        .toThrow('Injected network/storage failure');
+
+      const pAfterFail = JSON.parse(mockStorage['@KnowledgeKing:playerProgress']);
+      const xpAfterFail = pAfterFail.totalXp;
+      expect(xpAfterFail).toBeGreaterThan(0); // XP succeeded
+
+      const mAfterFail = mockStorage['@KnowledgeKing:mistakes'];
+      expect(mAfterFail).toBeUndefined(); // Mistake failed
+
+      const hAfterFail = mockStorage['@KnowledgeKing:battleHistory'];
+      expect(hAfterFail).toBeUndefined(); // History failed because mistake threw
+
+      // 2. Retry exact same battle
+      const res = await processBattleResult('battle_partial', finalState, 'L1-S1');
+      expect(res.xpEarned).toBeGreaterThan(0);
+
+      // Verify XP not duplicated
+      const pAfterRetry = JSON.parse(mockStorage['@KnowledgeKing:playerProgress']);
+      expect(pAfterRetry.totalXp).toBe(xpAfterFail);
+
+      // Verify Mistake count correct
+      const mAfterRetry = JSON.parse(mockStorage['@KnowledgeKing:mistakes']);
+      expect(mAfterRetry.records['word-wrong'].wrongCount).toBe(1);
+
+      // Verify history exactly once
+      const hAfterRetry = JSON.parse(mockStorage['@KnowledgeKing:battleHistory']);
+      expect(hAfterRetry.records.length).toBe(1);
+    });
   });
 });

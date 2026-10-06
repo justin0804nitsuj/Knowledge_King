@@ -26,6 +26,7 @@ export async function saveBattleHistory(history) {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(history));
   } catch (err) {
     console.error('Failed to save battle history', err);
+    throw err;
   }
 }
 

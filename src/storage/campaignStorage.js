@@ -35,6 +35,7 @@ export async function saveCampaignProgress(progress) {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
   } catch (err) {
     console.error('Failed to save campaign progress', err);
+    throw err;
   }
 }
 

@@ -34,6 +34,7 @@ export async function savePlayerProgress(progress) {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
   } catch (err) {
     console.error('Failed to save player progress', err);
+    throw err;
   }
 }
 
