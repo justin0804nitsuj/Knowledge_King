@@ -1,16 +1,46 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { theme } from '../theme';
 import { BATTLE_STATES } from '../domain/game/battleEngine';
+import { calculateStars } from '../domain/adventure/starRating';
+import { recordStageResult, loadCampaignProgress } from '../storage/campaignStorage';
+import { getStageById, getNextStage } from '../domain/adventure/campaignConfig';
 
 export default function BattleResultScreen({ route, navigation }) {
-  const { level, finalState } = route.params;
+  const { stageId, finalState } = route.params;
   const { status, score, maxCombo, correctCount, wrongCount, timeoutCount, questionNumber } = finalState;
 
   const isVictory = status === BATTLE_STATES.VICTORY;
+  const stage = getStageById(stageId);
+  const earnedStars = calculateStars(isVictory, correctCount, wrongCount, timeoutCount);
+  
+  const [bestStars, setBestStars] = useState(0);
+  const [nextStageId, setNextStageId] = useState(null);
 
-  const handleRematch = () => {
-    navigation.replace('Battle', { level });
+  useEffect(() => {
+    async function processResult() {
+      const progress = await loadCampaignProgress();
+      setBestStars(progress.stageStars[stageId] || 0);
+
+      if (isVictory) {
+        await recordStageResult(stageId, earnedStars, score);
+        const next = getNextStage(stageId);
+        if (next) setNextStageId(next);
+      }
+    }
+    processResult();
+  }, []);
+
+  const handleReplay = () => {
+    navigation.replace('StagePreview', { stageId });
+  };
+
+  const handleNext = () => {
+    if (nextStageId) {
+      navigation.replace('StagePreview', { stageId: nextStageId });
+    } else {
+      navigation.navigate('Adventure');
+    }
   };
 
   const handleBack = () => {
@@ -20,8 +50,17 @@ export default function BattleResultScreen({ route, navigation }) {
   return (
     <View style={styles.container}>
       <Text style={[styles.title, { color: isVictory ? theme.colors.success : theme.colors.danger }]}>
-        {isVictory ? 'VICTORY' : 'DEFEAT'}
+        {isVictory ? (stage.type === 'BOSS' ? 'BOSS DEFEATED!' : 'VICTORY') : 'DEFEAT'}
       </Text>
+      
+      <Text style={styles.stageTitle}>{stage.title}</Text>
+
+      <View style={styles.starsContainer}>
+        <Text style={styles.starsText}>
+          {'★'.repeat(earnedStars)}{'☆'.repeat(3 - earnedStars)}
+        </Text>
+        {bestStars > 0 && <Text style={styles.bestStarsText}>(Best: {bestStars})</Text>}
+      </View>
 
       <View style={styles.statsCard}>
         <Text style={styles.statRow}>Final Score: <Text style={styles.statValue}>{score}</Text></Text>
@@ -34,8 +73,13 @@ export default function BattleResultScreen({ route, navigation }) {
       </View>
 
       <View style={styles.btnContainer}>
-        <TouchableOpacity style={styles.btnPrimary} onPress={handleRematch}>
-          <Text style={styles.btnTextPrimary}>Rematch</Text>
+        {isVictory && nextStageId && (
+          <TouchableOpacity style={styles.btnPrimary} onPress={handleNext}>
+            <Text style={styles.btnTextPrimary}>Next Stage</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity style={styles.btnSecondary} onPress={handleReplay}>
+          <Text style={styles.btnTextSecondary}>{isVictory ? 'Replay' : 'Retry'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.btnSecondary} onPress={handleBack}>
           <Text style={styles.btnTextSecondary}>Back to Adventure</Text>
@@ -56,7 +100,25 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 48,
     fontWeight: 'bold',
+    marginBottom: theme.spacing.medium,
+  },
+  stageTitle: {
+    fontSize: 24,
+    color: theme.colors.textMuted,
+    marginBottom: theme.spacing.medium,
+  },
+  starsContainer: {
+    alignItems: 'center',
     marginBottom: theme.spacing.large,
+  },
+  starsText: {
+    fontSize: 32,
+    color: '#D69E2E',
+  },
+  bestStarsText: {
+    fontSize: 16,
+    color: theme.colors.textMuted,
+    marginTop: 4,
   },
   statsCard: {
     backgroundColor: theme.colors.card,

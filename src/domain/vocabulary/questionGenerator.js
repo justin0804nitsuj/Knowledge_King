@@ -1,4 +1,4 @@
-import { getDisplayMeaning, getSemanticFingerprint } from './meaningResolver.js';
+import { getDisplayMeaning, getSemanticFingerprint, getAllSemanticFingerprints } from './meaningResolver.js';
 import { shuffleArray } from '../game/seededRandom.js';
 
 /**
@@ -13,7 +13,7 @@ export function generateQuestion(targetWord, levelWords, rng) {
   const targetMeaning = getDisplayMeaning(targetWord);
   if (!targetMeaning) return null;
 
-  const targetFingerprint = getSemanticFingerprint(targetMeaning);
+  const targetFingerprints = getAllSemanticFingerprints(targetWord);
   
   const choices = [{
     id: targetWord.id,
@@ -21,7 +21,7 @@ export function generateQuestion(targetWord, levelWords, rng) {
     text: targetMeaning
   }];
 
-  const usedFingerprints = new Set([targetFingerprint]);
+  const usedFingerprints = new Set(targetFingerprints);
   const usedLexical = new Set([targetWord.word.toLowerCase()]);
 
   // Create shuffled candidate list to ensure deterministic but varied selection
@@ -37,15 +37,24 @@ export function generateQuestion(targetWord, levelWords, rng) {
     const meaning = getDisplayMeaning(w);
     if (!meaning) return false;
     
-    const fp = getSemanticFingerprint(meaning);
-    if (usedFingerprints.has(fp)) return false;
+    const wFingerprints = getAllSemanticFingerprints(w);
+    
+    // If ANY fingerprint overlaps with what we've used, reject it
+    for (const fp of wFingerprints) {
+      if (usedFingerprints.has(fp)) return false;
+    }
 
     choices.push({
       id: w.id,
       isCorrect: false,
       text: meaning
     });
-    usedFingerprints.add(fp);
+    
+    // Add all its fingerprints to used set
+    for (const fp of wFingerprints) {
+      usedFingerprints.add(fp);
+    }
+    
     usedLexical.add(w.word.toLowerCase());
 
     return choices.length === 4;

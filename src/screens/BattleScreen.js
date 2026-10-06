@@ -1,25 +1,28 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { theme } from '../theme';
-import { createInitialState, nextQuestion, answerQuestion, BATTLE_STATES, BATTLE_CONSTANTS } from '../domain/game/battleEngine';
+import { createInitialState, nextQuestion, answerQuestion, BATTLE_STATES } from '../domain/game/battleEngine';
 import { getWordsByLevel } from '../domain/vocabulary/vocabularyRepository';
+import { getStageById } from '../domain/adventure/campaignConfig';
 
 export default function BattleScreen({ route, navigation }) {
-  const { level } = route.params;
-  const [gameState, setGameState] = useState(null);
-  const [timerRemaining, setTimerRemaining] = useState(BATTLE_CONSTANTS.TIME_PER_QUESTION_MS);
+  const { stageId } = route.params;
+  const stage = getStageById(stageId);
   
-  // Need to hold onto a mutable ref for timer interval to clear it easily
+  const [gameState, setGameState] = useState(null);
+  const [timerRemaining, setTimerRemaining] = useState(stage ? stage.timePerQuestionMs : 10000);
+  
   const timerRef = useRef(null);
 
   // Initialize Game
   useEffect(() => {
-    const seed = Date.now(); // random seed for this session
-    const words = getWordsByLevel(level);
-    let initialState = createInitialState(seed, level, words);
+    if (!stage) return;
+    const seed = Date.now(); // fresh seed per battle run
+    const words = getWordsByLevel(stage.vocabularyLevel);
+    let initialState = createInitialState(seed, stage.vocabularyLevel, words, stage);
     initialState = nextQuestion(initialState);
     setGameState(initialState);
-  }, [level]);
+  }, [stageId]);
 
   // Timer tick
   useEffect(() => {
@@ -28,7 +31,7 @@ export default function BattleScreen({ route, navigation }) {
       return;
     }
 
-    setTimerRemaining(BATTLE_CONSTANTS.TIME_PER_QUESTION_MS);
+    setTimerRemaining(stage.timePerQuestionMs);
     
     timerRef.current = setInterval(() => {
       setTimerRemaining(prev => {
@@ -62,8 +65,8 @@ export default function BattleScreen({ route, navigation }) {
   const handleNext = () => {
     if (gameState.status === BATTLE_STATES.VICTORY || gameState.status === BATTLE_STATES.DEFEAT) {
       // Go to result
-      navigation.navigate('BattleResult', { 
-        level,
+      navigation.replace('BattleResult', { 
+        stageId,
         finalState: gameState
       });
     } else {
@@ -110,7 +113,7 @@ export default function BattleScreen({ route, navigation }) {
       {/* Timer */}
       {status === BATTLE_STATES.QUESTION_ACTIVE && (
         <View style={styles.timerBarContainer}>
-          <View style={[styles.timerBarFill, { width: `${(timerRemaining / BATTLE_CONSTANTS.TIME_PER_QUESTION_MS) * 100}%` }]} />
+          <View style={[styles.timerBarFill, { width: `${(timerRemaining / stage.timePerQuestionMs) * 100}%` }]} />
         </View>
       )}
 

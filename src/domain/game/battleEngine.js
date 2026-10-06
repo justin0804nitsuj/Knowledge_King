@@ -11,11 +11,11 @@ export const BATTLE_STATES = {
   DEFEAT: 'DEFEAT'
 };
 
-export function createInitialState(seed, level, levelWords) {
+export function createInitialState(seed, level, levelWords, config) {
   return {
     status: BATTLE_STATES.READY,
-    playerHp: BATTLE_CONSTANTS.PLAYER_START_HP,
-    opponentHp: BATTLE_CONSTANTS.OPPONENT_START_HP,
+    playerHp: config.playerHp,
+    opponentHp: config.enemyHp,
     score: 0,
     combo: 0,
     maxCombo: 0,
@@ -27,6 +27,7 @@ export function createInitialState(seed, level, levelWords) {
     
     currentQuestion: null,
     
+    _config: config,
     _rng: createSeededRandom(seed),
     _levelWords: levelWords,
     _level: level
@@ -88,12 +89,14 @@ export function answerQuestion(state, choiceId, timeRemainingMs) {
   let maxCombo = state.maxCombo;
   
   if (isCorrect) {
-    opponentHp -= BATTLE_CONSTANTS.DAMAGE_PER_CORRECT;
-    score += calculateScore(true, timeRemainingMs, combo);
+    opponentHp -= state._config.damagePerCorrect;
+    // We should also update scoring.js to accept baseScore, or just handle it. 
+    // Wait, let's just pass config to calculateScore.
+    score += calculateScore(true, timeRemainingMs, combo, state._config);
     combo += 1;
     if (combo > maxCombo) maxCombo = combo;
   } else {
-    playerHp -= isTimeout ? BATTLE_CONSTANTS.DAMAGE_PER_TIMEOUT : BATTLE_CONSTANTS.DAMAGE_PER_WRONG;
+    playerHp -= isTimeout ? state._config.damagePerTimeout : state._config.damagePerWrong;
     combo = 0;
   }
   
