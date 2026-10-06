@@ -13,11 +13,13 @@ export default function BattleScreen({ route, navigation }) {
   const [timerRemaining, setTimerRemaining] = useState(stage ? stage.timePerQuestionMs : 10000);
   
   const timerRef = useRef(null);
+  const battleIdRef = useRef(null);
 
   // Initialize Game
   useEffect(() => {
     if (!stage) return;
     const seed = Date.now(); // fresh seed per battle run
+    battleIdRef.current = `B-${stageId}-${seed}`;
     const words = getWordsByLevel(stage.vocabularyLevel);
     let initialState = createInitialState(seed, stage.vocabularyLevel, words, stage);
     initialState = nextQuestion(initialState);
@@ -67,6 +69,7 @@ export default function BattleScreen({ route, navigation }) {
       // Go to result
       navigation.replace('BattleResult', { 
         stageId,
+        battleId: battleIdRef.current,
         finalState: gameState
       });
     } else {

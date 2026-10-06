@@ -1,9 +1,29 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { theme } from '../theme';
 import { resetCampaignProgress } from '../storage/campaignStorage';
+import { loadPlayerProgress } from '../storage/playerProgressStorage';
+import { loadBattleHistory } from '../storage/battleHistoryStorage';
+import { getPlayerLevelInfo } from '../domain/player/levelSystem';
 
 export default function ProfileScreen({ navigation }) {
+  const [playerInfo, setPlayerInfo] = useState(null);
+  const [recentBattles, setRecentBattles] = useState([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      async function loadData() {
+        const p = await loadPlayerProgress();
+        setPlayerInfo(p);
+        
+        const hObj = await loadBattleHistory();
+        setRecentBattles(hObj.records.slice(0, 5));
+      }
+      loadData();
+    }, [])
+  );
+
   const handleReset = () => {
     Alert.alert(
       "Reset Adventure Progress",
@@ -22,9 +42,56 @@ export default function ProfileScreen({ navigation }) {
     );
   };
 
+  if (!playerInfo) {
+    return <View style={styles.container}><Text>Loading...</Text></View>;
+  }
+
+  const { level } = getPlayerLevelInfo(playerInfo.totalXp);
+  const st = playerInfo.stats;
+  
+  const accuracy = st.totalQuestions > 0 ? Math.round((st.totalCorrect / st.totalQuestions) * 100) : 0;
+  const winRate = st.battlesPlayed > 0 ? Math.round((st.battlesWon / st.battlesPlayed) * 100) : 0;
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Profile</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Text style={styles.title}>Player Profile</Text>
+
+      <View style={styles.headerCard}>
+        <View style={styles.avatarPlaceholder}><Text style={styles.avatarText}>L{level}</Text></View>
+        <View style={styles.headerInfo}>
+          <Text style={styles.playerName}>Guest Player</Text>
+          <Text style={styles.playerXp}>Total XP: {playerInfo.totalXp}</Text>
+          <Text style={styles.playerStreak}>Streak: {playerInfo.daily.streak} Days</Text>
+        </View>
+      </View>
+
+      <View style={styles.statsCard}>
+        <Text style={styles.sectionTitle}>Lifetime Statistics</Text>
+        <StatRow label="Battles Played" value={st.battlesPlayed} />
+        <StatRow label="Wins / Losses" value={`${st.battlesWon} / ${st.battlesLost}`} />
+        <StatRow label="Win Rate" value={`${winRate}%`} />
+        <StatRow label="Total Questions" value={st.totalQuestions} />
+        <StatRow label="Overall Accuracy" value={`${accuracy}%`} />
+        <StatRow label="Best Combo" value={st.bestCombo} />
+        <StatRow label="Bosses Defeated" value={st.bossWins} />
+        <StatRow label="Perfect Victories" value={st.perfectVictories} />
+      </View>
+
+      {recentBattles.length > 0 && (
+        <View style={styles.historyCard}>
+          <Text style={styles.sectionTitle}>Recent Battles</Text>
+          {recentBattles.map((b, i) => (
+            <View key={b.id || i} style={styles.historyRow}>
+              <Text style={styles.historyDate}>{new Date(b.timestamp).toLocaleDateString()}</Text>
+              <Text style={styles.historyStage}>{b.stageId}</Text>
+              <Text style={[styles.historyResult, { color: b.result === 'VICTORY' ? theme.colors.success : theme.colors.danger }]}>
+                {b.result}
+              </Text>
+              <Text style={styles.historyScore}>{b.score} pts</Text>
+            </View>
+          ))}
+        </View>
+      )}
       
       <View style={styles.devSection}>
         <Text style={styles.devTitle}>Developer / Local Data</Text>
@@ -32,6 +99,15 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.resetBtnText}>Reset Adventure Progress</Text>
         </TouchableOpacity>
       </View>
+    </ScrollView>
+  );
+}
+
+function StatRow({ label, value }) {
+  return (
+    <View style={styles.statRow}>
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statValue}>{value}</Text>
     </View>
   );
 }
@@ -40,7 +116,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  content: {
     padding: theme.spacing.large,
+    paddingTop: 60,
+    paddingBottom: 80,
   },
   title: {
     fontSize: 32,
@@ -48,13 +128,104 @@ const styles = StyleSheet.create({
     color: theme.colors.textMain,
     marginBottom: theme.spacing.large,
   },
+  headerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.card,
+    padding: theme.spacing.large,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginBottom: theme.spacing.large,
+  },
+  avatarPlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.large,
+  },
+  avatarText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  playerName: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: theme.colors.textMain,
+    marginBottom: 4,
+  },
+  playerXp: {
+    fontSize: 16,
+    color: theme.colors.textMuted,
+  },
+  playerStreak: {
+    fontSize: 16,
+    color: '#DD6B20',
+    fontWeight: 'bold',
+    marginTop: 4,
+  },
+  statsCard: {
+    backgroundColor: theme.colors.card,
+    padding: theme.spacing.large,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginBottom: theme.spacing.large,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: theme.colors.textMain,
+    marginBottom: theme.spacing.medium,
+  },
+  statRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  statLabel: {
+    fontSize: 16,
+    color: theme.colors.textMuted,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: theme.colors.textMain,
+  },
+  historyCard: {
+    backgroundColor: theme.colors.card,
+    padding: theme.spacing.large,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginBottom: theme.spacing.large,
+  },
+  historyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  historyDate: { fontSize: 14, color: theme.colors.textMuted, flex: 1 },
+  historyStage: { fontSize: 14, color: theme.colors.textMain, flex: 1, textAlign: 'center' },
+  historyResult: { fontSize: 14, fontWeight: 'bold', flex: 1, textAlign: 'center' },
+  historyScore: { fontSize: 14, color: theme.colors.textMain, flex: 1, textAlign: 'right' },
   devSection: {
     backgroundColor: theme.colors.card,
     padding: theme.spacing.large,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: theme.colors.danger,
-    marginTop: 'auto',
   },
   devTitle: {
     fontSize: 16,

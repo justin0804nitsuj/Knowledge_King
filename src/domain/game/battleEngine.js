@@ -24,6 +24,9 @@ export function createInitialState(seed, level, levelWords, config) {
     wrongCount: 0,
     timeoutCount: 0,
     answeredTargetIds: [],
+    correctTargetIds: [],
+    wrongTargetIds: [],
+    timeoutTargetIds: [],
     
     currentQuestion: null,
     
@@ -88,16 +91,21 @@ export function answerQuestion(state, choiceId, timeRemainingMs) {
   let combo = state.combo;
   let maxCombo = state.maxCombo;
   
+  let correctTargetIds = [...state.correctTargetIds];
+  let wrongTargetIds = [...state.wrongTargetIds];
+  let timeoutTargetIds = [...state.timeoutTargetIds];
+
   if (isCorrect) {
     opponentHp -= state._config.damagePerCorrect;
-    // We should also update scoring.js to accept baseScore, or just handle it. 
-    // Wait, let's just pass config to calculateScore.
     score += calculateScore(true, timeRemainingMs, combo, state._config);
     combo += 1;
     if (combo > maxCombo) maxCombo = combo;
+    correctTargetIds.push(state.currentQuestion.targetId);
   } else {
     playerHp -= isTimeout ? state._config.damagePerTimeout : state._config.damagePerWrong;
     combo = 0;
+    if (isTimeout) timeoutTargetIds.push(state.currentQuestion.targetId);
+    else wrongTargetIds.push(state.currentQuestion.targetId);
   }
   
   let nextStatus = BATTLE_STATES.QUESTION_RESOLVED;
@@ -116,6 +124,9 @@ export function answerQuestion(state, choiceId, timeRemainingMs) {
     wrongCount: state.wrongCount + (!isCorrect && !isTimeout ? 1 : 0),
     timeoutCount: state.timeoutCount + (isTimeout ? 1 : 0),
     answeredTargetIds: [...state.answeredTargetIds, state.currentQuestion.targetId],
+    correctTargetIds,
+    wrongTargetIds,
+    timeoutTargetIds,
     currentQuestion: {
       ...state.currentQuestion,
       selectedChoiceId: choiceId,

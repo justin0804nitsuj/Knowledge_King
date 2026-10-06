@@ -1,0 +1,90 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const STORAGE_KEY = '@KnowledgeKing:mistakes';
+const CURRENT_SCHEMA_VERSION = 1;
+
+export async function loadMistakes() {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!raw) return createDefaultMistakes();
+    
+    const data = JSON.parse(raw);
+    if (data.schemaVersion !== CURRENT_SCHEMA_VERSION) {
+      return createDefaultMistakes();
+    }
+    
+    return data;
+  } catch (err) {
+    console.warn('Failed to load mistakes, falling back.', err);
+    return createDefaultMistakes();
+  }
+}
+
+export async function saveMistakes(mistakes) {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(mistakes));
+  } catch (err) {
+    console.error('Failed to save mistakes', err);
+  }
+}
+
+export function createDefaultMistakes() {
+  return {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    records: {} 
+    // wordId -> { wrongCount, timeoutCount, correctReviewCount, lastMistakeAt, isRecovered, level }
+  };
+}
+
+export async function recordMistakesFromBattle(mistakes, correctIds, wrongIds, timeoutIds, level) {
+  const now = Date.now();
+  
+  // Record mistakes
+  const processMistake = (id, isTimeout) => {
+    if (!mistakes.records[id]) {
+      mistakes.records[id] = {
+        wrongCount: 0,
+        timeoutCount: 0,
+        correctReviewCount: 0,
+        lastMistakeAt: now,
+        isRecovered: false,
+        level: level
+      };
+    }
+    
+    if (isTimeout) mistakes.records[id].timeoutCount += 1;
+    else mistakes.records[id].wrongCount += 1;
+    
+    mistakes.records[id].lastMistakeAt = now;
+    mistakes.records[id].isRecovered = false; // new mistake makes it active again
+  };
+
+  for (const id of wrongIds) processMistake(id, false);
+  for (const id of timeoutIds) processMistake(id, true);
+
+  return mistakes;
+}
+
+export async function processReviewResult(mistakes, id, isCorrect) {
+  const record = mistakes.records[id];
+  if (!record) return mistakes;
+  
+  if (isCorrect) {
+    record.correctReviewCount += 1;
+    if (record.correctReviewCount >= 2) {
+      record.isRecovered = true;
+    }
+  } else {
+    record.wrongCount += 1;
+    record.lastMistakeAt = Date.now();
+    record.isRecovered = false;
+  }
+  
+  return mistakes;
+}
+
+export function getActiveMistakes(mistakes) {
+  return Object.keys(mistakes.records)
+    .filter(id => !mistakes.records[id].isRecovered)
+    .map(id => ({ id, ...mistakes.records[id] }));
+}

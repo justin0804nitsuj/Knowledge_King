@@ -1,35 +1,48 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { theme } from '../theme';
 import { BATTLE_STATES } from '../domain/game/battleEngine';
-import { calculateStars } from '../domain/adventure/starRating';
-import { recordStageResult, loadCampaignProgress } from '../storage/campaignStorage';
+import { processBattleResult } from '../domain/game/resultProcessor';
 import { getStageById, getNextStage } from '../domain/adventure/campaignConfig';
+import { getPlayerLevelInfo } from '../domain/player/levelSystem';
+import { loadPlayerProgress } from '../storage/playerProgressStorage';
 
 export default function BattleResultScreen({ route, navigation }) {
-  const { stageId, finalState } = route.params;
+  const { stageId, battleId, finalState } = route.params;
   const { status, score, maxCombo, correctCount, wrongCount, timeoutCount, questionNumber } = finalState;
 
   const isVictory = status === BATTLE_STATES.VICTORY;
   const stage = getStageById(stageId);
-  const earnedStars = calculateStars(isVictory, correctCount, wrongCount, timeoutCount);
   
-  const [bestStars, setBestStars] = useState(0);
+  const [resultData, setResultData] = useState(null);
+  const [levelUpInfo, setLevelUpInfo] = useState(null);
   const [nextStageId, setNextStageId] = useState(null);
 
   useEffect(() => {
-    async function processResult() {
-      const progress = await loadCampaignProgress();
-      setBestStars(progress.stageStars[stageId] || 0);
+    async function doProcess() {
+      // Get level before process to detect level up
+      const pBefore = await loadPlayerProgress();
+      const levelBefore = getPlayerLevelInfo(pBefore.totalXp).level;
 
-      if (isVictory) {
-        await recordStageResult(stageId, earnedStars, score);
+      const res = await processBattleResult(battleId, finalState, stageId);
+      
+      const pAfter = await loadPlayerProgress();
+      const levelAfter = getPlayerLevelInfo(pAfter.totalXp).level;
+      
+      if (levelAfter > levelBefore) {
+        setLevelUpInfo({ from: levelBefore, to: levelAfter });
+      }
+      
+      if (res && isVictory) {
         const next = getNextStage(stageId);
         if (next) setNextStageId(next);
       }
+      
+      // Even if res is null (already processed), we can still display finalState stats
+      setResultData(res || { xpEarned: 0, isFirstClear: false, isPerfect: false, earnedStars: 0 });
     }
-    processResult();
-  }, []);
+    doProcess();
+  }, [battleId]);
 
   const handleReplay = () => {
     navigation.replace('StagePreview', { stageId });
@@ -48,19 +61,31 @@ export default function BattleResultScreen({ route, navigation }) {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={[styles.title, { color: isVictory ? theme.colors.success : theme.colors.danger }]}>
         {isVictory ? (stage.type === 'BOSS' ? 'BOSS DEFEATED!' : 'VICTORY') : 'DEFEAT'}
       </Text>
       
       <Text style={styles.stageTitle}>{stage.title}</Text>
 
-      <View style={styles.starsContainer}>
-        <Text style={styles.starsText}>
-          {'★'.repeat(earnedStars)}{'☆'.repeat(3 - earnedStars)}
-        </Text>
-        {bestStars > 0 && <Text style={styles.bestStarsText}>(Best: {bestStars})</Text>}
-      </View>
+      {resultData && (
+        <View style={styles.starsContainer}>
+          <Text style={styles.starsText}>
+            {'★'.repeat(resultData.earnedStars)}{'☆'.repeat(3 - resultData.earnedStars)}
+          </Text>
+        </View>
+      )}
+
+      {levelUpInfo && (
+        <View style={styles.levelUpBox}>
+          <Text style={styles.levelUpText}>LEVEL UP!</Text>
+          <Text style={styles.levelUpSub}>Level {levelUpInfo.from} → Level {levelUpInfo.to}</Text>
+        </View>
+      )}
+
+      {resultData && resultData.xpEarned > 0 && (
+        <Text style={styles.xpText}>+{resultData.xpEarned} XP</Text>
+      )}
 
       <View style={styles.statsCard}>
         <Text style={styles.statRow}>Final Score: <Text style={styles.statValue}>{score}</Text></Text>
@@ -85,7 +110,7 @@ export default function BattleResultScreen({ route, navigation }) {
           <Text style={styles.btnTextSecondary}>Back to Adventure</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -93,14 +118,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  content: {
     padding: theme.spacing.large,
-    justifyContent: 'center',
     alignItems: 'center',
+    paddingBottom: 60,
   },
   title: {
-    fontSize: 48,
+    fontSize: 40,
     fontWeight: 'bold',
-    marginBottom: theme.spacing.medium,
+    marginBottom: theme.spacing.small,
+    marginTop: 40,
+    textAlign: 'center',
   },
   stageTitle: {
     fontSize: 24,
@@ -109,16 +138,34 @@ const styles = StyleSheet.create({
   },
   starsContainer: {
     alignItems: 'center',
-    marginBottom: theme.spacing.large,
+    marginBottom: theme.spacing.medium,
   },
   starsText: {
     fontSize: 32,
     color: '#D69E2E',
   },
-  bestStarsText: {
-    fontSize: 16,
-    color: theme.colors.textMuted,
-    marginTop: 4,
+  levelUpBox: {
+    backgroundColor: '#FAF089',
+    padding: theme.spacing.medium,
+    borderRadius: 8,
+    marginBottom: theme.spacing.medium,
+    alignItems: 'center',
+    width: '100%',
+  },
+  levelUpText: {
+    color: '#975A16',
+    fontWeight: 'bold',
+    fontSize: 24,
+  },
+  levelUpSub: {
+    color: '#975A16',
+    fontSize: 18,
+  },
+  xpText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.large,
   },
   statsCard: {
     backgroundColor: theme.colors.card,
@@ -165,6 +212,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: theme.colors.primary,
+    marginBottom: theme.spacing.medium,
   },
   btnTextSecondary: {
     color: theme.colors.primary,
