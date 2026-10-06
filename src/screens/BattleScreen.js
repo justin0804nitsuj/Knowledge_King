@@ -19,7 +19,7 @@ export default function BattleScreen({ route, navigation }) {
   useEffect(() => {
     if (!stage) return;
     const seed = Date.now(); // fresh seed per battle run
-    battleIdRef.current = `B-${stageId}-${seed}`;
+    battleIdRef.current = `B-${stageId}-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
     const words = getWordsByLevel(stage.vocabularyLevel);
     let initialState = createInitialState(seed, stage.vocabularyLevel, words, stage);
     initialState = nextQuestion(initialState);

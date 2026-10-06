@@ -2,12 +2,11 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { theme } from '../theme';
-import { loadMistakes, saveMistakes, getActiveMistakes, processReviewResult } from '../storage/mistakeStorage';
-import { loadPlayerProgress, savePlayerProgress, recordDailyActivity } from '../storage/playerProgressStorage';
+import { getActiveMistakes, loadMistakes } from '../storage/mistakeStorage';
 import { getWordById, getWordsByLevel } from '../domain/vocabulary/vocabularyRepository';
 import { generateQuestion } from '../domain/vocabulary/questionGenerator';
 import { createSeededRandom } from '../domain/game/seededRandom';
-import { XP_REWARDS } from '../domain/player/xpRewards';
+import { processReviewAnswer } from '../domain/game/reviewProcessor';
 
 export default function MistakeReviewScreen({ navigation }) {
   const [activeMistakes, setActiveMistakes] = useState([]);
@@ -23,6 +22,7 @@ export default function MistakeReviewScreen({ navigation }) {
   });
   const [isFinished, setIsFinished] = useState(false);
   const [feedback, setFeedback] = useState(null); // 'correct' | 'wrong'
+  const sessionIdRef = useRef(`R-${Date.now()}-${Math.floor(Math.random() * 100000)}`);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -70,41 +70,9 @@ export default function MistakeReviewScreen({ navigation }) {
     setFeedback(isCorrect ? 'correct' : 'wrong');
     
     const mistake = activeMistakes[currentIndex];
+    const eventId = `${sessionIdRef.current}-${currentIndex}`;
     
-    // Process storage
-    let mistakesObj = await loadMistakes();
-    const preRecovered = mistakesObj.records[mistake.id]?.isRecovered || false;
-    
-    mistakesObj = await processReviewResult(mistakesObj, mistake.id, isCorrect);
-    await saveMistakes(mistakesObj);
-    
-    const postRecovered = mistakesObj.records[mistake.id]?.isRecovered || false;
-    const newlyRecovered = !preRecovered && postRecovered;
-
-    // Player progress / XP
-    let playerProgress = await loadPlayerProgress();
-    playerProgress = recordDailyActivity(playerProgress);
-    
-    let xpEarned = 0;
-    if (isCorrect) {
-      xpEarned = XP_REWARDS.REVIEW_CORRECT;
-      playerProgress.totalXp += xpEarned;
-      playerProgress.stats.totalXpEarned += xpEarned;
-    }
-    
-    // Mission 1: 20 questions (review counts as questions)
-    const dm = playerProgress.daily.missions;
-    if (!dm.m1.claimed) {
-      dm.m1.progress += 1;
-      if (dm.m1.progress >= 20) {
-        dm.m1.claimed = true;
-        playerProgress.totalXp += 30;
-        playerProgress.stats.totalXpEarned += 30;
-        xpEarned += 30;
-      }
-    }
-    
-    await savePlayerProgress(playerProgress);
+    const { xpEarned, newlyRecovered } = await processReviewAnswer(eventId, mistake.id, isCorrect);
 
     setSessionResults(prev => ({
       reviewed: prev.reviewed + 1,

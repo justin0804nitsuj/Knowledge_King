@@ -121,13 +121,18 @@ describe('Player Progression Domain', () => {
     });
   });
   
-  describe('Result Processor Atomic Behavior', () => {
+  describe('Result Processor Atomic Behavior & Idempotency', () => {
+    let mockStorage = {};
+    
     beforeEach(() => {
-      AsyncStorage.getItem.mockResolvedValue(null);
-      AsyncStorage.setItem.mockResolvedValue();
+      mockStorage = {};
+      AsyncStorage.getItem.mockImplementation(async (key) => mockStorage[key] || null);
+      AsyncStorage.setItem.mockImplementation(async (key, value) => {
+        mockStorage[key] = value;
+      });
     });
 
-    it('processing the same battleId twice returns null the second time', async () => {
+    it('processing the same battleId twice does not grant duplicate XP or stats', async () => {
       const finalState = {
         status: BATTLE_STATES.VICTORY,
         correctCount: 4,
@@ -142,10 +147,46 @@ describe('Player Progression Domain', () => {
       };
 
       const res1 = await processBattleResult('battle_123', finalState, 'L1-S1');
-      expect(res1).not.toBeNull();
+      expect(res1.xpEarned).toBeGreaterThan(0);
       
+      const pAfterFirst = JSON.parse(mockStorage['@KnowledgeKing:playerProgress']);
+      const xpAfterFirst = pAfterFirst.totalXp;
+      
+      // Simulate app restart / remount calling the exact same event
       const res2 = await processBattleResult('battle_123', finalState, 'L1-S1');
-      expect(res2).toBeNull(); // Idempotency check
+      // Returns summary safely
+      expect(res2.xpEarned).toBe(res1.xpEarned); 
+      
+      const pAfterSecond = JSON.parse(mockStorage['@KnowledgeKing:playerProgress']);
+      // But XP should not be duplicated
+      expect(pAfterSecond.totalXp).toBe(xpAfterFirst);
+      
+      // History should only have 1 record
+      const hAfterSecond = JSON.parse(mockStorage['@KnowledgeKing:battleHistory']);
+      expect(hAfterSecond.records.length).toBe(1);
+    });
+
+    it('processing the same review answer twice does not duplicate XP', async () => {
+      // Setup some mistakes
+      const { recordMistakesFromBattle } = require('../src/storage/mistakeStorage');
+      const { processReviewAnswer } = require('../src/domain/game/reviewProcessor');
+
+      let mistakes = require('../src/storage/mistakeStorage').createDefaultMistakes();
+      mistakes = await recordMistakesFromBattle(mistakes, [], ['word1'], [], 1);
+      mockStorage['@KnowledgeKing:mistakes'] = JSON.stringify(mistakes);
+
+      const res1 = await processReviewAnswer('review_1', 'word1', true);
+      expect(res1.xpEarned).toBeGreaterThan(0);
+
+      const pAfterFirst = JSON.parse(mockStorage['@KnowledgeKing:playerProgress']);
+      const xpAfterFirst = pAfterFirst.totalXp;
+
+      const res2 = await processReviewAnswer('review_1', 'word1', true);
+      // It returns 0 XP on duplicate processing
+      expect(res2.xpEarned).toBe(0);
+
+      const pAfterSecond = JSON.parse(mockStorage['@KnowledgeKing:playerProgress']);
+      expect(pAfterSecond.totalXp).toBe(xpAfterFirst);
     });
   });
 });

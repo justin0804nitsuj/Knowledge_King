@@ -41,6 +41,7 @@ export function createDefaultPlayerProgress() {
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     totalXp: 0,
+    processedEvents: [], // Bounded to 500 max
     stats: {
       battlesPlayed: 0,
       battlesWon: 0,
@@ -105,5 +106,18 @@ export function recordDailyActivity(progress) {
     progress.daily.streakLastIncrementedDate = today;
   }
   
+  return progress;
+}
+
+export function hasProcessedEvent(progress, eventId) {
+  return progress.processedEvents && progress.processedEvents.includes(eventId);
+}
+
+export function recordProcessedEvent(progress, eventId) {
+  if (!progress.processedEvents) progress.processedEvents = [];
+  progress.processedEvents.push(eventId);
+  if (progress.processedEvents.length > 500) {
+    progress.processedEvents.shift();
+  }
   return progress;
 }

@@ -37,6 +37,9 @@ export function createDefaultHistory() {
 }
 
 export function addBattleRecord(history, record) {
+  if (history.records.find(r => r.id === record.id)) {
+    return history; // Idempotent: already exists
+  }
   history.records.unshift(record); // Add to beginning
   if (history.records.length > MAX_HISTORY_SIZE) {
     history.records.pop(); // Remove oldest

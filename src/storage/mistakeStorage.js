@@ -31,6 +31,7 @@ export async function saveMistakes(mistakes) {
 export function createDefaultMistakes() {
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
+    processedEvents: [],
     records: {} 
     // wordId -> { wrongCount, timeoutCount, correctReviewCount, lastMistakeAt, isRecovered, level }
   };
@@ -87,4 +88,17 @@ export function getActiveMistakes(mistakes) {
   return Object.keys(mistakes.records)
     .filter(id => !mistakes.records[id].isRecovered)
     .map(id => ({ id, ...mistakes.records[id] }));
+}
+
+export function hasProcessedMistakeEvent(mistakes, eventId) {
+  return mistakes.processedEvents && mistakes.processedEvents.includes(eventId);
+}
+
+export function recordProcessedMistakeEvent(mistakes, eventId) {
+  if (!mistakes.processedEvents) mistakes.processedEvents = [];
+  mistakes.processedEvents.push(eventId);
+  if (mistakes.processedEvents.length > 500) {
+    mistakes.processedEvents.shift();
+  }
+  return mistakes;
 }
