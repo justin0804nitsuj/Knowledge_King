@@ -8,10 +8,12 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.justin.knowledgeking"
+      "bundleIdentifier": "com.justin.knowledgeking",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
-      "package": "com.justin.knowledgeking"
+      "package": "com.justin.knowledgeking",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
     },
