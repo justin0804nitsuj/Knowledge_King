@@ -126,6 +126,7 @@ export default {
     join: '加入',
     roomClosed: '房主已關閉房間。',
     challengerLeft: '挑戰者已離開房間。',
+    leaveFailed: '無法離開房間，請再試一次。',
     leaveConfirmTitle: '確定要離開房間嗎？',
     waitingRoom: '等待室',
     reconnecting: '重新連線中...',

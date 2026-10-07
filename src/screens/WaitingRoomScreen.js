@@ -6,13 +6,19 @@ import { usePvpRoom } from '../context/PvpRoomContext';
 import { useOnline } from '../context/OnlineContext';
 import { verifyRoomExists } from '../services/pvp/roomService';
 import { PlayerRole, RoomStatus } from '../domain/pvp/roomConstants';
+import { DepartureIntent, resolveDepartureAlert } from '../domain/pvp/departure';
 import { theme } from '../theme';
 
 export default function WaitingRoomScreen({ navigation }) {
   const { t } = useTranslation();
-  const { roomId, room, role, isHost, isLoadingRoom, leaveRoom, status } = usePvpRoom();
+  const { roomId, room, role, isHost, isLoadingRoom, leaveRoom, status, getDepartureIntent } = usePvpRoom();
   const { isOnline } = useOnline();
   const [copied, setCopied] = useState(false);
+
+  // isHost is derived from room data and becomes false once the room is
+  // cleared, so remember the last known role while the room existed.
+  const wasHostRef = useRef(false);
+  if (room) wasHostRef.current = isHost;
 
   useEffect(() => {
     console.log('[PVP-TRACE] WAITING mount');
@@ -34,20 +40,29 @@ export default function WaitingRoomScreen({ navigation }) {
 
     // If room is cancelled or deleted, kick guest back to Arena
     if (!room || status === RoomStatus.CANCELLED) {
-      console.log(`[PVP-TRACE] WAITING reason for redirect: room=${!!room}, status=${status}`);
+      const departureIntent = getDepartureIntent();
+      console.log(`[PVP-TRACE] WAITING reason for redirect: room=${!!room}, status=${status}, intent=${departureIntent}`);
+
+      // Local explicit leave/close: confirmLeave handles navigation, no alert.
+      if (departureIntent !== DepartureIntent.NONE) return;
       
       // Async verify before kicking
       verifyRoomExists(roomId).then(exists => {
         console.log(`[PVP-TRACE] PRE-ALERT VERIFY: room exists = ${exists}`);
       });
       
-      if (!isHost) {
+      const alertKey = resolveDepartureAlert({
+        departureIntent,
+        roomGone: true,
+        wasHost: wasHostRef.current,
+      });
+      if (alertKey) {
         console.log('[PVP-TRACE] WAITING alert shown');
-        Alert.alert('', t('arena.roomClosed'));
+        Alert.alert('', t(`arena.${alertKey}`));
       }
       navigation.navigate('MainTabs', { screen: 'Arena' });
     }
-  }, [room, status, isHost, navigation, t, isLoadingRoom, roomId]);
+  }, [room, status, isHost, navigation, t, isLoadingRoom, roomId, getDepartureIntent]);
 
   // Track Guest presence to alert Host when Guest leaves
   const previousGuestUidRef = useRef(null);
@@ -61,18 +76,25 @@ export default function WaitingRoomScreen({ navigation }) {
     
     const previousGuestUid = previousGuestUidRef.current;
     
-    if (previousGuestUid && !currentGuestUid) {
+    const alertKey = resolveDepartureAlert({
+      departureIntent: getDepartureIntent(),
+      roomGone: false,
+      wasHost: true,
+      previousGuestUid,
+      currentGuestUid: currentGuestUid || null,
+    });
+    if (alertKey) {
       console.log(`[PVP-TRACE] Guest departed: ${previousGuestUid}`);
-      Alert.alert('', t('arena.challengerLeft'));
+      Alert.alert('', t(`arena.${alertKey}`));
     }
     
     // Update ref to current state
     previousGuestUidRef.current = currentGuestUid || null;
-  }, [room, isHost, isLoadingRoom, status, t]);
+  }, [room, isHost, isLoadingRoom, status, t, getDepartureIntent]);
 
   useEffect(() => {
     const onBackPress = () => {
-      confirmLeave();
+      confirmLeaveRef.current();
       return true; // Prevent default back
     };
     BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -89,13 +111,23 @@ export default function WaitingRoomScreen({ navigation }) {
           text: t('profile.confirmReset'), 
           style: 'destructive',
           onPress: async () => {
-            await leaveRoom();
+            try {
+              await leaveRoom();
+            } catch (e) {
+              // Leave failed: stay in room (intent already reset by context).
+              console.warn('[PVP-TRACE] leaveRoom failed', e?.code || e?.message);
+              Alert.alert('', t('arena.leaveFailed'));
+              return;
+            }
             navigation.navigate('MainTabs', { screen: 'Arena' });
           }
         }
       ]
     );
   };
+  // Keep the hardware back handler pointed at the latest confirmLeave/leaveRoom.
+  const confirmLeaveRef = useRef(confirmLeave);
+  confirmLeaveRef.current = confirmLeave;
 
   const copyCode = async () => {
     if (!roomId) return;

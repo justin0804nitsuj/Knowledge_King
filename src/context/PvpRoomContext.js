@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { createRoom as serviceCreateRoom, joinRoom as serviceJoinRoom, leaveRoom as serviceLeaveRoom, subscribeToRoom, setupWaitingRoomPresence, verifyRoomExists } from '../services/pvp/roomService';
 import { useAuth } from './AuthContext';
 import { RoomStatus } from '../domain/pvp/roomConstants';
+import { DepartureIntent, performExplicitDeparture } from '../domain/pvp/departure';
 
 const PvpRoomContext = createContext(null);
 
@@ -10,6 +11,12 @@ export function PvpRoomProvider({ children }) {
   const [roomId, setRoomId] = useState(null);
   const [room, setRoom] = useState(null);
   const [isLoadingRoom, setIsLoadingRoom] = useState(false);
+  // Local-only departure intent. Never written to Firebase.
+  const departureIntentRef = useRef(DepartureIntent.NONE);
+  const setDepartureIntent = useCallback((intent) => {
+    departureIntentRef.current = intent;
+  }, []);
+  const getDepartureIntent = useCallback(() => departureIntentRef.current, []);
   
   // Track room status
   const status = room?.meta?.status || null;
@@ -73,6 +80,7 @@ export function PvpRoomProvider({ children }) {
   const createRoom = useCallback(async () => {
     if (!user) return null;
     console.log('[PVP-TRACE] CREATE begin');
+    setDepartureIntent(DepartureIntent.NONE);
     setIsLoadingRoom(true);
     try {
       const code = await serviceCreateRoom(user);
@@ -93,6 +101,7 @@ export function PvpRoomProvider({ children }) {
   const joinRoom = useCallback(async (code) => {
     if (!user) return null;
     console.log('[PVP-TRACE] JOIN begin');
+    setDepartureIntent(DepartureIntent.NONE);
     setIsLoadingRoom(true);
     try {
       const joinedCode = await serviceJoinRoom(code, user);
@@ -105,17 +114,19 @@ export function PvpRoomProvider({ children }) {
     }
   }, [user]);
 
+  // Explicit local leave/close. Throws on failure (room stays active, intent reset).
   const leaveRoom = useCallback(async () => {
     if (!roomId || !user) return;
-    try {
-      await serviceLeaveRoom(roomId, user);
-    } catch (e) {
-      console.warn("Failed to leave room cleanly", e);
-    } finally {
-      setRoomId(null);
-      setRoom(null);
-    }
-  }, [roomId, user]);
+    await performExplicitDeparture({
+      isHost,
+      setIntent: setDepartureIntent,
+      leave: () => serviceLeaveRoom(roomId, user),
+      clearActiveRoom: () => {
+        setRoomId(null);
+        setRoom(null);
+      },
+    });
+  }, [roomId, user, isHost, setDepartureIntent]);
 
   const value = {
     roomId,
@@ -126,7 +137,8 @@ export function PvpRoomProvider({ children }) {
     isLoadingRoom,
     createRoom,
     joinRoom,
-    leaveRoom
+    leaveRoom,
+    getDepartureIntent
   };
 
   return (
