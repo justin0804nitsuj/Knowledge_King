@@ -69,6 +69,7 @@ export async function joinRoom(roomCode, user) {
   const roomRef = ref(db, `rooms/${roomCode}`);
   
   try {
+    // 1. Preflight check using get() to fail fast with clear error messages
     const snapshot = await get(roomRef);
     const currentData = snapshot.val();
     
@@ -88,29 +89,44 @@ export async function joinRoom(roomCode, user) {
     ) {
       throw new Error("Game versions are incompatible. Please update the app.");
     }
-    
-    // If the user is already in the room, let them re-join seamlessly
-    if (currentData.players && currentData.players[user.uid]) {
-      return roomCode;
-    }
-    
-    const players = currentData.players || {};
-    const playerIds = Object.keys(players);
-    
-    if (playerIds.length >= 2) {
-      throw new Error("Room is full");
-    }
-    
-    // Safe to join: atomic set on our own node
-    const playerRef = ref(db, `rooms/${roomCode}/players/${user.uid}`);
-    await set(playerRef, {
-      displayName: user.displayName || 'Player',
-      photoURL: user.photoURL || null,
-      role: PlayerRole.GUEST,
-      joinedAt: serverTimestamp()
+
+    // 2. Atomic transaction on the players node
+    const playersRef = ref(db, `rooms/${roomCode}/players`);
+    const result = await runTransaction(playersRef, (currentPlayers) => {
+      if (currentPlayers === null) return; // Should not happen if room exists, but abort if so
+      
+      const playerIds = Object.keys(currentPlayers);
+      
+      // If already in room, do nothing (idempotent)
+      if (currentPlayers[user.uid]) {
+        return currentPlayers;
+      }
+      
+      // Concurrency check: abort if full
+      if (playerIds.length >= 2) {
+        return; 
+      }
+      
+      // Safe to join
+      currentPlayers[user.uid] = {
+        displayName: user.displayName || 'Player',
+        photoURL: user.photoURL || null,
+        role: PlayerRole.GUEST,
+        joinedAt: serverTimestamp()
+      };
+      
+      return currentPlayers;
     });
-    
-    return roomCode;
+
+    if (result.committed) {
+      const resultingPlayers = result.snapshot.val();
+      if (!resultingPlayers || !resultingPlayers[user.uid]) {
+        throw new Error("Room is full"); // Transaction aborted because it was full
+      }
+      return roomCode;
+    } else {
+      throw new Error("Failed to join room");
+    }
   } catch (e) {
     throw e;
   }

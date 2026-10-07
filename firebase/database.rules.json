@@ -31,10 +31,10 @@
         },
         
         "players": {
-          ".write": "auth != null",
+          ".write": "auth != null && (data.parent().child('meta/status').val() === 'WAITING' || !data.exists())",
           ".validate": "newData.hasChildren([newData.parent().child('meta/hostUid').val()])",
           "$uid": {
-            ".validate": "newData.hasChildren(['displayName', 'role', 'joinedAt']) && (auth.uid === $uid || data.val() === newData.val())",
+            ".validate": "( $uid === newData.parent().parent().child('meta/hostUid').val() || $uid === auth.uid ) && ( (!data.exists() && newData.hasChildren(['displayName', 'role', 'joinedAt'])) || (data.exists() && newData.exists() && data.child('displayName').val() === newData.child('displayName').val() && data.child('role').val() === newData.child('role').val() && data.child('joinedAt').val() === newData.child('joinedAt').val() && ((!data.child('photoURL').exists() && !newData.child('photoURL').exists()) || (data.child('photoURL').exists() && newData.child('photoURL').exists() && data.child('photoURL').val() === newData.child('photoURL').val()))) )",
             "displayName": { ".validate": "newData.isString()" },
             "photoURL": { ".validate": "newData.isString() || !newData.exists()" },
             "role": { ".validate": "newData.val() === 'HOST' || newData.val() === 'GUEST'" },
