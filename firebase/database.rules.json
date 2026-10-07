@@ -15,14 +15,14 @@
     "rooms": {
       "$roomId": {
         ".read": "auth != null",
-        ".write": "auth != null && ( (!data.exists() && newData.child('meta/hostUid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('meta/hostUid').val() === auth.uid) )",
+        ".write": "auth != null && ( (!data.exists() && newData.child('meta/hostUid').val() === auth.uid) || (data.exists() && data.child('meta/hostUid').val() === auth.uid) )",
         ".validate": "!newData.exists() || newData.hasChildren(['meta', 'players'])",
         
         "meta": {
           ".write": "auth != null && data.child('hostUid').val() === auth.uid",
           ".validate": "!newData.exists() || newData.hasChildren(['hostUid', 'status', 'createdAt', 'rulesetVersion', 'vocabularyVersion', 'vocabularySchemaVersion'])",
           "hostUid": { ".validate": "(!data.exists() && newData.val() === auth.uid) || (data.exists() && data.val() === newData.val())" },
-          "status": { ".validate": "newData.val() === 'WAITING' || (data.val() === 'WAITING' && newData.val() === 'CANCELLED')" },
+          "status": { ".validate": "newData.val() === 'WAITING' || (data.val() === 'WAITING' && (newData.val() === 'CANCELLED' || newData.val() === 'IN_BATTLE'))" },
           "createdAt": { ".validate": "(!data.exists() && newData.val() <= now) || (data.exists() && data.val() === newData.val())" },
           "rulesetVersion": { ".validate": "(!data.exists() && newData.isString()) || (data.exists() && data.val() === newData.val())" },
           "vocabularyVersion": { ".validate": "(!data.exists() && newData.isString()) || (data.exists() && data.val() === newData.val())" },
@@ -30,16 +30,30 @@
           "$other": { ".validate": false }
         },
         
+        "match": {
+          ".write": "auth != null && data.parent().child('meta/hostUid').val() === auth.uid",
+          ".validate": "newData.hasChildren(['matchId', 'battleSeed', 'rulesetVersion', 'vocabularyVersion', 'createdAt', 'level'])",
+          "matchId": { ".validate": "(!data.exists() && newData.isString()) || (data.exists() && data.val() === newData.val())" },
+          "battleSeed": { ".validate": "(!data.exists() && newData.isString()) || (data.exists() && data.val() === newData.val())" },
+          "rulesetVersion": { ".validate": "(!data.exists() && newData.isString()) || (data.exists() && data.val() === newData.val())" },
+          "vocabularyVersion": { ".validate": "(!data.exists() && newData.isString()) || (data.exists() && data.val() === newData.val())" },
+          "createdAt": { ".validate": "(!data.exists() && newData.isNumber()) || (data.exists() && data.val() === newData.val())" },
+          "questionCount": { ".validate": "(!data.exists() && newData.isNumber()) || (data.exists() && data.val() === newData.val())" },
+          "level": { ".validate": "(!data.exists() && newData.isNumber()) || (data.exists() && data.val() === newData.val())" },
+          "$other": { ".validate": false }
+        },
+        
         "players": {
           ".write": "auth != null && ( (data.parent().child('meta/status').val() === 'WAITING' && newData.exists()) || (data.parent().child('meta/hostUid').val() === auth.uid) || !data.exists() )",
           ".validate": "!newData.exists() || newData.hasChildren([newData.parent().child('meta/hostUid').val()])",
           "$uid": {
-            ".write": "auth != null && ( (!newData.exists() && ($uid === auth.uid || data.parent().parent().child('meta/hostUid').val() === auth.uid)) )",
-            ".validate": "!newData.exists() || ( ( $uid === newData.parent().parent().child('meta/hostUid').val() || $uid === auth.uid ) && ( (!data.exists() && newData.hasChildren(['displayName', 'role', 'joinedAt'])) || (data.exists() && newData.exists() && data.child('displayName').val() === newData.child('displayName').val() && data.child('role').val() === newData.child('role').val() && data.child('joinedAt').val() === newData.child('joinedAt').val() && ((!data.child('photoURL').exists() && !newData.child('photoURL').exists()) || (data.child('photoURL').exists() && newData.child('photoURL').exists() && data.child('photoURL').val() === newData.child('photoURL').val()))) ) )",
+            ".write": "auth != null && ( (!newData.exists() && ($uid === auth.uid || data.parent().parent().child('meta/hostUid').val() === auth.uid)) || ($uid === auth.uid) )",
+            ".validate": "!newData.exists() || ( ( $uid === newData.parent().parent().child('meta/hostUid').val() || $uid === auth.uid ) && ( (!data.exists() && newData.hasChildren(['displayName', 'role', 'joinedAt', 'ready'])) || (data.exists() && newData.exists() && data.child('displayName').val() === newData.child('displayName').val() && data.child('role').val() === newData.child('role').val() && data.child('joinedAt').val() === newData.child('joinedAt').val() && ((!data.child('photoURL').exists() && !newData.child('photoURL').exists()) || (data.child('photoURL').exists() && newData.child('photoURL').exists() && data.child('photoURL').val() === newData.child('photoURL').val()))) ) )",
             "displayName": { ".validate": "newData.isString()" },
             "photoURL": { ".validate": "newData.isString() || !newData.exists()" },
             "role": { ".validate": "newData.val() === 'HOST' || newData.val() === 'GUEST'" },
             "joinedAt": { ".validate": "newData.val() <= now" },
+            "ready": { ".validate": "newData.isBoolean()" },
             "$other": { ".validate": false }
           }
         },

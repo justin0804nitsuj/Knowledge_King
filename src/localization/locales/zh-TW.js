@@ -142,6 +142,12 @@ export default {
     networkError: '網路錯誤，請檢查您的連線。',
     roomNotJoinable: '此房間正在遊戲中或已關閉。',
     selfJoin: '不能加入自己建立的房間，請使用另一個帳號測試。',
+    ready: '準備',
+    cancelReady: '取消準備',
+    isReady: '已準備',
+    notReady: '尚未準備',
+    waitingChallenger: '等待挑戰者加入…',
+    startMatch: '開始對戰'
   },
   auth: {
     signingIn: '登入中...',

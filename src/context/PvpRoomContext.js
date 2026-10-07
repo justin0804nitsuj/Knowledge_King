@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import { createRoom as serviceCreateRoom, joinRoom as serviceJoinRoom, leaveRoom as serviceLeaveRoom, subscribeToRoom, setupWaitingRoomPresence, verifyRoomExists } from '../services/pvp/roomService';
+import { createRoom as serviceCreateRoom, joinRoom as serviceJoinRoom, leaveRoom as serviceLeaveRoom, subscribeToRoom, setupWaitingRoomPresence, verifyRoomExists, setPlayerReady as serviceSetPlayerReady, startMatch as serviceStartMatch } from '../services/pvp/roomService';
 import { useAuth } from './AuthContext';
 import { RoomStatus } from '../domain/pvp/roomConstants';
 import { DepartureIntent, performExplicitDeparture, createDepartureSession } from '../domain/pvp/departure';
@@ -145,7 +145,17 @@ export function PvpRoomProvider({ children }) {
     joinRoom,
     leaveRoom,
     getDepartureIntent,
-    getDepartureSession
+    getDepartureSession,
+    setReady: async (isReady) => {
+      if (roomId && user) {
+        await serviceSetPlayerReady(roomId, user, isReady);
+      }
+    },
+    startMatch: async () => {
+      if (roomId && user && isHost) {
+        await serviceStartMatch(roomId, user);
+      }
+    }
   };
 
   return (

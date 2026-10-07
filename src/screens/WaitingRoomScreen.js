@@ -13,7 +13,7 @@ const devLog = (msg) => { if (__DEV__) console.log(msg); };
 
 export default function WaitingRoomScreen({ navigation }) {
   const { t } = useTranslation();
-  const { roomId, room, role, isHost, isLoadingRoom, leaveRoom, status, getDepartureIntent, getDepartureSession } = usePvpRoom();
+  const { roomId, room, role, isHost, isLoadingRoom, leaveRoom, status, getDepartureIntent, getDepartureSession, setReady, startMatch } = usePvpRoom();
   const { isOnline } = useOnline();
   const [copied, setCopied] = useState(false);
 
@@ -21,6 +21,17 @@ export default function WaitingRoomScreen({ navigation }) {
   // cleared, so remember the last known role while the room existed.
   const wasHostRef = useRef(false);
   if (room) wasHostRef.current = isHost;
+
+  const navigatedMatchIdRef = useRef(null);
+
+  useEffect(() => {
+    if (status === RoomStatus.IN_BATTLE && room?.match) {
+      if (navigatedMatchIdRef.current !== room.match.matchId) {
+        navigatedMatchIdRef.current = room.match.matchId;
+        navigation.navigate('PvpBattle');
+      }
+    }
+  }, [status, room?.match, navigation]);
 
   useEffect(() => {
     console.log('[PVP-TRACE] WAITING mount');
@@ -130,6 +141,11 @@ export default function WaitingRoomScreen({ navigation }) {
   const guestUid = Object.keys(room?.players || {}).find(uid => uid !== hostUid);
   const guestPlayer = guestUid ? room?.players?.[guestUid] : null;
 
+  const hostReady = hostPlayer?.ready === true;
+  const guestReady = guestPlayer?.ready === true;
+  const isBothReady = hostReady && guestReady;
+  const myReady = isHost ? hostReady : guestReady;
+
   if (!room) return <View style={styles.container} />;
 
   return (
@@ -155,6 +171,11 @@ export default function WaitingRoomScreen({ navigation }) {
           <Text style={styles.roleLabel}>HOST</Text>
           <Text style={styles.playerName}>{hostPlayer ? hostPlayer.displayName : '...'}</Text>
           <Text style={styles.playerStatus}>{hostPlayer ? t('arena.connected') : ''}</Text>
+          {hostPlayer && (
+            <Text style={[styles.readyStatus, hostReady && styles.readyStatusActive]}>
+              {hostReady ? t('arena.isReady') : t('arena.notReady')}
+            </Text>
+          )}
         </View>
 
         <View style={styles.vsContainer}>
@@ -163,9 +184,29 @@ export default function WaitingRoomScreen({ navigation }) {
 
         <View style={styles.playerSlot}>
           <Text style={styles.roleLabel}>GUEST</Text>
-          <Text style={styles.playerName}>{guestPlayer ? guestPlayer.displayName : t('arena.waitingForPlayer')}</Text>
+          <Text style={styles.playerName}>{guestPlayer ? guestPlayer.displayName : t('arena.waitingChallenger')}</Text>
           <Text style={styles.playerStatus}>{guestPlayer ? t('arena.connected') : ''}</Text>
+          {guestPlayer && (
+            <Text style={[styles.readyStatus, guestReady && styles.readyStatusActive]}>
+              {guestReady ? t('arena.isReady') : t('arena.notReady')}
+            </Text>
+          )}
         </View>
+      </View>
+
+      <View style={styles.actionContainer}>
+        {isHost && guestPlayer && isBothReady ? (
+          <TouchableOpacity style={styles.startBtn} onPress={startMatch}>
+            <Text style={styles.startBtnText}>{t('arena.startMatch')}</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity 
+            style={[styles.readyBtn, myReady && styles.readyBtnActive]} 
+            onPress={() => setReady(!myReady)}
+          >
+            <Text style={styles.readyBtnText}>{myReady ? t('arena.cancelReady') : t('arena.ready')}</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <TouchableOpacity style={styles.leaveBtn} onPress={confirmLeave}>
@@ -287,6 +328,45 @@ const styles = StyleSheet.create({
   },
   leaveBtnText: {
     color: theme.colors.danger,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  readyStatus: {
+    marginTop: 8,
+    fontSize: 14,
+    color: theme.colors.textMuted,
+    fontWeight: 'bold'
+  },
+  readyStatusActive: {
+    color: theme.colors.primary,
+  },
+  actionContainer: {
+    marginBottom: 20,
+  },
+  readyBtn: {
+    backgroundColor: theme.colors.card,
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  readyBtnActive: {
+    backgroundColor: theme.colors.primary,
+  },
+  readyBtnText: {
+    color: theme.colors.textMain,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  startBtn: {
+    backgroundColor: theme.colors.success,
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  startBtnText: {
+    color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
   }

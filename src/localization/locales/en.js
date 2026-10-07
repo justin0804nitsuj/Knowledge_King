@@ -142,6 +142,12 @@ export default {
     networkError: 'Network error. Please check your connection.',
     roomNotJoinable: 'This room is already in a game or closed.',
     selfJoin: 'You cannot join your own room. Use another account to test multiplayer.',
+    ready: 'Ready',
+    cancelReady: 'Cancel Ready',
+    isReady: 'Ready',
+    notReady: 'Not Ready',
+    waitingChallenger: 'Waiting for challenger…',
+    startMatch: 'Start Match'
   },
   auth: {
     signingIn: 'Signing In...',

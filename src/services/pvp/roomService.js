@@ -42,6 +42,7 @@ export async function createRoom(user) {
                 displayName: user.displayName || 'Player',
                 photoURL: user.photoURL || null,
                 role: PlayerRole.HOST,
+                ready: false,
                 joinedAt: serverTimestamp()
               }
             }
@@ -149,6 +150,7 @@ export async function joinRoom(roomCode, user) {
         displayName: user.displayName || 'Player',
         photoURL: user.photoURL || null,
         role: PlayerRole.GUEST,
+        ready: false,
         joinedAt: serverTimestamp()
       };
       
@@ -203,6 +205,86 @@ export async function leaveRoom(roomCode, user) {
     }
   } catch (e) {
     if (__DEV__) console.error("Leave room failed", e);
+    throw e;
+  }
+}
+
+/**
+ * Set the ready state for the current player
+ */
+export async function setPlayerReady(roomCode, user, isReady) {
+  if (!roomCode || !user || !user.uid) {
+    const e = new Error("Unauthenticated user");
+    e.code = 'AUTH_REQUIRED';
+    throw e;
+  }
+  const playerReadyRef = ref(db, `rooms/${roomCode}/players/${user.uid}/ready`);
+  await set(playerReadyRef, isReady);
+}
+
+/**
+ * Atomically start the match if all conditions are met
+ */
+export async function startMatch(roomCode, user) {
+  if (!roomCode || !user || !user.uid) {
+    const e = new Error("Unauthenticated user");
+    e.code = 'AUTH_REQUIRED';
+    throw e;
+  }
+
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  const result = await runTransaction(roomRef, (currentData) => {
+    if (currentData === null) return; // aborted
+    
+    // Check authority
+    if (currentData.meta.hostUid !== user.uid) {
+      return; // aborted, not host
+    }
+
+    // Already started? Be idempotent.
+    if (currentData.meta.status === RoomStatus.IN_BATTLE) {
+      return currentData; 
+    }
+
+    if (currentData.meta.status !== RoomStatus.WAITING) {
+      return currentData; // Cannot start if cancelled/finished
+    }
+
+    const hostUid = currentData.meta.hostUid;
+    const playerUids = Object.keys(currentData.players || {});
+    const guestUid = playerUids.find(id => id !== hostUid);
+
+    if (!guestUid) return; // no guest
+
+    // Treat missing ready as false
+    const hostReady = currentData.players[hostUid]?.ready === true;
+    const guestReady = currentData.players[guestUid]?.ready === true;
+
+    if (!hostReady || !guestReady) return; // not both ready
+
+    // Create match config
+    if (!currentData.match) {
+      const matchId = `match_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      const battleSeed = Math.floor(Math.random() * 1000000).toString();
+      
+      currentData.match = {
+        matchId,
+        battleSeed,
+        rulesetVersion: currentData.meta.rulesetVersion,
+        vocabularyVersion: currentData.meta.vocabularyVersion,
+        createdAt: serverTimestamp(),
+        questionCount: 10,
+        level: 1
+      };
+    }
+    
+    currentData.meta.status = RoomStatus.IN_BATTLE;
+    return currentData;
+  });
+
+  if (!result.committed) {
+    const e = new Error("Failed to start match");
+    e.code = 'START_FAILED';
     throw e;
   }
 }
