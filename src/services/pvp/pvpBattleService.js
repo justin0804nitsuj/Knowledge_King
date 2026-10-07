@@ -10,73 +10,102 @@ function getInitialPlayerState() {
   return {
     hp: MAX_HP,
     potionsRemaining: 2,
-    currentQuestionIndex: 0,
     score: 0,
     correct: 0,
     wrong: 0,
-    completed: false,
     processedActions: {}
   };
 }
 
-/**
- * Idempotent answer submission for PvP matches.
- * Uses a transaction on 'players' to update self progress and opponent HP simultaneously.
- */
-export async function submitAnswer(roomCode, uid, opponentUid, matchId, questionIndex, isCorrect, points, isLastQuestion) {
-  const playersRef = ref(db, `rooms/${roomCode}/matchState/players`);
-  
-  return runTransaction(playersRef, (playersState) => {
-    if (!playersState) {
-      playersState = {};
-    }
+export async function submitAnswer(roomCode, uid, opponentUid, roundIndex, choiceId, isCorrect, points) {
+  const answerRef = ref(db, `rooms/${roomCode}/matchState/rounds/${roundIndex}/answers/${uid}`);
+  return runTransaction(answerRef, (current) => {
+    if (current) return; // already answered
+    return {
+      selectedChoiceId: choiceId,
+      isCorrect,
+      submittedAt: serverTimestamp()
+    };
+  }, { applyLocally: false });
+}
+
+export async function resolveRound(roomCode, hostUid, guestUid, roundIndex) {
+  const matchStateRef = ref(db, `rooms/${roomCode}/matchState`);
+  return runTransaction(matchStateRef, (matchState) => {
+    if (!matchState) return;
+    if (matchState.roundIndex !== roundIndex) return; // Not the right round
+    if (matchState.phase !== 'ANSWERING') return matchState; // Already resolving/resolved
     
-    // Initialize if they don't exist
-    if (!playersState[uid]) playersState[uid] = getInitialPlayerState();
-    if (!playersState[opponentUid]) playersState[opponentUid] = getInitialPlayerState();
-
-    const myState = playersState[uid];
-    const oppState = playersState[opponentUid];
-
-    // Idempotency: if the state index is already beyond this question, ignore it
-    if (myState.currentQuestionIndex > questionIndex) {
-      return; // Abort transaction without making changes (already processed)
+    const round = matchState.rounds?.[roundIndex];
+    if (!round || !round.answers || !round.answers[hostUid] || !round.answers[guestUid]) {
+      return; // Both haven't answered yet
     }
 
-    // Dead player cannot answer
-    if (myState.hp <= 0) {
-      return;
+    if (round.resolution) {
+      return matchState; // Already resolved
     }
 
-    // Apply the answer
-    if (isCorrect) {
-      myState.score += points;
-      myState.correct += 1;
-      
-      // Deal damage
-      if (oppState.hp > 0) {
-        oppState.hp = Math.max(0, oppState.hp - DAMAGE);
-      }
+    matchState.phase = 'RESOLVING';
+
+    const hostAnswer = round.answers[hostUid];
+    const guestAnswer = round.answers[guestUid];
+
+    const hostCorrect = hostAnswer.isCorrect;
+    const guestCorrect = guestAnswer.isCorrect;
+
+    const hostHpBefore = matchState.players[hostUid].hp;
+    const guestHpBefore = matchState.players[guestUid].hp;
+
+    let damageToHost = guestCorrect ? DAMAGE : 0;
+    let damageToGuest = hostCorrect ? DAMAGE : 0;
+
+    let hostHpAfter = Math.max(0, hostHpBefore - damageToHost);
+    let guestHpAfter = Math.max(0, guestHpBefore - damageToGuest);
+
+    round.resolution = {
+      hostCorrect,
+      guestCorrect,
+      damageToHost,
+      damageToGuest,
+      hostHpBefore,
+      guestHpBefore,
+      hostHpAfter,
+      guestHpAfter,
+      resolvedAt: serverTimestamp()
+    };
+
+    matchState.players[hostUid].hp = hostHpAfter;
+    matchState.players[guestUid].hp = guestHpAfter;
+    
+    if (hostCorrect) {
+      matchState.players[hostUid].correct += 1;
+      matchState.players[hostUid].score += 10;
     } else {
-      myState.wrong += 1;
+      matchState.players[hostUid].wrong += 1;
     }
 
-    // Advance progression
-    myState.currentQuestionIndex = questionIndex + 1;
-
-    // Check completion (either last question or opponent dead)
-    if (isLastQuestion || oppState.hp <= 0) {
-      myState.completed = true;
-      myState.finishedAt = serverTimestamp();
+    if (guestCorrect) {
+      matchState.players[guestUid].correct += 1;
+      matchState.players[guestUid].score += 10;
+    } else {
+      matchState.players[guestUid].wrong += 1;
     }
+
+    matchState.phase = 'ROUND_RESULT';
+    return matchState;
+  }, { applyLocally: false });
+}
+
+export async function advanceRound(roomCode, currentRoundIndex) {
+  const matchStateRef = ref(db, `rooms/${roomCode}/matchState`);
+  return runTransaction(matchStateRef, (matchState) => {
+    if (!matchState) return;
+    if (matchState.roundIndex !== currentRoundIndex) return;
+    if (matchState.phase !== 'ROUND_RESULT') return;
     
-    // If opponent is dead, they are also completed
-    if (oppState.hp <= 0 && !oppState.completed) {
-      oppState.completed = true;
-      oppState.finishedAt = serverTimestamp();
-    }
-
-    return playersState;
+    matchState.roundIndex += 1;
+    matchState.phase = 'ANSWERING';
+    return matchState;
   }, { applyLocally: false });
 }
 
@@ -108,10 +137,6 @@ export async function usePotion(roomCode, uid, actionId) {
   }, { applyLocally: false });
 }
 
-/**
- * Host finalization transaction.
- * Requires both players to be completed (either through finishing questions or dying).
- */
 export async function finalizeMatch(roomCode, hostUid, guestUid) {
   const roomRef = ref(db, `rooms/${roomCode}`);
   
@@ -126,8 +151,8 @@ export async function finalizeMatch(roomCode, hostUid, guestUid) {
     const hostState = roomData.matchState?.players?.[hostUid];
     const guestState = roomData.matchState?.players?.[guestUid];
     
-    if (!hostState?.completed || !guestState?.completed) {
-      return; // Both must be completed
+    if (!hostState || !guestState) {
+      return; 
     }
     
     // Determine winner based on HP, tiebreaker Score
@@ -167,6 +192,8 @@ export async function finalizeMatch(roomCode, hostUid, guestUid) {
       finishedAt: serverTimestamp()
     };
     
+    roomData.matchState.phase = 'FINISHED';
+    
     // Update room status
     roomData.meta.status = RoomStatus.FINISHED;
     
@@ -174,9 +201,6 @@ export async function finalizeMatch(roomCode, hostUid, guestUid) {
   }, { applyLocally: false });
 }
 
-/**
- * Listen to the matchState for realtime sync.
- */
 export function subscribeToMatchState(roomCode, onUpdate) {
   const stateRef = ref(db, `rooms/${roomCode}/matchState`);
   

@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { usePvpRoom } from '../context/PvpRoomContext';
 import { theme } from '../theme';
 import { createInitialState, nextQuestion } from '../domain/game/battleEngine';
 import { getWordsByLevel } from '../domain/vocabulary/vocabularyRepository';
-import { submitAnswer, subscribeToMatchState, finalizeMatch, usePotion } from '../services/pvp/pvpBattleService';
+import { submitAnswer, subscribeToMatchState, finalizeMatch, usePotion, resolveRound, advanceRound } from '../services/pvp/pvpBattleService';
 import { useTranslation } from 'react-i18next';
 import { RoomStatus } from '../domain/pvp/roomConstants';
 
@@ -16,12 +16,9 @@ export default function PvpBattleScreen({ navigation }) {
   const [gameState, setGameState] = useState(null);
   const [initError, setInitError] = useState(null);
   const [matchState, setMatchState] = useState({});
-  const [isLocked, setIsLocked] = useState(false);
   const [isPotionPending, setIsPotionPending] = useState(false);
-  const [selectedChoiceId, setSelectedChoiceId] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const [displayIndex, setDisplayIndex] = useState(0);
-
   useEffect(() => {
     if (!room || !room.match) {
       setPhase('LOADING_MATCH');
@@ -57,11 +54,6 @@ export default function PvpBattleScreen({ navigation }) {
         throw new Error("Failed to generate first question");
       }
 
-      const q = state.currentQuestion;
-      if (!q.targetId || !q.word || !q.choices || q.choices.length !== 4 || !q.correctChoiceId) {
-        throw new Error("Generated question violates invariant schema");
-      }
-
       setGameState(state);
       setPhase('READY');
     } catch (e) {
@@ -81,60 +73,68 @@ export default function PvpBattleScreen({ navigation }) {
     }
   }, [phase, roomId]);
   
-  // Host finalization
-  useEffect(() => {
-    if (isHost && phase === 'READY' && room?.meta?.status === RoomStatus.IN_BATTLE) {
-      const hostUid = room.meta.hostUid;
-      const guestUid = Object.keys(room.players || {}).find(uid => uid !== hostUid);
-      
-      if (hostUid && guestUid) {
-        const hostCompleted = matchState?.players?.[hostUid]?.completed;
-        const guestCompleted = matchState?.players?.[guestUid]?.completed;
-        
-        if (hostCompleted && guestCompleted && !matchState?.result) {
-          finalizeMatch(roomId, hostUid, guestUid).catch(err => {
-            console.error('Failed to finalize match', err);
-          });
-        }
-      }
-    }
-  }, [isHost, phase, matchState, room, roomId]);
-
-  // Navigate to result screen when FINISHED
-  useEffect(() => {
-    if (room?.meta?.status === RoomStatus.FINISHED && matchState?.result) {
-      navigation.replace('PvpResult');
-    }
-  }, [room?.meta?.status, matchState?.result, navigation]);
-
   const hostUid = room?.meta?.hostUid;
   const playerUids = Object.keys(room?.players || {});
   const myUid = user?.uid;
   const guestUid = playerUids.find(uid => uid !== hostUid);
   const opponentUid = myUid === hostUid ? guestUid : hostUid;
 
-  const myState = matchState?.players?.[myUid];
-  const safeMyState = myState || { hp: 100, score: 0, currentQuestionIndex: 0, potionsRemaining: 2 };
-  const authoritativeIndex = safeMyState.currentQuestionIndex;
-
+  const roundIndex = matchState?.roundIndex || 0;
+  const matchPhase = matchState?.phase || 'ANSWERING';
+  
+  // Host Settlement Logic
   useEffect(() => {
-    if (authoritativeIndex > displayIndex) {
-      const timer = setTimeout(() => {
-        setDisplayIndex(authoritativeIndex);
-        setIsLocked(false);
-        setSelectedChoiceId(null);
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else if (authoritativeIndex < displayIndex) {
-      setDisplayIndex(authoritativeIndex);
+    if (isHost && phase === 'READY' && room?.meta?.status === RoomStatus.IN_BATTLE) {
+      const currentRound = matchState?.rounds?.[roundIndex];
+      
+      if (matchPhase === 'ANSWERING') {
+        const hostAnswer = currentRound?.answers?.[hostUid];
+        const guestAnswer = currentRound?.answers?.[guestUid];
+        
+        if (hostAnswer && guestAnswer && !currentRound.resolution) {
+          resolveRound(roomId, hostUid, guestUid, roundIndex).catch(err => {
+            console.error('Failed to resolve round', err);
+          });
+        }
+      }
+      
+      if (matchPhase === 'ROUND_RESULT') {
+        // Wait a short moment then advance
+        const timer = setTimeout(() => {
+          // Check if match should end
+          const hostHp = matchState.players?.[hostUid]?.hp || 0;
+          const guestHp = matchState.players?.[guestUid]?.hp || 0;
+          const totalQuestions = room?.match?.questionCount || 10;
+          
+          if (hostHp <= 0 || guestHp <= 0 || roundIndex + 1 >= totalQuestions) {
+             finalizeMatch(roomId, hostUid, guestUid).catch(err => {
+               console.error('Failed to finalize match', err);
+             });
+          } else {
+             advanceRound(roomId, roundIndex).catch(err => {
+               console.error('Failed to advance round', err);
+             });
+          }
+        }, 3000);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [authoritativeIndex, displayIndex]);
+  }, [isHost, phase, matchPhase, roundIndex, matchState, roomId, hostUid, guestUid, room]);
 
+  // Navigate to result screen when FINISHED
+  useEffect(() => {
+    if (room?.meta?.status === RoomStatus.FINISHED && matchState?.phase === 'FINISHED') {
+      navigation.replace('PvpResult');
+    }
+  }, [room?.meta?.status, matchState?.phase, navigation]);
+
+  // Sync Local Game Engine to roundIndex
   useEffect(() => {
     if (!gameState) return;
     
     let state = gameState;
-    while (state.questionNumber <= displayIndex && state.status !== 'DEFEAT' && state.status !== 'VICTORY') {
+    // state.questionNumber is 1-indexed, roundIndex is 0-indexed
+    while (state.questionNumber <= roundIndex && state.status !== 'DEFEAT' && state.status !== 'VICTORY') {
       state = { ...state, status: 'QUESTION_RESOLVED' };
       state = nextQuestion(state);
     }
@@ -142,8 +142,20 @@ export default function PvpBattleScreen({ navigation }) {
     if (state !== gameState) {
       setGameState(state);
     }
-  }, [displayIndex, gameState]);
+  }, [roundIndex, gameState]);
+
+  const myState = matchState?.players?.[myUid];
+  const safeMyState = myState || { hp: 100, score: 0, potionsRemaining: 2 };
+  const oppState = matchState?.players?.[opponentUid] || { hp: 100, score: 0, potionsRemaining: 2 };
+  const totalQuestions = room?.match?.questionCount || 10;
   
+  const currentRound = matchState?.rounds?.[roundIndex];
+  const myAnswer = currentRound?.answers?.[myUid];
+  const hasAnswered = !!myAnswer;
+  const isLocked = hasAnswered || matchPhase !== 'ANSWERING' || isSubmitting;
+  
+  const canUsePotion = safeMyState.hp > 0 && safeMyState.hp < 100 && safeMyState.potionsRemaining > 0 && room?.meta?.status === RoomStatus.IN_BATTLE && matchPhase === 'ANSWERING' && !hasAnswered && !isPotionPending;
+
   const handleChoice = async (choiceId) => {
     if (isLocked || !gameState || !gameState.currentQuestion) return;
     
@@ -152,45 +164,34 @@ export default function PvpBattleScreen({ navigation }) {
     if (playerUids.length !== 2 || !opponentUid) return;
     if (room.meta.status !== RoomStatus.IN_BATTLE) return;
     
-    setIsLocked(true);
-    setSelectedChoiceId(choiceId);
+    setIsSubmitting(true);
     
     const isCorrect = choiceId === gameState.currentQuestion.correctChoiceId;
     const points = isCorrect ? 10 : 0;
-    const isLastQuestion = displayIndex + 1 >= room.match.questionCount;
     
     try {
       await submitAnswer(
         roomId, 
         myUid, 
         opponentUid,
-        room.match.matchId, 
-        displayIndex, 
+        roundIndex,
+        choiceId, 
         isCorrect, 
-        points, 
-        isLastQuestion
+        points
       );
     } catch (err) {
       console.error("Failed to submit answer:", err);
       Alert.alert("Error", "Failed to submit answer. Please try again.");
-      setIsLocked(false);
-      setSelectedChoiceId(null);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handlePotion = async () => {
-    if (isPotionPending || phase !== 'READY') return;
-    
-    // Safety invariant checks
-    if (!user || !myUid || !room || !room.players || !room.players[myUid]) return;
-    if (playerUids.length !== 2 || !opponentUid) return;
-    if (room.meta.status !== RoomStatus.IN_BATTLE) return;
-    
+    if (!canUsePotion) return;
     setIsPotionPending(true);
     
-    // Generate a unique action ID based on current match and potion count to prevent duplicate usage
-    const actionId = `potion_${myState.potionsRemaining}`;
-    
+    const actionId = `potion_${roundIndex}_${safeMyState.potionsRemaining}`;
     try {
       await usePotion(roomId, myUid, actionId);
     } catch (err) {
@@ -221,36 +222,35 @@ export default function PvpBattleScreen({ navigation }) {
     );
   }
 
-  const myPlayer = room.players[myUid] || {};
-  const opponentPlayer = room.players[opponentUid] || {};
-  
-  const oppState = matchState?.players?.[opponentUid] || { hp: 100, score: 0, currentQuestionIndex: 0, potionsRemaining: 2 };
-  const totalQuestions = room.match.questionCount;
-
-  const canUsePotion = safeMyState.hp > 0 && safeMyState.hp < 100 && safeMyState.potionsRemaining > 0 && room?.meta?.status === RoomStatus.IN_BATTLE && !isPotionPending;
-
-
   const getButtonStateStyle = (choiceId) => {
-    const isSelected = selectedChoiceId === choiceId;
-    const isCorrect = choiceId === gameState.currentQuestion.correctChoiceId;
+    const isSelected = myAnswer?.selectedChoiceId === choiceId;
     
-    if (isLocked) {
-      if (isCorrect) return styles.choiceCorrect;
-      if (isSelected && !isCorrect) return styles.choiceWrong;
-    } else if (isSelected) {
-      return styles.choiceSelected;
+    // InROUND_RESULT we reveal correct answers
+    if (matchPhase === 'ROUND_RESULT') {
+       const isCorrect = choiceId === gameState.currentQuestion.correctChoiceId;
+       if (isCorrect) return styles.choiceCorrect;
+       if (isSelected && !isCorrect) return styles.choiceWrong;
+       return {};
     }
+    
+    // While answering
+    if (isSelected) {
+      return styles.choiceSelected; // Just selected, not revealed
+    }
+    
     return {};
   };
 
   const getButtonTextStyle = (choiceId) => {
-    const isSelected = selectedChoiceId === choiceId;
-    const isCorrect = choiceId === gameState.currentQuestion.correctChoiceId;
+    const isSelected = myAnswer?.selectedChoiceId === choiceId;
     
-    if (isLocked) {
-      if (isCorrect) return styles.choiceTextCorrect;
-      if (isSelected && !isCorrect) return styles.choiceTextWrong;
+    if (matchPhase === 'ROUND_RESULT') {
+       const isCorrect = choiceId === gameState.currentQuestion.correctChoiceId;
+       if (isCorrect) return styles.choiceTextCorrect;
+       if (isSelected && !isCorrect) return styles.choiceTextWrong;
+       return {};
     }
+    
     return {};
   };
 
@@ -263,10 +263,11 @@ export default function PvpBattleScreen({ navigation }) {
           <View style={styles.hpBarContainer}>
             <View style={[styles.hpBarFill, { width: `${Math.max(0, safeMyState.hp)}%` }]} />
           </View>
-          <Text style={styles.playerProgress}>{safeMyState.currentQuestionIndex} / {totalQuestions}</Text>
+          <Text style={styles.playerProgress}>Score: {safeMyState.score}</Text>
         </View>
         <View style={styles.vsContainer}>
           <Text style={styles.vsText}>VS</Text>
+          <Text style={styles.roundText}>Round {roundIndex + 1}/{totalQuestions}</Text>
         </View>
         <View style={styles.playerStats}>
           <Text style={styles.playerName}>OPPONENT</Text>
@@ -274,7 +275,7 @@ export default function PvpBattleScreen({ navigation }) {
           <View style={styles.hpBarContainer}>
             <View style={[styles.hpBarFill, { width: `${Math.max(0, oppState.hp)}%`, backgroundColor: theme.colors.danger }]} />
           </View>
-          <Text style={styles.playerProgress}>{oppState.currentQuestionIndex} / {totalQuestions}</Text>
+          <Text style={styles.playerProgress}>Score: {oppState.score}</Text>
         </View>
       </View>
 
@@ -291,30 +292,54 @@ export default function PvpBattleScreen({ navigation }) {
           </View>
         </TouchableOpacity>
       </View>
-
-      {gameState && gameState.currentQuestion && (
-        <ScrollView style={styles.questionContainer}>
-          <Text style={styles.questionLabel}>Question {displayIndex + 1}</Text>
-          <Text style={styles.questionText}>{gameState.currentQuestion.word}</Text>
-          
-          <View style={styles.choicesContainer}>
-            {gameState.currentQuestion.choices.map((choice) => (
-              <TouchableOpacity 
-                key={choice.id} 
-                style={[styles.choiceButton, getButtonStateStyle(choice.id)]}
-                onPress={() => handleChoice(choice.id)}
-                disabled={isLocked}
-              >
-                <Text style={[styles.choiceText, getButtonTextStyle(choice.id)]}>{choice.text}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
+      
+      {matchPhase === 'ROUND_RESULT' && currentRound?.resolution ? (
+        <View style={styles.resultContainer}>
+          <Text style={styles.resultTitle}>Round {roundIndex + 1} Result</Text>
+          <Text style={styles.resultText}>
+            You were {currentRound.resolution[myUid === hostUid ? 'hostCorrect' : 'guestCorrect'] ? 'Correct' : 'Wrong'}
+          </Text>
+          <Text style={styles.resultText}>
+            Opponent was {currentRound.resolution[myUid === hostUid ? 'guestCorrect' : 'hostCorrect'] ? 'Correct' : 'Wrong'}
+          </Text>
+          <Text style={styles.damageText}>
+            You dealt {currentRound.resolution[myUid === hostUid ? 'damageToGuest' : 'damageToHost']} damage!
+          </Text>
+          <Text style={styles.damageText}>
+            You received {currentRound.resolution[myUid === hostUid ? 'damageToHost' : 'damageToGuest']} damage!
+          </Text>
+        </View>
+      ) : (
+        gameState && gameState.currentQuestion && (
+          <ScrollView style={styles.questionContainer}>
+            <Text style={styles.questionLabel}>Question {roundIndex + 1}</Text>
+            <Text style={styles.questionText}>{gameState.currentQuestion.word}</Text>
+            
+            <View style={styles.choicesContainer}>
+              {gameState.currentQuestion.choices.map((choice) => (
+                <TouchableOpacity 
+                  key={choice.id} 
+                  style={[styles.choiceButton, getButtonStateStyle(choice.id)]}
+                  onPress={() => handleChoice(choice.id)}
+                  disabled={isLocked}
+                >
+                  <Text style={[styles.choiceText, getButtonTextStyle(choice.id)]}>{choice.text}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        )
       )}
       
-      {safeMyState.completed && (
+      {matchPhase === 'ANSWERING' && hasAnswered && (
         <View style={styles.waitingContainer}>
-          <Text style={styles.waitingText}>Waiting for opponent to finish...</Text>
+          <Text style={styles.waitingText}>等待對手作答…</Text>
+        </View>
+      )}
+      
+      {matchPhase === 'RESOLVING' && (
+        <View style={styles.waitingContainer}>
+          <Text style={styles.waitingText}>結算中…</Text>
         </View>
       )}
     </View>
@@ -322,168 +347,44 @@ export default function PvpBattleScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
+  container: { flex: 1, backgroundColor: theme.colors.background },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: theme.spacing.medium,
-    backgroundColor: theme.colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    paddingTop: 50,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    padding: theme.spacing.medium, backgroundColor: theme.colors.card,
+    borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingTop: 50,
   },
-  playerStats: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  playerName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: theme.colors.textMain,
-    marginBottom: 4,
-    textTransform: 'uppercase',
-  },
-  playerHpText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: theme.colors.textMain,
-    marginBottom: 4,
-  },
-  hpBarContainer: {
-    width: 100,
-    height: 12,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 6,
-    overflow: 'hidden',
-    marginBottom: 6,
-  },
-  hpBarFill: {
-    height: '100%',
-    backgroundColor: theme.colors.success,
-  },
-  playerProgress: {
-    fontSize: 12,
-    color: theme.colors.textMuted,
-  },
-  potionContainer: {
-    padding: theme.spacing.medium,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  potionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 24,
-  },
-  potionButtonDisabled: {
-    backgroundColor: theme.colors.surface,
-    opacity: 0.5,
-  },
-  potionIcon: {
-    fontSize: 24,
-    marginRight: 8,
-  },
-  potionTitle: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  potionCount: {
-    color: 'white',
-    fontSize: 12,
-  },
-  vsContainer: {
-    paddingHorizontal: theme.spacing.medium,
-  },
-  vsText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.colors.secondary,
-  },
-  questionContainer: {
-    flex: 1,
-    padding: theme.spacing.large,
-  },
-  questionLabel: {
-    fontSize: 14,
-    color: theme.colors.textMuted,
-    marginBottom: 8,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  questionText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: theme.colors.textMain,
-    marginBottom: 32,
-    textAlign: 'center',
-  },
-  choicesContainer: {
-    marginTop: 16,
-  },
-  choiceButton: {
-    backgroundColor: theme.colors.card,
-    padding: theme.spacing.medium,
-    borderRadius: 8,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: theme.colors.border,
-    alignItems: 'center',
-  },
-  choiceSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary + '20',
-  },
-  choiceCorrect: {
-    borderColor: theme.colors.success,
-    backgroundColor: theme.colors.success + '20',
-  },
-  choiceWrong: {
-    borderColor: theme.colors.danger,
-    backgroundColor: theme.colors.danger + '20',
-  },
-  choiceText: {
-    fontSize: 18,
-    color: theme.colors.textMain,
-    fontWeight: '500',
-  },
-  choiceTextCorrect: {
-    color: theme.colors.success,
-    fontWeight: 'bold',
-  },
-  choiceTextWrong: {
-    color: theme.colors.danger,
-    fontWeight: 'bold',
-  },
-  waitingContainer: {
-    padding: theme.spacing.large,
-    alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-  },
-  waitingText: {
-    fontSize: 16,
-    color: theme.colors.textMain,
-    fontWeight: 'bold',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: theme.colors.textMain,
-    textAlign: 'center',
-    marginTop: 40,
-    marginBottom: 20,
-  },
-  value: {
-    fontSize: 16,
-    color: theme.colors.textMain,
-    textAlign: 'center',
-  },
+  playerStats: { alignItems: 'center', flex: 1 },
+  playerName: { fontSize: 16, fontWeight: 'bold', color: theme.colors.textMain, marginBottom: 4, textTransform: 'uppercase' },
+  playerHpText: { fontSize: 14, fontWeight: 'bold', color: theme.colors.textMain, marginBottom: 4 },
+  hpBarContainer: { width: 100, height: 12, backgroundColor: theme.colors.surface, borderRadius: 6, overflow: 'hidden', marginBottom: 6 },
+  hpBarFill: { height: '100%', backgroundColor: theme.colors.success },
+  playerProgress: { fontSize: 12, color: theme.colors.textMuted },
+  potionContainer: { padding: theme.spacing.medium, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+  potionButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.primary, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 24 },
+  potionButtonDisabled: { backgroundColor: theme.colors.surface, opacity: 0.5 },
+  potionIcon: { fontSize: 24, marginRight: 8 },
+  potionTitle: { color: 'white', fontWeight: 'bold', fontSize: 14 },
+  potionCount: { color: 'white', fontSize: 12 },
+  vsContainer: { paddingHorizontal: theme.spacing.medium, alignItems: 'center' },
+  vsText: { fontSize: 18, fontWeight: 'bold', color: theme.colors.secondary },
+  roundText: { fontSize: 12, color: theme.colors.textMuted, marginTop: 4 },
+  questionContainer: { flex: 1, padding: theme.spacing.large },
+  questionLabel: { fontSize: 14, color: theme.colors.textMuted, marginBottom: 8, fontWeight: 'bold', textAlign: 'center' },
+  questionText: { fontSize: 32, fontWeight: 'bold', color: theme.colors.textMain, marginBottom: 32, textAlign: 'center' },
+  choicesContainer: { marginTop: 16 },
+  choiceButton: { backgroundColor: theme.colors.card, padding: theme.spacing.medium, borderRadius: 8, marginBottom: 12, borderWidth: 2, borderColor: theme.colors.border, alignItems: 'center' },
+  choiceSelected: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primary + '20' },
+  choiceCorrect: { borderColor: theme.colors.success, backgroundColor: theme.colors.success + '20' },
+  choiceWrong: { borderColor: theme.colors.danger, backgroundColor: theme.colors.danger + '20' },
+  choiceText: { fontSize: 18, color: theme.colors.textMain, fontWeight: '500' },
+  choiceTextCorrect: { color: theme.colors.success, fontWeight: 'bold' },
+  choiceTextWrong: { color: theme.colors.danger, fontWeight: 'bold' },
+  waitingContainer: { padding: theme.spacing.large, alignItems: 'center', backgroundColor: theme.colors.surface },
+  waitingText: { fontSize: 16, color: theme.colors.textMain, fontWeight: 'bold' },
+  title: { fontSize: 24, fontWeight: 'bold', color: theme.colors.textMain, textAlign: 'center', marginTop: 40, marginBottom: 20 },
+  value: { fontSize: 16, color: theme.colors.textMain, textAlign: 'center' },
+  resultContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: theme.spacing.large },
+  resultTitle: { fontSize: 24, fontWeight: 'bold', color: theme.colors.textMain, marginBottom: 20 },
+  resultText: { fontSize: 18, color: theme.colors.textMain, marginBottom: 10 },
+  damageText: { fontSize: 16, color: theme.colors.secondary, marginTop: 10, fontWeight: 'bold' }
 });
