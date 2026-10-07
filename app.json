@@ -21,7 +21,8 @@
     "web": {},
     "plugins": [
       "react-native-nitro-google-signin",
-      "expo-localization"
+      "expo-localization",
+      "expo-font"
     ],
     "extra": {
       "eas": {

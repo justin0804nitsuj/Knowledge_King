@@ -27,27 +27,31 @@ export default function MistakeReviewScreen({ navigation }) {
   const sessionIdRef = useRef(`R-${Date.now()}-${Math.floor(Math.random() * 100000)}`);
 
   const loadData = useCallback(async () => {
-    setLoading(true);
-    const mistakesObj = await loadMistakes();
-    const mistakes = getActiveMistakes(mistakesObj);
-    
-    // Sort logic: higher wrong count first, then by lastMistakeAt descending
-    mistakes.sort((a, b) => {
-      if (b.wrongCount !== a.wrongCount) return b.wrongCount - a.wrongCount;
-      return b.lastMistakeAt - a.lastMistakeAt;
-    });
+    try {
+      setLoading(true);
+      const mistakesObj = await loadMistakes();
+      const mistakes = getActiveMistakes(mistakesObj);
+      
+      // Sort logic: higher wrong count first, then by lastMistakeAt descending
+      mistakes.sort((a, b) => {
+        if (b.wrongCount !== a.wrongCount) return b.wrongCount - a.wrongCount;
+        return b.lastMistakeAt - a.lastMistakeAt;
+      });
 
-    // Take up to 10 for a session
-    const sessionMistakes = mistakes.slice(0, 10);
-    setActiveMistakes(sessionMistakes);
-    
-    if (sessionMistakes.length > 0) {
-      setupQuestion(sessionMistakes[0], 0);
-    } else {
-      setIsFinished(true);
+      // Take up to 10 for a session
+      const sessionMistakes = mistakes.slice(0, 10);
+      setActiveMistakes(sessionMistakes);
+      
+      if (sessionMistakes.length > 0) {
+        setupQuestion(sessionMistakes[0], 0);
+      } else {
+        setIsFinished(true);
+      }
+    } catch (err) {
+      console.error('MistakeReviewScreen loadData error:', err);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   }, []);
 
   useFocusEffect(
@@ -68,32 +72,37 @@ export default function MistakeReviewScreen({ navigation }) {
   const handleAnswer = async (choiceId) => {
     if (feedback) return; // Prevent double tap
 
-    const isCorrect = choiceId === currentQuestion.correctChoiceId;
-    setFeedback(isCorrect ? 'correct' : 'wrong');
-    
-    const mistake = activeMistakes[currentIndex];
-    const eventId = `${sessionIdRef.current}-${currentIndex}`;
-    
-    const { xpEarned, newlyRecovered } = await processReviewAnswer(eventId, mistake.id, isCorrect);
+    try {
+      const isCorrect = choiceId === currentQuestion.correctChoiceId;
+      setFeedback(isCorrect ? 'correct' : 'wrong');
+      
+      const mistake = activeMistakes[currentIndex];
+      const eventId = `${sessionIdRef.current}-${currentIndex}`;
+      
+      const { xpEarned, newlyRecovered } = await processReviewAnswer(eventId, mistake.id, isCorrect);
 
-    setSessionResults(prev => ({
-      reviewed: prev.reviewed + 1,
-      correct: prev.correct + (isCorrect ? 1 : 0),
-      wrong: prev.wrong + (isCorrect ? 0 : 1),
-      xpEarned: prev.xpEarned + xpEarned,
-      recoveredCount: prev.recoveredCount + (newlyRecovered ? 1 : 0)
-    }));
+      setSessionResults(prev => ({
+        reviewed: prev.reviewed + 1,
+        correct: prev.correct + (isCorrect ? 1 : 0),
+        wrong: prev.wrong + (isCorrect ? 0 : 1),
+        xpEarned: prev.xpEarned + xpEarned,
+        recoveredCount: prev.recoveredCount + (newlyRecovered ? 1 : 0)
+      }));
 
-    // Next question delay
-    setTimeout(() => {
-      const nextIndex = currentIndex + 1;
-      if (nextIndex < activeMistakes.length) {
-        setCurrentIndex(nextIndex);
-        setupQuestion(activeMistakes[nextIndex], nextIndex);
-      } else {
-        setIsFinished(true);
-      }
-    }, 1000);
+      // Next question delay
+      setTimeout(() => {
+        const nextIndex = currentIndex + 1;
+        if (nextIndex < activeMistakes.length) {
+          setCurrentIndex(nextIndex);
+          setupQuestion(activeMistakes[nextIndex], nextIndex);
+        } else {
+          setIsFinished(true);
+        }
+      }, 1000);
+    } catch (err) {
+      console.error('MistakeReviewScreen handleAnswer error:', err);
+      setFeedback(null); // Reset UI so user can try again or go back
+    }
   };
 
   if (loading) {
@@ -122,8 +131,8 @@ export default function MistakeReviewScreen({ navigation }) {
       <Text style={styles.header}>{t('mistakeReview.progress', { current: currentIndex + 1, total: activeMistakes.length })}</Text>
       
       <View style={styles.questionCard}>
-        <Text style={styles.targetWord}>{currentQuestion.targetText}</Text>
-        <Text style={styles.partOfSpeech}>{currentQuestion.targetPartOfSpeech}</Text>
+        <Text style={styles.targetWord}>{currentQuestion.word}</Text>
+        <Text style={styles.partOfSpeech}>{currentQuestion.partOfSpeech}</Text>
       </View>
 
       <View style={styles.choicesContainer}>

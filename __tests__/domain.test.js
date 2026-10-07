@@ -2,7 +2,7 @@ import { getAvailableLevels, getWordsByLevel, getWordById } from '../src/domain/
 import { generateQuestion } from '../src/domain/vocabulary/questionGenerator';
 import { createSeededRandom } from '../src/domain/game/seededRandom';
 import { createInitialState, nextQuestion, answerQuestion, BATTLE_STATES } from '../src/domain/game/battleEngine';
-import { getSemanticFingerprint, getAllSemanticFingerprints } from '../src/domain/vocabulary/meaningResolver';
+import { getSemanticFingerprint, getAllSemanticFingerprints, getDisplayMeaning } from '../src/domain/vocabulary/meaningResolver';
 import { getCampaignStages, STAGE_TYPES, getStageById } from '../src/domain/adventure/campaignConfig';
 import { isStageUnlocked, getNextStage } from '../src/domain/adventure/campaignProgress';
 import { calculateStars } from '../src/domain/adventure/starRating';
@@ -38,6 +38,10 @@ describe('Question Generator', () => {
     const question = generateQuestion(targetWord, levelWords, rng);
     expect(question.choices.length).toBe(4);
     
+    // Check Review target word is non-empty
+    expect(question.word).toBeDefined();
+    expect(question.word.length).toBeGreaterThan(0);
+    
     const correctChoices = question.choices.filter(c => c.isCorrect);
     expect(correctChoices.length).toBe(1);
     expect(correctChoices[0].id).toBe(targetWord.id);
@@ -55,6 +59,28 @@ describe('Question Generator', () => {
       expect(ids.has(c.id)).toBe(false);
       ids.add(c.id);
     }
+  });
+});
+
+describe('Meaning Resolver', () => {
+  test('hide does not resolve to the obscure 獸皮 learner-facing display meaning', () => {
+    const words = getWordsByLevel(1);
+    const hideWord = words.find(w => w.word.toLowerCase() === 'hide');
+    expect(hideWord).toBeDefined();
+    
+    const displayMeaning = getDisplayMeaning(hideWord);
+    expect(displayMeaning).not.toContain('獸皮');
+    expect(displayMeaning).toContain('隱藏'); // fallback meaning is '躲藏／隱藏'
+  });
+
+  test('semantic collision filtering still considers all senses', () => {
+    const words = getWordsByLevel(1);
+    const hideWord = words.find(w => w.word.toLowerCase() === 'hide');
+    
+    const fps = getAllSemanticFingerprints(hideWord);
+    // Even if display meaning is not '獸皮', the collision filter should still know about it from secondary/primary definitions.
+    const hasSkinMeaning = Array.from(fps).some(fp => fp.includes('獸皮') || fp.includes('獸皮(n)'));
+    expect(hasSkinMeaning).toBe(true);
   });
 });
 

@@ -40,20 +40,33 @@ export function getAllSemanticFingerprints(wordObject) {
 
 /**
  * Determines the best Chinese display meaning for a word.
- * 1. Prefers the first valid primary definition.
- * 2. Falls back to fallbackMeaning.
+ * Priority:
+ * 1. explicit learner-priority (if available)
+ * 2. curated fallbackMeaning (school-list meaning)
+ * 3. resolved primary learner definition matching POS
+ * 4. safe fallback (first valid primary)
  */
 export function getDisplayMeaning(wordObject) {
   if (!wordObject) return '';
 
+  if (wordObject.preferredMeaning) return wordObject.preferredMeaning;
+
+  if (wordObject.fallbackMeaning) {
+    return wordObject.fallbackMeaning;
+  }
+
   if (wordObject.primaryDefinitions && wordObject.primaryDefinitions.length > 0) {
+    if (wordObject.partOfSpeech) {
+      const posMatch = wordObject.primaryDefinitions.find(d => 
+        d.partOfSpeech && d.partOfSpeech.includes(wordObject.partOfSpeech)
+      );
+      if (posMatch && posMatch.meaningZhTW) return posMatch.meaningZhTW;
+    }
+    
     for (const def of wordObject.primaryDefinitions) {
-      if (def.meaningZhTW) {
-        return def.meaningZhTW;
-      }
+      if (def.meaningZhTW) return def.meaningZhTW;
     }
   }
 
-  // Fallback
-  return wordObject.fallbackMeaning || '';
+  return '';
 }

@@ -3,6 +3,7 @@ import { XP_REWARDS } from '../src/domain/player/xpRewards';
 import { getLocalDailyKey, DAILY_MISSIONS } from '../src/domain/player/dailySystem';
 import { createDefaultPlayerProgress, recordDailyActivity } from '../src/storage/playerProgressStorage';
 import { processBattleResult } from '../src/domain/game/resultProcessor';
+import { processReviewAnswer } from '../src/domain/game/reviewProcessor';
 import { createDefaultHistory, addBattleRecord } from '../src/storage/battleHistoryStorage';
 import { createDefaultMistakes, recordMistakesFromBattle, processReviewResult, getActiveMistakes } from '../src/storage/mistakeStorage';
 import { BATTLE_STATES } from '../src/domain/game/battleEngine';
@@ -91,6 +92,26 @@ describe('Player Progression Domain', () => {
       mistakes = await recordMistakesFromBattle(mistakes, [], ['word1'], [], 1);
       expect(getActiveMistakes(mistakes).length).toBe(1);
       expect(mistakes.records['word1'].isRecovered).toBe(false);
+    });
+  });
+
+  describe('Review Processing', () => {
+    it('review processing does not throw and duplicate Review event remains idempotent', async () => {
+      // Mock the storage to return default states
+      AsyncStorage.getItem
+        .mockResolvedValueOnce(JSON.stringify(createDefaultMistakes()))
+        .mockResolvedValueOnce(JSON.stringify(createDefaultPlayerProgress()));
+
+      // First call
+      await expect(processReviewAnswer('review-event-1', 'word1', true)).resolves.not.toThrow();
+
+      // Second call with same event ID (idempotency check)
+      AsyncStorage.getItem
+        .mockResolvedValueOnce(JSON.stringify({ ...createDefaultMistakes(), processedEvents: ['review-event-1'] }))
+        .mockResolvedValueOnce(JSON.stringify({ ...createDefaultPlayerProgress(), processedEvents: ['review-event-1'] }));
+
+      const { xpEarned } = await processReviewAnswer('review-event-1', 'word1', true);
+      expect(xpEarned).toBe(0); // Because it was already processed
     });
   });
 

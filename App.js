@@ -35,7 +35,7 @@ export default function App() {
       <AuthProvider>
         <NavigationContainer>
           <Stack.Navigator screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen name="MainTabs" component={MainTabs} />
             <Stack.Screen name="StagePreview" component={StagePreviewScreen} />
             <Stack.Screen name="Battle" component={BattleScreen} />
             <Stack.Screen name="BattleResult" component={BattleResultScreen} />
