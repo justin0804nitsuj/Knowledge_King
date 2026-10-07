@@ -70,15 +70,18 @@
             "$other": { ".validate": false }
           },
           "players": {
+            ".write": "auth != null && data.parent().parent().child('players').hasChild(auth.uid)",
             "$uid": {
-              ".write": "auth != null && auth.uid === $uid",
-              ".validate": "newData.hasChildren(['currentQuestionIndex', 'score', 'correct', 'wrong', 'completed'])",
-              "currentQuestionIndex": { ".validate": "newData.isNumber()" },
-              "score": { ".validate": "newData.isNumber()" },
-              "correct": { ".validate": "newData.isNumber()" },
-              "wrong": { ".validate": "newData.isNumber()" },
-              "completed": { ".validate": "newData.isBoolean()" },
+              ".validate": "newData.hasChildren(['currentQuestionIndex', 'score', 'correct', 'wrong', 'completed', 'hp', 'potionsRemaining'])",
+              "currentQuestionIndex": { ".validate": "newData.isNumber() && ( (!data.exists() && newData.val() === 0) || (data.exists() && auth.uid !== $uid && newData.val() === data.val()) || (data.exists() && auth.uid === $uid && newData.val() === data.val() + 1) )" },
+              "score": { ".validate": "newData.isNumber() && ( (!data.exists() && newData.val() === 0) || (data.exists() && auth.uid !== $uid && newData.val() === data.val()) || (data.exists() && auth.uid === $uid && newData.val() >= data.val()) )" },
+              "correct": { ".validate": "newData.isNumber() && ( (!data.exists() && newData.val() === 0) || (data.exists() && auth.uid !== $uid && newData.val() === data.val()) || (data.exists() && auth.uid === $uid && (newData.val() === data.val() || newData.val() === data.val() + 1)) )" },
+              "wrong": { ".validate": "newData.isNumber() && ( (!data.exists() && newData.val() === 0) || (data.exists() && auth.uid !== $uid && newData.val() === data.val()) || (data.exists() && auth.uid === $uid && (newData.val() === data.val() || newData.val() === data.val() + 1)) )" },
+              "completed": { ".validate": "newData.isBoolean() && ( (!data.exists() && newData.val() === false) || (data.exists() && auth.uid === $uid) || (data.exists() && auth.uid !== $uid) )" },
               "finishedAt": { ".validate": "newData.isNumber() || !newData.exists()" },
+              "hp": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100 && ( (!data.exists() && newData.val() === 100) || (data.exists() && newData.val() === data.val()) || (data.exists() && auth.uid !== $uid && ( (data.val() >= 20 && newData.val() === data.val() - 20) || (data.val() < 20 && newData.val() === 0) )) || (data.exists() && auth.uid === $uid && ( (data.val() + 25 > 100 && newData.val() === 100) || (data.val() + 25 <= 100 && newData.val() === data.val() + 25) ) && newData.parent().child('potionsRemaining').val() === data.parent().child('potionsRemaining').val() - 1) )" },
+              "potionsRemaining": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2 && ( (!data.exists() && newData.val() === 2) || (data.exists() && auth.uid !== $uid && newData.val() === data.val()) || (data.exists() && auth.uid === $uid && (newData.val() === data.val() || newData.val() === data.val() - 1)) )" },
+              "processedActions": { ".validate": "auth.uid === $uid || !newData.exists()" },
               "$other": { ".validate": false }
             }
           },

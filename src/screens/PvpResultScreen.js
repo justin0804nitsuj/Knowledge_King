@@ -46,6 +46,12 @@ export default function PvpResultScreen({ navigation }) {
     outcomeText = 'DEFEAT';
     outcomeStyle = styles.defeatText;
   }
+  
+  const myFinalHp = result.finalHp?.[myUid] || 0;
+  const oppFinalHp = result.finalHp?.[opponentUid] || 0;
+  
+  const myPotionsUsed = 2 - (myState?.potionsRemaining ?? 2);
+  const oppPotionsUsed = 2 - (oppState?.potionsRemaining ?? 2);
 
   const handleLeave = async () => {
     try {
@@ -68,10 +74,12 @@ export default function PvpResultScreen({ navigation }) {
         
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
-            <Text style={styles.statLabel}>You</Text>
-            <Text style={styles.statScore}>{myState?.score || 0}</Text>
+            <Text style={styles.statLabel}>YOU</Text>
+            <Text style={styles.statHp}>HP: {myFinalHp}</Text>
+            <Text style={styles.statSub}>Score: {myState?.score || 0}</Text>
             <Text style={styles.statSub}>Correct: {myState?.correct || 0}</Text>
             <Text style={styles.statSub}>Wrong: {myState?.wrong || 0}</Text>
+            <Text style={styles.statSub}>Potions Used: {myPotionsUsed}</Text>
           </View>
           
           <View style={styles.vsBox}>
@@ -79,10 +87,12 @@ export default function PvpResultScreen({ navigation }) {
           </View>
           
           <View style={styles.statBox}>
-            <Text style={styles.statLabel}>Opponent</Text>
-            <Text style={styles.statScore}>{oppState?.score || 0}</Text>
+            <Text style={styles.statLabel}>OPPONENT</Text>
+            <Text style={styles.statHp}>HP: {oppFinalHp}</Text>
+            <Text style={styles.statSub}>Score: {oppState?.score || 0}</Text>
             <Text style={styles.statSub}>Correct: {oppState?.correct || 0}</Text>
             <Text style={styles.statSub}>Wrong: {oppState?.wrong || 0}</Text>
+            <Text style={styles.statSub}>Potions Used: {oppPotionsUsed}</Text>
           </View>
         </View>
       </View>
@@ -154,10 +164,10 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
     marginBottom: 8,
   },
-  statScore: {
-    fontSize: 36,
+  statHp: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: theme.colors.primary,
+    color: theme.colors.success,
     marginBottom: 8,
   },
   statSub: {

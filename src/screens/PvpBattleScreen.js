@@ -4,7 +4,7 @@ import { usePvpRoom } from '../context/PvpRoomContext';
 import { theme } from '../theme';
 import { createInitialState, nextQuestion } from '../domain/game/battleEngine';
 import { getWordsByLevel } from '../domain/vocabulary/vocabularyRepository';
-import { submitAnswer, subscribeToMatchState, finalizeMatch } from '../services/pvp/pvpBattleService';
+import { submitAnswer, subscribeToMatchState, finalizeMatch, usePotion } from '../services/pvp/pvpBattleService';
 import { useTranslation } from 'react-i18next';
 import { RoomStatus } from '../domain/pvp/roomConstants';
 
@@ -17,6 +17,7 @@ export default function PvpBattleScreen({ navigation }) {
   const [initError, setInitError] = useState(null);
   const [matchState, setMatchState] = useState({});
   const [isLocked, setIsLocked] = useState(false);
+  const [isPotionPending, setIsPotionPending] = useState(false);
   const [selectedChoiceId, setSelectedChoiceId] = useState(null);
   
   // Local derived state for immediate feedback
@@ -121,6 +122,7 @@ export default function PvpBattleScreen({ navigation }) {
       await submitAnswer(
         roomId, 
         user.uid, 
+        opponentUid,
         room.match.matchId, 
         localIndex, 
         isCorrect, 
@@ -143,6 +145,22 @@ export default function PvpBattleScreen({ navigation }) {
       Alert.alert("Error", "Failed to submit answer. Please try again.");
       setIsLocked(false);
       setSelectedChoiceId(null);
+    }
+  };
+
+  const handlePotion = async () => {
+    if (isPotionPending || phase !== 'READY' || room?.meta?.status !== RoomStatus.IN_BATTLE) return;
+    setIsPotionPending(true);
+    
+    // Generate a unique action ID based on current match and potion count to prevent duplicate usage
+    const actionId = `potion_${myState.potionsRemaining}`;
+    
+    try {
+      await usePotion(roomId, user.uid, actionId);
+    } catch (err) {
+      console.error("Failed to use potion:", err);
+    } finally {
+      setIsPotionPending(false);
     }
   };
 
@@ -176,9 +194,12 @@ export default function PvpBattleScreen({ navigation }) {
   const myPlayer = room.players[myUid] || {};
   const opponentPlayer = room.players[opponentUid] || {};
   
-  const myState = matchState?.players?.[myUid] || { score: 0, currentQuestionIndex: 0 };
-  const oppState = matchState?.players?.[opponentUid] || { score: 0, currentQuestionIndex: 0 };
+  const myState = matchState?.players?.[myUid] || { hp: 100, score: 0, currentQuestionIndex: 0, potionsRemaining: 2 };
+  const oppState = matchState?.players?.[opponentUid] || { hp: 100, score: 0, currentQuestionIndex: 0, potionsRemaining: 2 };
   const totalQuestions = room.match.questionCount;
+
+  const canUsePotion = myState.hp > 0 && myState.hp < 100 && myState.potionsRemaining > 0 && room?.meta?.status === RoomStatus.IN_BATTLE && !isPotionPending;
+
 
   const getButtonStateStyle = (choiceId) => {
     const isSelected = selectedChoiceId === choiceId;
@@ -208,18 +229,38 @@ export default function PvpBattleScreen({ navigation }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.playerStats}>
-          <Text style={styles.playerName}>You</Text>
-          <Text style={styles.playerScore}>Score: {myState.score}</Text>
+          <Text style={styles.playerName}>YOU</Text>
+          <Text style={styles.playerHpText}>HP {myState.hp} / 100</Text>
+          <View style={styles.hpBarContainer}>
+            <View style={[styles.hpBarFill, { width: `${Math.max(0, myState.hp)}%` }]} />
+          </View>
           <Text style={styles.playerProgress}>{myState.currentQuestionIndex} / {totalQuestions}</Text>
         </View>
         <View style={styles.vsContainer}>
           <Text style={styles.vsText}>VS</Text>
         </View>
         <View style={styles.playerStats}>
-          <Text style={styles.playerName}>{opponentPlayer?.displayName || 'Opponent'}</Text>
-          <Text style={styles.playerScore}>Score: {oppState.score}</Text>
+          <Text style={styles.playerName}>OPPONENT</Text>
+          <Text style={styles.playerHpText}>HP {oppState.hp} / 100</Text>
+          <View style={styles.hpBarContainer}>
+            <View style={[styles.hpBarFill, { width: `${Math.max(0, oppState.hp)}%`, backgroundColor: theme.colors.danger }]} />
+          </View>
           <Text style={styles.playerProgress}>{oppState.currentQuestionIndex} / {totalQuestions}</Text>
         </View>
+      </View>
+
+      <View style={styles.potionContainer}>
+        <TouchableOpacity 
+          style={[styles.potionButton, !canUsePotion && styles.potionButtonDisabled]} 
+          onPress={handlePotion}
+          disabled={!canUsePotion}
+        >
+          <Text style={styles.potionIcon}>🧪</Text>
+          <View>
+            <Text style={styles.potionTitle}>Heal +25</Text>
+            <Text style={styles.potionCount}>{myState.potionsRemaining} left</Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
       {gameState && gameState.currentQuestion && (
@@ -275,15 +316,60 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: theme.colors.textMain,
     marginBottom: 4,
+    textTransform: 'uppercase',
   },
-  playerScore: {
+  playerHpText: {
     fontSize: 14,
-    color: theme.colors.primary,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    color: theme.colors.textMain,
+    marginBottom: 4,
+  },
+  hpBarContainer: {
+    width: 100,
+    height: 12,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 6,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  hpBarFill: {
+    height: '100%',
+    backgroundColor: theme.colors.success,
   },
   playerProgress: {
     fontSize: 12,
     color: theme.colors.textMuted,
+  },
+  potionContainer: {
+    padding: theme.spacing.medium,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  potionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+  },
+  potionButtonDisabled: {
+    backgroundColor: theme.colors.surface,
+    opacity: 0.5,
+  },
+  potionIcon: {
+    fontSize: 24,
+    marginRight: 8,
+  },
+  potionTitle: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  potionCount: {
+    color: 'white',
+    fontSize: 12,
   },
   vsContainer: {
     paddingHorizontal: theme.spacing.medium,

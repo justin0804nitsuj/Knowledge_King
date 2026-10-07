@@ -10,6 +10,10 @@ jest.mock('../src/services/pvp/pvpBattleService', () => ({
   subscribeToMatchState: jest.fn(() => jest.fn()),
   finalizeMatch: jest.fn()
 }));
+jest.mock('react-native-nitro-google-signin', () => ({
+  GoogleOneTapSignIn: { configure: jest.fn() },
+  isSuccessResponse: jest.fn()
+}));
 
 jest.mock('firebase/database', () => ({
   getDatabase: jest.fn(),
