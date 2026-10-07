@@ -10,6 +10,9 @@ const __dirname = path.dirname(__filename);
 import { WORDS } from 'file:///C:/Users/justi/.gemini/antigravity-ide/brain/6b2f30fc-a7fb-4397-8248-32a1bc01c21d/scratch/egg/src/data/words.js';
 import { getWordDefinitions } from 'file:///C:/Users/justi/.gemini/antigravity-ide/brain/6b2f30fc-a7fb-4397-8248-32a1bc01c21d/scratch/egg/src/data/wordDefinitions.js';
 
+const overridesPath = path.join(__dirname, 'vocabularyDisplayOverrides.json');
+const overrides = JSON.parse(fs.readFileSync(overridesPath, 'utf8'));
+
 const outputDir = path.join(__dirname, '../assets/vocabulary');
 
 if (!fs.existsSync(outputDir)) {
@@ -51,12 +54,15 @@ for (const w of WORDS) {
 
   if (!levels[lvl]) levels[lvl] = [];
   
+  const overrideMeaning = overrides[w.id];
+
   levels[lvl].push({
     id: w.id,
     word: w.word,
     partOfSpeech: w.partOfSpeech,
     level: Number(lvl),
-    fallbackMeaning: w.meaning || "",
+    fallbackMeaning: overrideMeaning || w.meaning || "",
+    preferredMeaning: overrideMeaning || undefined,
     primaryDefinitions: primary,
     secondaryDefinitions: secondary
   });

@@ -7598,6 +7598,7 @@
     "partOfSpeech": "v.",
     "level": 1,
     "fallbackMeaning": "躲藏／隱藏",
+    "preferredMeaning": "躲藏／隱藏",
     "primaryDefinitions": [
       {
         "senseKey": "hide%2:39:00::",
