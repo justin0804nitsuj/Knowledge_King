@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { createRoom as serviceCreateRoom, joinRoom as serviceJoinRoom, leaveRoom as serviceLeaveRoom, subscribeToRoom, setupPresence } from '../services/pvp/roomService';
+import { createRoom as serviceCreateRoom, joinRoom as serviceJoinRoom, leaveRoom as serviceLeaveRoom, subscribeToRoom, setupPresence, verifyRoomExists } from '../services/pvp/roomService';
 import { useAuth } from './AuthContext';
 import { RoomStatus } from '../domain/pvp/roomConstants';
 
@@ -17,6 +17,8 @@ export function PvpRoomProvider({ children }) {
   const role = room?.players?.[user?.uid]?.role || null;
   const isHost = room?.meta?.hostUid === user?.uid;
 
+  const userUid = user?.uid;
+
   useEffect(() => {
     if (!roomId) {
       setRoom(null);
@@ -24,9 +26,19 @@ export function PvpRoomProvider({ children }) {
       return;
     }
 
+    console.log(`[PVP-TRACE] CONTEXT subscribe start for ${roomId}`);
     setIsLoadingRoom(true);
+    let isFirst = true;
+
     const unsubscribeRoom = subscribeToRoom(roomId, (roomData) => {
+      if (isFirst) {
+        console.log(`[PVP-TRACE] CONTEXT first snapshot exists=${!!roomData}`);
+        isFirst = false;
+      } else {
+        console.log(`[PVP-TRACE] CONTEXT subsequent snapshot exists=${!!roomData}`);
+      }
       setIsLoadingRoom(false);
+      
       if (!roomData) {
         // Room was deleted
         setRoom(null);
@@ -43,29 +55,43 @@ export function PvpRoomProvider({ children }) {
     const cleanupPresence = setupPresence(roomId, user);
 
     return () => {
+      console.log(`[PVP-TRACE] CONTEXT unsubscribe for ${roomId}`);
       unsubscribeRoom();
       cleanupPresence();
     };
-  }, [roomId, user]);
+  }, [roomId, userUid]);
 
   const createRoom = useCallback(async () => {
     if (!user) return null;
+    console.log('[PVP-TRACE] CREATE begin');
+    setIsLoadingRoom(true);
     try {
       const code = await serviceCreateRoom(user);
+      console.log(`[PVP-TRACE] CREATE Firebase success roomCode=${code}`);
+      
+      // diagnostic
+      const exists = await verifyRoomExists(code);
+      console.log(`[PVP-TRACE] CREATE VERIFY: room exists = ${exists}`);
+      
       setRoomId(code);
       return code;
     } catch (e) {
+      setIsLoadingRoom(false);
       throw e;
     }
   }, [user]);
 
   const joinRoom = useCallback(async (code) => {
     if (!user) return null;
+    console.log('[PVP-TRACE] JOIN begin');
+    setIsLoadingRoom(true);
     try {
       const joinedCode = await serviceJoinRoom(code, user);
+      console.log(`[PVP-TRACE] JOIN Firebase success roomCode=${joinedCode}`);
       setRoomId(joinedCode);
       return joinedCode;
     } catch (e) {
+      setIsLoadingRoom(false);
       throw e;
     }
   }, [user]);

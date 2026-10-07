@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import * as Clipboard from 'expo-clipboard';
 import { usePvpRoom } from '../context/PvpRoomContext';
 import { useOnline } from '../context/OnlineContext';
+import { verifyRoomExists } from '../services/pvp/roomService';
 import { PlayerRole, RoomStatus } from '../domain/pvp/roomConstants';
 import { theme } from '../theme';
 
@@ -14,21 +15,39 @@ export default function WaitingRoomScreen({ navigation }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    console.log('[PvP Lifecycle] WaitingRoom mount');
+    console.log('[PVP-TRACE] WAITING mount');
   }, []);
 
   useEffect(() => {
+    console.log(`[PVP-TRACE] WAITING isLoadingRoom=${isLoadingRoom}`);
     // Wait until room loading finishes before checking deleted status
     if (isLoadingRoom) return;
 
+    // Log diagnostic snapshot
+    console.log('[PVP-TRACE] snapshot:\n' + JSON.stringify({
+      exists: !!room,
+      hostUid: room?.meta?.hostUid || null,
+      status: room?.meta?.status || null,
+      players: Object.keys(room?.players || {}),
+      hostPlayerExists: !!(room?.meta?.hostUid && room?.players?.[room.meta.hostUid])
+    }, null, 2));
+
     // If room is cancelled or deleted, kick guest back to Arena
     if (!room || status === RoomStatus.CANCELLED) {
+      console.log(`[PVP-TRACE] WAITING reason for redirect: room=${!!room}, status=${status}`);
+      
+      // Async verify before kicking
+      verifyRoomExists(roomId).then(exists => {
+        console.log(`[PVP-TRACE] PRE-ALERT VERIFY: room exists = ${exists}`);
+      });
+      
       if (!isHost) {
+        console.log('[PVP-TRACE] WAITING alert shown');
         Alert.alert('', t('arena.roomClosed'));
       }
       navigation.navigate('MainTabs', { screen: 'Arena' });
     }
-  }, [room, status, isHost, navigation, t, isLoadingRoom]);
+  }, [room, status, isHost, navigation, t, isLoadingRoom, roomId]);
 
   useEffect(() => {
     const onBackPress = () => {

@@ -179,7 +179,7 @@ export async function joinRoom(roomCode, user) {
 export async function leaveRoom(roomCode, user) {
   if (!roomCode || !user || !user.uid) return;
   
-  console.log('[PvP Lifecycle] leaveRoom called');
+  console.log('[PVP-TRACE] leaveRoom called');
   const roomRef = ref(db, `rooms/${roomCode}`);
   
   try {
@@ -194,12 +194,12 @@ export async function leaveRoom(roomCode, user) {
       // Host leaves: cancel and remove room
       await set(ref(db, `rooms/${roomCode}/meta/status`), RoomStatus.CANCELLED);
       await remove(roomRef);
-      console.log('[PvP Lifecycle] room removed');
+      console.log('[PVP-TRACE] REMOVE room called');
     } else {
       // Guest leaves: just remove self
       const playerRef = ref(db, `rooms/${roomCode}/players/${user.uid}`);
       await remove(playerRef);
-      console.log('[PvP Lifecycle] player removed');
+      console.log('[PVP-TRACE] REMOVE player called');
     }
   } catch (e) {
     console.error("Leave room failed", e);
@@ -212,10 +212,18 @@ export async function leaveRoom(roomCode, user) {
 export function subscribeToRoom(roomCode, callback) {
   const roomRef = ref(db, `rooms/${roomCode}`);
   const unsubscribe = onValue(roomRef, (snapshot) => {
-    console.log('[PvP Lifecycle] room snapshot received');
     callback(snapshot.val());
   });
   return () => off(roomRef, 'value', unsubscribe);
+}
+
+/**
+ * Diagnostic method to verify room exists without caching
+ */
+export async function verifyRoomExists(roomCode) {
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  const snap = await get(roomRef);
+  return snap.exists();
 }
 
 /**
@@ -227,9 +235,10 @@ export function setupPresence(roomCode, user) {
   const playerRef = ref(db, `rooms/${roomCode}/players/${user.uid}`);
   const onDisconnectRef = onDisconnect(playerRef);
   onDisconnectRef.remove();
-  console.log('[PvP Lifecycle] onDisconnect registered');
+  console.log('[PVP-TRACE] onDisconnect registered');
   
   return () => {
     onDisconnectRef.cancel();
+    console.log('[PVP-TRACE] onDisconnect cancelled');
   };
 }
