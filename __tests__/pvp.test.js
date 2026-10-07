@@ -220,19 +220,38 @@ describe('Phase 8A PvP Foundation', () => {
       await expect(joinRoom('12345', { uid: 'host123' })).rejects.toMatchObject({ code: 'SELF_JOIN' });
     });
     
-    it('should correctly handle leaving a closed room cleanly', async () => {
-      const { get, remove, set } = require('firebase/database');
-      
-      get.mockResolvedValueOnce({
-        val: () => ({
-          meta: { status: 'WAITING', hostUid: 'host123' },
-          players: { host123: {} }
-        })
+    describe('Leave Room Behavior', () => {
+      it('should allow Guest to remove own player node only', async () => {
+        const { get, remove, set } = require('firebase/database');
+        
+        get.mockResolvedValueOnce({
+          val: () => ({
+            meta: { status: 'WAITING', hostUid: 'host123' },
+            players: { host123: {}, guest456: {} }
+          })
+        });
+        
+        await leaveRoom('12345', { uid: 'guest456' });
+        // Guest should NOT change status
+        expect(set).not.toHaveBeenCalled();
+        // Guest should ONLY remove their own player ref
+        expect(remove).toHaveBeenCalledWith('rooms/12345/players/guest456');
       });
-      
-      await leaveRoom('12345', { uid: 'host123' });
-      expect(set).toHaveBeenCalledWith('rooms/12345/meta/status', 'CANCELLED');
-      expect(remove).toHaveBeenCalled();
+
+      it('should allow Host to explicitly close/delete own room', async () => {
+        const { get, remove, set } = require('firebase/database');
+        
+        get.mockResolvedValueOnce({
+          val: () => ({
+            meta: { status: 'WAITING', hostUid: 'host123' },
+            players: { host123: {} }
+          })
+        });
+        
+        await leaveRoom('12345', { uid: 'host123' });
+        expect(set).toHaveBeenCalledWith('rooms/12345/meta/status', 'CANCELLED');
+        expect(remove).toHaveBeenCalledWith('rooms/12345');
+      });
     });
   });
 });

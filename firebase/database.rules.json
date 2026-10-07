@@ -15,12 +15,12 @@
     "rooms": {
       "$roomId": {
         ".read": "auth != null",
-        ".write": "auth != null && !data.exists() && newData.child('meta/hostUid').val() === auth.uid",
-        ".validate": "newData.hasChildren(['meta', 'players'])",
+        ".write": "auth != null && ( (!data.exists() && newData.child('meta/hostUid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('meta/hostUid').val() === auth.uid) )",
+        ".validate": "!newData.exists() || newData.hasChildren(['meta', 'players'])",
         
         "meta": {
           ".write": "auth != null && data.child('hostUid').val() === auth.uid",
-          ".validate": "newData.hasChildren(['hostUid', 'status', 'createdAt', 'rulesetVersion', 'vocabularyVersion', 'vocabularySchemaVersion'])",
+          ".validate": "!newData.exists() || newData.hasChildren(['hostUid', 'status', 'createdAt', 'rulesetVersion', 'vocabularyVersion', 'vocabularySchemaVersion'])",
           "hostUid": { ".validate": "(!data.exists() && newData.val() === auth.uid) || (data.exists() && data.val() === newData.val())" },
           "status": { ".validate": "newData.val() === 'WAITING' || (data.val() === 'WAITING' && newData.val() === 'CANCELLED')" },
           "createdAt": { ".validate": "(!data.exists() && newData.val() <= now) || (data.exists() && data.val() === newData.val())" },
@@ -31,10 +31,11 @@
         },
         
         "players": {
-          ".write": "auth != null && (data.parent().child('meta/status').val() === 'WAITING' || !data.exists())",
-          ".validate": "newData.hasChildren([newData.parent().child('meta/hostUid').val()])",
+          ".write": "auth != null && ( (data.parent().child('meta/status').val() === 'WAITING' && newData.exists()) || (data.parent().child('meta/hostUid').val() === auth.uid) || !data.exists() )",
+          ".validate": "!newData.exists() || newData.hasChildren([newData.parent().child('meta/hostUid').val()])",
           "$uid": {
-            ".validate": "( $uid === newData.parent().parent().child('meta/hostUid').val() || $uid === auth.uid ) && ( (!data.exists() && newData.hasChildren(['displayName', 'role', 'joinedAt'])) || (data.exists() && newData.exists() && data.child('displayName').val() === newData.child('displayName').val() && data.child('role').val() === newData.child('role').val() && data.child('joinedAt').val() === newData.child('joinedAt').val() && ((!data.child('photoURL').exists() && !newData.child('photoURL').exists()) || (data.child('photoURL').exists() && newData.child('photoURL').exists() && data.child('photoURL').val() === newData.child('photoURL').val()))) )",
+            ".write": "auth != null && ( (!newData.exists() && ($uid === auth.uid || data.parent().parent().child('meta/hostUid').val() === auth.uid)) )",
+            ".validate": "!newData.exists() || ( ( $uid === newData.parent().parent().child('meta/hostUid').val() || $uid === auth.uid ) && ( (!data.exists() && newData.hasChildren(['displayName', 'role', 'joinedAt'])) || (data.exists() && newData.exists() && data.child('displayName').val() === newData.child('displayName').val() && data.child('role').val() === newData.child('role').val() && data.child('joinedAt').val() === newData.child('joinedAt').val() && ((!data.child('photoURL').exists() && !newData.child('photoURL').exists()) || (data.child('photoURL').exists() && newData.child('photoURL').exists() && data.child('photoURL').val() === newData.child('photoURL').val()))) ) )",
             "displayName": { ".validate": "newData.isString()" },
             "photoURL": { ".validate": "newData.isString() || !newData.exists()" },
             "role": { ".validate": "newData.val() === 'HOST' || newData.val() === 'GUEST'" },
