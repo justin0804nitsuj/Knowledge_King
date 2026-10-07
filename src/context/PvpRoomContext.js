@@ -135,6 +135,7 @@ export function PvpRoomProvider({ children }) {
   }, [roomId, user, isHost, setDepartureIntent]);
 
   const value = {
+    user,
     roomId,
     room,
     role,

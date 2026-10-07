@@ -108,8 +108,19 @@ export default function PvpBattleScreen({ navigation }) {
     }
   }, [room?.meta?.status, matchState?.result, navigation]);
 
+  const hostUid = room?.meta?.hostUid;
+  const playerUids = Object.keys(room?.players || {});
+  const myUid = user?.uid;
+  const guestUid = playerUids.find(uid => uid !== hostUid);
+  const opponentUid = myUid === hostUid ? guestUid : hostUid;
+
   const handleChoice = async (choiceId) => {
     if (isLocked || !gameState || !gameState.currentQuestion) return;
+    
+    // Safety invariant checks
+    if (!user || !myUid || !room || !room.players || !room.players[myUid]) return;
+    if (playerUids.length !== 2 || !opponentUid) return;
+    if (room.meta.status !== RoomStatus.IN_BATTLE) return;
     
     setIsLocked(true);
     setSelectedChoiceId(choiceId);
@@ -121,7 +132,7 @@ export default function PvpBattleScreen({ navigation }) {
     try {
       await submitAnswer(
         roomId, 
-        user.uid, 
+        myUid, 
         opponentUid,
         room.match.matchId, 
         localIndex, 
@@ -149,14 +160,20 @@ export default function PvpBattleScreen({ navigation }) {
   };
 
   const handlePotion = async () => {
-    if (isPotionPending || phase !== 'READY' || room?.meta?.status !== RoomStatus.IN_BATTLE) return;
+    if (isPotionPending || phase !== 'READY') return;
+    
+    // Safety invariant checks
+    if (!user || !myUid || !room || !room.players || !room.players[myUid]) return;
+    if (playerUids.length !== 2 || !opponentUid) return;
+    if (room.meta.status !== RoomStatus.IN_BATTLE) return;
+    
     setIsPotionPending(true);
     
     // Generate a unique action ID based on current match and potion count to prevent duplicate usage
     const actionId = `potion_${myState.potionsRemaining}`;
     
     try {
-      await usePotion(roomId, user.uid, actionId);
+      await usePotion(roomId, myUid, actionId);
     } catch (err) {
       console.error("Failed to use potion:", err);
     } finally {
@@ -185,12 +202,6 @@ export default function PvpBattleScreen({ navigation }) {
     );
   }
 
-  const hostUid = room.meta?.hostUid;
-  const guestUid = Object.keys(room.players || {}).find(uid => uid !== hostUid);
-  
-  const myUid = user?.uid;
-  const opponentUid = myUid === hostUid ? guestUid : hostUid;
-  
   const myPlayer = room.players[myUid] || {};
   const opponentPlayer = room.players[opponentUid] || {};
   
