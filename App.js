@@ -11,6 +11,7 @@ import MistakeReviewScreen from './src/screens/MistakeReviewScreen';
 import JoinRoomScreen from './src/screens/JoinRoomScreen';
 import WaitingRoomScreen from './src/screens/WaitingRoomScreen';
 import PvpBattleScreen from './src/screens/PvpBattleScreen';
+import PvpResultScreen from './src/screens/PvpResultScreen';
 import { AuthProvider } from './src/context/AuthContext';
 import { OnlineProvider } from './src/context/OnlineContext';
 import { PvpRoomProvider } from './src/context/PvpRoomContext';
@@ -50,6 +51,7 @@ export default function App() {
                   <Stack.Screen name="JoinRoom" component={JoinRoomScreen} />
                   <Stack.Screen name="WaitingRoom" component={WaitingRoomScreen} />
                   <Stack.Screen name="PvpBattle" component={PvpBattleScreen} />
+                  <Stack.Screen name="PvpResult" component={PvpResultScreen} />
                 </Stack.Navigator>
               </NavigationContainer>
             </PvpRoomProvider>
