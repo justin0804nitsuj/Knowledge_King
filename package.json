@@ -15,7 +15,6 @@
     "expo-font": "~57.0.4",
     "expo-localization": "~57.0.2",
     "expo-status-bar": "~57.0.1",
-    "firebase": "^12.19.0",
     "i18next": "^26.4.2",
     "react": "19.2.3",
     "react-i18next": "^17.0.16",
@@ -36,7 +35,9 @@
   },
   "private": true,
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "babel-preset-expo": "^57.0.14",
+    "firebase": "^12.19.0",
     "jest-expo": "^57.0.5"
   }
 }

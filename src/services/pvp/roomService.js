@@ -290,7 +290,7 @@ export async function startMatch(roomCode, user) {
     
     currentData.meta.status = RoomStatus.IN_BATTLE;
     return currentData;
-  });
+  }, { applyLocally: false });
 
   if (!result.committed) {
     const e = new Error("Failed to start match");

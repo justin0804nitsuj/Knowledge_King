@@ -147,6 +147,8 @@ export default {
     isReady: 'Ready',
     notReady: 'Not Ready',
     waitingChallenger: 'Waiting for challenger…',
+    startFailed: 'Unable to start the match. Please try again.',
+    readyFailed: 'Unable to get ready. Please try again.',
     startMatch: 'Start Match'
   },
   auth: {

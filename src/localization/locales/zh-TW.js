@@ -147,6 +147,8 @@ export default {
     isReady: '已準備',
     notReady: '尚未準備',
     waitingChallenger: '等待挑戰者加入…',
+    startFailed: '無法開始對戰，請稍後再試。',
+    readyFailed: '無法準備，請稍後再試。',
     startMatch: '開始對戰'
   },
   auth: {
