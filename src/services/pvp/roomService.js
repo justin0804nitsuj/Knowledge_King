@@ -11,7 +11,11 @@ function generateRoomCode() {
  * Atomically create a new room. Retries up to 10 times to avoid collision.
  */
 export async function createRoom(user) {
-  if (!user || !user.uid) throw new Error("Unauthenticated user");
+  if (!user || !user.uid) {
+    const err = new Error("Unauthenticated user");
+    err.code = 'AUTH_REQUIRED';
+    throw err;
+  }
 
   const maxRetries = 10;
   
@@ -51,12 +55,18 @@ export async function createRoom(user) {
       if (result.committed) {
         return code;
       }
+      // If we reach here, result.committed is false, meaning it was a collision.
+      console.warn(`[PvP] create room attempt ${i + 1} code=${code} - collision`);
     } catch (e) {
-      console.warn("Room creation transaction failed", e);
+      console.error(`[PvP] create room attempt ${i + 1} code=${code} - Firebase error:`, e.code || e.message);
+      // Do NOT retry on permission denied, network errors, etc.
+      throw e;
     }
   }
   
-  throw new Error("Unable to generate a unique room code. Please try again.");
+  const exhaustedError = new Error("Unable to generate a unique room code. Please try again.");
+  exhaustedError.code = 'ROOM_CODE_EXHAUSTED';
+  throw exhaustedError;
 }
 
 /**

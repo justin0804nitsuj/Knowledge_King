@@ -29,7 +29,17 @@ export default function ArenaScreen({ navigation }) {
       navigation.navigate('WaitingRoom');
     } catch (e) {
       console.error(e);
-      alert(e.message || t('arena.createError'));
+      let errorMsg = t('arena.createError'); // Fallback
+      if (e.code === 'AUTH_REQUIRED') {
+        errorMsg = t('arena.authRequired');
+      } else if (e.code === 'PERMISSION_DENIED' || (e.message && e.message.includes('permission_denied'))) {
+        errorMsg = t('arena.permissionDenied');
+      } else if (e.code === 'ROOM_CODE_EXHAUSTED') {
+        errorMsg = t('arena.roomCodeExhausted');
+      } else if (!isOnline || e.message?.includes('network')) {
+        errorMsg = t('arena.networkError');
+      }
+      alert(errorMsg);
     } finally {
       setIsCreating(false);
     }

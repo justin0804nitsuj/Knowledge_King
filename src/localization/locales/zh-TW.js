@@ -134,6 +134,10 @@ export default {
     connected: '✓ 已連線',
     waitingForPlayer: '等待玩家加入...',
     leaveRoom: '離開房間',
+    authRequired: '您必須先登入才能執行此操作。',
+    permissionDenied: '伺服器拒絕存取，請檢查遊戲版本是否最新。',
+    roomCodeExhausted: '伺服器忙碌中，無法產生唯一的房間號碼。',
+    networkError: '網路錯誤，請檢查您的連線。',
   },
   auth: {
     signingIn: '登入中...',

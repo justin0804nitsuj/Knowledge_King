@@ -134,6 +134,10 @@ export default {
     connected: '✓ Connected',
     waitingForPlayer: 'Waiting for player...',
     leaveRoom: 'Leave Room',
+    authRequired: 'You must be signed in to do this.',
+    permissionDenied: 'Permission denied by server. Please check game updates.',
+    roomCodeExhausted: 'Servers are busy. Could not generate a unique room code.',
+    networkError: 'Network error. Please check your connection.',
   },
   auth: {
     signingIn: 'Signing In...',

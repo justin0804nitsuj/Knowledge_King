@@ -26,7 +26,7 @@
           "createdAt": { ".validate": "(!data.exists() && newData.val() <= now) || (data.exists() && data.val() === newData.val())" },
           "rulesetVersion": { ".validate": "(!data.exists() && newData.isString()) || (data.exists() && data.val() === newData.val())" },
           "vocabularyVersion": { ".validate": "(!data.exists() && newData.isString()) || (data.exists() && data.val() === newData.val())" },
-          "vocabularySchemaVersion": { ".validate": "(!data.exists() && newData.isNumber()) || (data.exists() && data.val() === newData.val())" },
+          "vocabularySchemaVersion": { ".validate": "(!data.exists() && newData.isString()) || (data.exists() && data.val() === newData.val())" },
           "$other": { ".validate": false }
         },
         
