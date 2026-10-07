@@ -202,7 +202,8 @@ export async function leaveRoom(roomCode, user) {
       console.log('[PVP-TRACE] REMOVE player called');
     }
   } catch (e) {
-    console.error("Leave room failed", e);
+    if (__DEV__) console.error("Leave room failed", e);
+    throw e;
   }
 }
 

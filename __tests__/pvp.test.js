@@ -253,6 +253,38 @@ describe('Phase 8A PvP Foundation', () => {
         expect(set).toHaveBeenCalledWith('rooms/12345/meta/status', 'CANCELLED');
         expect(remove).toHaveBeenCalledWith('rooms/12345');
       });
+
+      it('should reject when Guest leave fails due to Firebase error', async () => {
+        const { get, remove } = require('firebase/database');
+        
+        get.mockResolvedValueOnce({
+          val: () => ({
+            meta: { status: 'WAITING', hostUid: 'host123' },
+            players: { host123: {}, guest456: {} }
+          })
+        });
+        
+        const err = new Error('PERMISSION_DENIED');
+        remove.mockRejectedValueOnce(err);
+        
+        await expect(leaveRoom('12345', { uid: 'guest456' })).rejects.toThrow('PERMISSION_DENIED');
+      });
+
+      it('should reject when Host leave fails due to Firebase error', async () => {
+        const { get, set } = require('firebase/database');
+        
+        get.mockResolvedValueOnce({
+          val: () => ({
+            meta: { status: 'WAITING', hostUid: 'host123' },
+            players: { host123: {} }
+          })
+        });
+        
+        const err = new Error('NETWORK_ERROR');
+        set.mockRejectedValueOnce(err);
+        
+        await expect(leaveRoom('12345', { uid: 'host123' })).rejects.toThrow('NETWORK_ERROR');
+      });
     });
 
     describe('Presence Behavior', () => {
