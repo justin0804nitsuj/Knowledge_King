@@ -59,7 +59,6 @@
         },
         
         "matchState": {
-          ".write": "auth != null && (data.parent().child('players').hasChild(auth.uid))",
           ".write": "auth != null && auth.uid === data.parent().child('meta').child('hostUid').val()",
           "roundIndex": { ".validate": "newData.isNumber()" },
           "phase": { ".validate": "newData.isString()" },
@@ -67,11 +66,11 @@
             "$uid": {
               ".write": "auth != null && auth.uid === $uid",
               ".validate": "newData.hasChildren(['hp', 'score', 'correct', 'wrong', 'potionsRemaining'])",
-              "hp": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100 && ( auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() || (auth.uid === $uid && (newData.val() === data.val() || (newData.val() <= data.val() + 25 && newData.parent().child('potionsRemaining').val() === data.parent().child('potionsRemaining').val() - 1))) || (!data.exists() && newData.val() === 100) )" },
-              "potionsRemaining": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2 && ( auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() || (auth.uid === $uid && (newData.val() === data.val() || newData.val() === data.val() - 1)) || (!data.exists() && newData.val() === 2) )" },
-              "score": { ".validate": "newData.isNumber() && ( auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() || (auth.uid === $uid && newData.val() === data.val()) || (!data.exists() && newData.val() === 0) )" },
-              "correct": { ".validate": "newData.isNumber() && ( auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() || (auth.uid === $uid && newData.val() === data.val()) || (!data.exists() && newData.val() === 0) )" },
-              "wrong": { ".validate": "newData.isNumber() && ( auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() || (auth.uid === $uid && newData.val() === data.val()) || (!data.exists() && newData.val() === 0) )" },
+              "hp": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100 && ( (!data.exists() && newData.val() === 100) || (auth.uid === $uid && (newData.val() === data.val() || (newData.val() <= data.val() + 25 && newData.parent().child('potionsRemaining').val() === data.parent().child('potionsRemaining').val() - 1))) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && (newData.val() === data.val() || newData.val() === data.val() - 20 || newData.val() === 0)) )" },
+              "potionsRemaining": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2 && ( (!data.exists() && newData.val() === 2) || (auth.uid === $uid && (newData.val() === data.val() || newData.val() === data.val() - 1)) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && newData.val() === data.val()) )" },
+              "score": { ".validate": "newData.isNumber() && ( (!data.exists() && newData.val() === 0) || (auth.uid === $uid && newData.val() === data.val()) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && newData.val() >= data.val()) )" },
+              "correct": { ".validate": "newData.isNumber() && ( (!data.exists() && newData.val() === 0) || (auth.uid === $uid && newData.val() === data.val()) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && newData.val() >= data.val()) )" },
+              "wrong": { ".validate": "newData.isNumber() && ( (!data.exists() && newData.val() === 0) || (auth.uid === $uid && newData.val() === data.val()) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && newData.val() >= data.val()) )" },
               "processedActions": {
                 ".validate": "true",
                 "$actionId": {
@@ -86,7 +85,7 @@
               "answers": {
                 "$uid": {
                   ".write": "auth != null && auth.uid === $uid",
-                  ".validate": "newData.hasChildren(['selectedChoiceId', 'isCorrect', 'submittedAt']) && (!data.exists() || newData.val() === data.val())"
+                  ".validate": "newData.hasChildren(['selectedChoiceId', 'isCorrect', 'submittedAt']) && ( (auth.uid === $uid && (!data.exists() || newData.val() === data.val())) || (auth.uid === data.parent().parent().parent().parent().parent().child('meta').child('hostUid').val() && data.exists() && newData.val() === data.val()) )"
                 }
               },
               "resolution": {
@@ -95,7 +94,9 @@
               "$other": { ".validate": false }
             }
           },
-          "result": { ".validate": "newData.isObject()" },
+          "result": {
+            ".validate": "newData.hasChildren()"
+          },
           "$other": { ".validate": false }
         },
         "$other": { ".validate": false }
