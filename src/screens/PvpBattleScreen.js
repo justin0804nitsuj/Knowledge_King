@@ -7,37 +7,90 @@ import { getWordsByLevel } from '../domain/vocabulary/vocabularyRepository';
 
 export default function PvpBattleScreen({ navigation }) {
   const { roomId, room, isHost } = usePvpRoom();
+  const [phase, setPhase] = useState('LOADING_MATCH');
   const [gameState, setGameState] = useState(null);
+  const [initError, setInitError] = useState(null);
 
   useEffect(() => {
-    if (!room || !room.match) return;
-    
-    const { battleSeed, level, matchId, rulesetVersion, vocabularyVersion, questionCount } = room.match;
-    if (!battleSeed || !level || !matchId || !rulesetVersion || !vocabularyVersion || !questionCount) {
-      console.warn("Malformed match config");
+    if (!room || !room.match) {
+      setPhase('LOADING_MATCH');
       return;
     }
     
-    // We only want to generate this once per match
-    const seed = parseInt(battleSeed, 10) || Date.now();
-    const words = getWordsByLevel(level); 
-    
-    const config = {
-      playerHp: 3,
-      enemyHp: 3,
-      timePerQuestionMs: 10000
-    };
+    try {
+      const { battleSeed, level, matchId, rulesetVersion, vocabularyVersion, questionCount } = room.match;
+      
+      console.log('[PVP-BATTLE] mount');
+      console.log('[PVP-BATTLE] roomCode', roomId);
+      console.log('[PVP-BATTLE] matchId', matchId);
+      console.log('[PVP-BATTLE] battleSeed', battleSeed);
+      console.log('[PVP-BATTLE] rulesetVersion', rulesetVersion);
+      console.log('[PVP-BATTLE] level/config', level, questionCount);
 
-    let state = createInitialState(seed, level, words, config);
-    state = nextQuestion(state);
-    
-    setGameState(state);
+      if (!battleSeed || level === undefined || !matchId || !rulesetVersion || !vocabularyVersion || !questionCount) {
+        throw new Error("Malformed or incomplete match config");
+      }
+      
+      setPhase('LOADING_VOCABULARY');
+      const seed = parseInt(battleSeed, 10) || Date.now();
+      const words = getWordsByLevel(level); 
+      
+      console.log('[PVP-BATTLE] vocabulary ready, count:', words ? words.length : 0);
+
+      if (!words || words.length === 0) {
+        throw new Error(`Empty vocabulary pool for level ${level}`);
+      }
+      
+      setPhase('GENERATING_QUESTIONS');
+      const config = {
+        playerHp: 3,
+        enemyHp: 3,
+        timePerQuestionMs: 10000
+      };
+
+      let state = createInitialState(seed, level, words, config);
+      state = nextQuestion(state);
+      
+      if (!state.currentQuestion) {
+        throw new Error("Failed to generate first question");
+      }
+
+      console.log('[PVP-BATTLE] currentIndex', 0);
+      console.log('[PVP-BATTLE] currentQuestion exists', !!state.currentQuestion);
+      console.log('[PVP-BATTLE] first question target ID', state.currentQuestion.targetId);
+
+      // Validate question structure
+      const q = state.currentQuestion;
+      if (!q.targetId || !q.word || !q.choices || q.choices.length !== 4 || !q.correctChoiceId) {
+        throw new Error("Generated question violates invariant schema");
+      }
+
+      setGameState(state);
+      setPhase('READY');
+    } catch (e) {
+      console.error('[PVP-BATTLE] Initialization failed:', e.message);
+      setInitError(e.message);
+      setPhase('ERROR');
+    }
   }, [room?.match?.matchId]);
 
-  if (!room || !room.match) {
+  if (phase === 'ERROR') {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Loading Match...</Text>
+        <Text style={styles.title}>Battle Error</Text>
+        <Text style={styles.value}>{initError}</Text>
+      </View>
+    );
+  }
+
+  if (phase !== 'READY' || !gameState) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>
+          {phase === 'LOADING_MATCH' ? 'Loading Match...' : 
+           phase === 'LOADING_VOCABULARY' ? 'Loading Vocabulary...' : 
+           'Generating Questions...'}
+        </Text>
       </View>
     );
   }
@@ -74,10 +127,10 @@ export default function PvpBattleScreen({ navigation }) {
       {gameState && gameState.currentQuestion && (
         <View style={styles.card}>
           <Text style={styles.label}>Question {gameState.questionNumber}</Text>
-          <Text style={styles.questionText}>{gameState.currentQuestion.targetWord.word}</Text>
+          <Text style={styles.questionText}>{gameState.currentQuestion.word}</Text>
           {gameState.currentQuestion.choices.map((choice, idx) => (
             <Text key={idx} style={styles.choiceText}>
-              {idx + 1}. {choice.translation} {choice.id === gameState.currentQuestion.targetWord.id ? '(Correct)' : ''}
+              {idx + 1}. {choice.text} {choice.id === gameState.currentQuestion.correctChoiceId ? '(Correct)' : ''}
             </Text>
           ))}
         </View>
