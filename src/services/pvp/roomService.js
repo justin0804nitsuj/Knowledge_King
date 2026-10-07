@@ -286,6 +286,23 @@ export async function startMatch(roomCode, user) {
         questionCount: 10,
         level: 1
       };
+      
+      const getInitialState = () => ({
+        hp: 100,
+        potionsRemaining: 2,
+        currentQuestionIndex: 0,
+        score: 0,
+        correct: 0,
+        wrong: 0,
+        completed: false
+      });
+      
+      currentData.matchState = {
+        players: {
+          [hostUid]: getInitialState(),
+          [guestUid]: getInitialState()
+        }
+      };
     }
     
     currentData.meta.status = RoomStatus.IN_BATTLE;

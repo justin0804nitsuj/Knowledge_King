@@ -81,7 +81,12 @@
               "finishedAt": { ".validate": "newData.isNumber() || !newData.exists()" },
               "hp": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100 && ( (!data.exists() && newData.val() === 100) || (data.exists() && newData.val() === data.val()) || (data.exists() && auth.uid !== $uid && ( (data.val() >= 20 && newData.val() === data.val() - 20) || (data.val() < 20 && newData.val() === 0) )) || (data.exists() && auth.uid === $uid && ( (data.val() + 25 > 100 && newData.val() === 100) || (data.val() + 25 <= 100 && newData.val() === data.val() + 25) ) && newData.parent().child('potionsRemaining').val() === data.parent().child('potionsRemaining').val() - 1) )" },
               "potionsRemaining": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2 && ( (!data.exists() && newData.val() === 2) || (data.exists() && auth.uid !== $uid && newData.val() === data.val()) || (data.exists() && auth.uid === $uid && (newData.val() === data.val() || newData.val() === data.val() - 1)) )" },
-              "processedActions": { ".validate": "auth.uid === $uid || !newData.exists()" },
+              "processedActions": {
+                ".validate": "true",
+                "$actionId": {
+                  ".validate": "newData.isBoolean() && (auth.uid === $uid || (data.exists() && newData.val() === data.val()))"
+                }
+              },
               "$other": { ".validate": false }
             }
           },
