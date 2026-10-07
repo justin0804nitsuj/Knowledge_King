@@ -52,12 +52,16 @@ export default function BattleResultScreen({ route, navigation }) {
     if (nextStageId) {
       navigation.replace('StagePreview', { stageId: nextStageId });
     } else {
-      navigation.navigate('Adventure');
+      navigation.navigate('Main', {
+        screen: 'Adventure',
+      });
     }
   };
 
   const handleBack = () => {
-    navigation.navigate('Adventure');
+    navigation.navigate('Main', {
+      screen: 'Adventure',
+    });
   };
 
   return (
