@@ -8,8 +8,11 @@ import BattleScreen from './src/screens/BattleScreen';
 import BattleResultScreen from './src/screens/BattleResultScreen';
 import StagePreviewScreen from './src/screens/StagePreviewScreen';
 import MistakeReviewScreen from './src/screens/MistakeReviewScreen';
+import JoinRoomScreen from './src/screens/JoinRoomScreen';
+import WaitingRoomScreen from './src/screens/WaitingRoomScreen';
 import { AuthProvider } from './src/context/AuthContext';
 import { OnlineProvider } from './src/context/OnlineContext';
+import { PvpRoomProvider } from './src/context/PvpRoomContext';
 import { initI18n } from './src/localization/i18n';
 
 const Stack = createNativeStackNavigator();
@@ -35,15 +38,19 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
           <OnlineProvider>
-            <NavigationContainer>
-              <Stack.Navigator screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="MainTabs" component={MainTabs} />
-                <Stack.Screen name="StagePreview" component={StagePreviewScreen} />
-                <Stack.Screen name="Battle" component={BattleScreen} />
-                <Stack.Screen name="BattleResult" component={BattleResultScreen} />
-                <Stack.Screen name="MistakeReview" component={MistakeReviewScreen} />
-              </Stack.Navigator>
-            </NavigationContainer>
+            <PvpRoomProvider>
+              <NavigationContainer>
+                <Stack.Navigator screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="MainTabs" component={MainTabs} />
+                  <Stack.Screen name="StagePreview" component={StagePreviewScreen} />
+                  <Stack.Screen name="Battle" component={BattleScreen} />
+                  <Stack.Screen name="BattleResult" component={BattleResultScreen} />
+                  <Stack.Screen name="MistakeReview" component={MistakeReviewScreen} />
+                  <Stack.Screen name="JoinRoom" component={JoinRoomScreen} />
+                  <Stack.Screen name="WaitingRoom" component={WaitingRoomScreen} />
+                </Stack.Navigator>
+              </NavigationContainer>
+            </PvpRoomProvider>
           </OnlineProvider>
       </AuthProvider>
     </SafeAreaProvider>

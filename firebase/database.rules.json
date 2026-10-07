@@ -14,8 +14,35 @@
     },
     "rooms": {
       "$roomId": {
-        ".read": false,
-        ".write": false
+        ".read": "auth != null",
+        ".write": "auth != null && !data.exists() && newData.child('meta/hostUid').val() === auth.uid",
+        ".validate": "newData.hasChildren(['meta', 'players'])",
+        
+        "meta": {
+          ".write": "auth != null && data.child('hostUid').val() === auth.uid",
+          ".validate": "newData.hasChildren(['hostUid', 'status', 'createdAt', 'rulesetVersion', 'vocabularyVersion', 'vocabularySchemaVersion'])",
+          "hostUid": { ".validate": "(!data.exists() && newData.val() === auth.uid) || (data.exists() && data.val() === newData.val())" },
+          "status": { ".validate": "newData.val() === 'WAITING' || (data.val() === 'WAITING' && newData.val() === 'CANCELLED')" },
+          "createdAt": { ".validate": "(!data.exists() && newData.val() <= now) || (data.exists() && data.val() === newData.val())" },
+          "rulesetVersion": { ".validate": "(!data.exists() && newData.isString()) || (data.exists() && data.val() === newData.val())" },
+          "vocabularyVersion": { ".validate": "(!data.exists() && newData.isString()) || (data.exists() && data.val() === newData.val())" },
+          "vocabularySchemaVersion": { ".validate": "(!data.exists() && newData.isNumber()) || (data.exists() && data.val() === newData.val())" },
+          "$other": { ".validate": false }
+        },
+        
+        "players": {
+          ".write": "auth != null",
+          ".validate": "newData.hasChildren([newData.parent().child('meta/hostUid').val()])",
+          "$uid": {
+            ".validate": "newData.hasChildren(['displayName', 'role', 'joinedAt']) && (auth.uid === $uid || data.val() === newData.val())",
+            "displayName": { ".validate": "newData.isString()" },
+            "photoURL": { ".validate": "newData.isString() || !newData.exists()" },
+            "role": { ".validate": "newData.val() === 'HOST' || newData.val() === 'GUEST'" },
+            "joinedAt": { ".validate": "newData.val() <= now" },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": { ".validate": false }
       }
     }
   }

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { usePvpRoom } from '../context/PvpRoomContext';
 import { useOnline } from '../context/OnlineContext';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../theme';
@@ -8,7 +9,9 @@ import { theme } from '../theme';
 export default function ArenaScreen({ navigation }) {
   const { isSignedIn, signInWithGoogle } = useAuth();
   const { isOnline } = useOnline();
+  const { createRoom } = usePvpRoom();
   const { t } = useTranslation();
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleSignIn = async () => {
     try {
@@ -16,6 +19,24 @@ export default function ArenaScreen({ navigation }) {
     } catch (e) {
       console.warn('Arena Sign In failed:', e);
     }
+  };
+
+  const handleCreateRoom = async () => {
+    if (isCreating) return;
+    setIsCreating(true);
+    try {
+      await createRoom();
+      navigation.navigate('WaitingRoom');
+    } catch (e) {
+      console.error(e);
+      alert(e.message || t('arena.createError'));
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleJoinRoom = () => {
+    navigation.navigate('JoinRoom');
   };
 
   return (
@@ -33,7 +54,19 @@ export default function ArenaScreen({ navigation }) {
             </TouchableOpacity>
           </>
         ) : (
-          <Text style={styles.message}>{t('arena.onlineReady')}</Text>
+          <>
+            <TouchableOpacity 
+              style={[styles.primaryBtn, isCreating && styles.disabledBtn]} 
+              onPress={handleCreateRoom}
+              disabled={isCreating}
+            >
+              <Text style={styles.btnText}>{isCreating ? t('arena.creating') : t('arena.createRoom')}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.secondaryBtn} onPress={handleJoinRoom} disabled={isCreating}>
+              <Text style={styles.btnText}>{t('arena.joinRoom')}</Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
     </View>
@@ -79,6 +112,33 @@ const styles = StyleSheet.create({
   googleBtnText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  primaryBtn: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  secondaryBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+  },
+  disabledBtn: {
+    opacity: 0.7,
+  },
+  btnText: {
+    color: '#fff',
+    fontSize: 18,
     fontWeight: 'bold',
   }
 });
