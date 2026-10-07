@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { createRoom as serviceCreateRoom, joinRoom as serviceJoinRoom, leaveRoom as serviceLeaveRoom, subscribeToRoom } from '../services/pvp/roomService';
+import { createRoom as serviceCreateRoom, joinRoom as serviceJoinRoom, leaveRoom as serviceLeaveRoom, subscribeToRoom, setupPresence } from '../services/pvp/roomService';
 import { useAuth } from './AuthContext';
 import { RoomStatus } from '../domain/pvp/roomConstants';
 
@@ -9,6 +9,7 @@ export function PvpRoomProvider({ children }) {
   const { user } = useAuth();
   const [roomId, setRoomId] = useState(null);
   const [room, setRoom] = useState(null);
+  const [isLoadingRoom, setIsLoadingRoom] = useState(false);
   
   // Track room status
   const status = room?.meta?.status || null;
@@ -19,10 +20,13 @@ export function PvpRoomProvider({ children }) {
   useEffect(() => {
     if (!roomId) {
       setRoom(null);
+      setIsLoadingRoom(false);
       return;
     }
 
-    const unsubscribe = subscribeToRoom(roomId, (roomData) => {
+    setIsLoadingRoom(true);
+    const unsubscribeRoom = subscribeToRoom(roomId, (roomData) => {
+      setIsLoadingRoom(false);
       if (!roomData) {
         // Room was deleted
         setRoom(null);
@@ -36,8 +40,13 @@ export function PvpRoomProvider({ children }) {
       }
     });
 
-    return () => unsubscribe();
-  }, [roomId]);
+    const cleanupPresence = setupPresence(roomId, user);
+
+    return () => {
+      unsubscribeRoom();
+      cleanupPresence();
+    };
+  }, [roomId, user]);
 
   const createRoom = useCallback(async () => {
     if (!user) return null;
@@ -79,6 +88,7 @@ export function PvpRoomProvider({ children }) {
     role,
     status,
     isHost,
+    isLoadingRoom,
     createRoom,
     joinRoom,
     leaveRoom

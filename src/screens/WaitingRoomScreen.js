@@ -9,11 +9,18 @@ import { theme } from '../theme';
 
 export default function WaitingRoomScreen({ navigation }) {
   const { t } = useTranslation();
-  const { roomId, room, role, isHost, leaveRoom, status } = usePvpRoom();
+  const { roomId, room, role, isHost, isLoadingRoom, leaveRoom, status } = usePvpRoom();
   const { isOnline } = useOnline();
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    console.log('[PvP Lifecycle] WaitingRoom mount');
+  }, []);
+
+  useEffect(() => {
+    // Wait until room loading finishes before checking deleted status
+    if (isLoadingRoom) return;
+
     // If room is cancelled or deleted, kick guest back to Arena
     if (!room || status === RoomStatus.CANCELLED) {
       if (!isHost) {
@@ -21,7 +28,7 @@ export default function WaitingRoomScreen({ navigation }) {
       }
       navigation.navigate('MainTabs', { screen: 'Arena' });
     }
-  }, [room, status, isHost, navigation, t]);
+  }, [room, status, isHost, navigation, t, isLoadingRoom]);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -58,9 +65,10 @@ export default function WaitingRoomScreen({ navigation }) {
   };
 
   // Find host and guest
-  const players = room?.players || {};
-  const hostPlayer = Object.values(players).find(p => p.role === PlayerRole.HOST);
-  const guestPlayer = Object.values(players).find(p => p.role === PlayerRole.GUEST);
+  const hostUid = room?.meta?.hostUid;
+  const hostPlayer = hostUid && room?.players?.[hostUid];
+  const guestUid = Object.keys(room?.players || {}).find(uid => uid !== hostUid);
+  const guestPlayer = guestUid ? room?.players?.[guestUid] : null;
 
   if (!room) return <View style={styles.container} />;
 

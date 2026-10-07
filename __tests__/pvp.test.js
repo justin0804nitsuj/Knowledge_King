@@ -171,17 +171,12 @@ describe('Phase 8A PvP Foundation', () => {
         
         // The updateFn should return undefined if full
         if (newState === undefined) {
-          return Promise.resolve({ committed: true, snapshot: { val: () => stateWhenTransactionRuns } });
+          return Promise.resolve({ committed: false, snapshot: { val: () => stateWhenTransactionRuns } });
         }
         return Promise.resolve({ committed: true, snapshot: { val: () => newState } });
       });
 
-      try {
-        await joinRoom('12345', { uid: 'guestB', displayName: 'Guest B' });
-        fail('Should have thrown');
-      } catch (e) {
-        expect(e.code).toBe('ROOM_FULL');
-      }
+      await expect(joinRoom('12345', { uid: 'guestB', displayName: 'Guest B' })).rejects.toMatchObject({ code: 'ROOM_FULL' });
     });
 
     it('should treat same UID re-entry as successful idempotent join', async () => {
@@ -210,12 +205,7 @@ describe('Phase 8A PvP Foundation', () => {
       const { get } = require('firebase/database');
       get.mockResolvedValue({ val: () => null });
       
-      try {
-        await joinRoom('12345', { uid: 'guest456' });
-        fail('Should have thrown');
-      } catch (e) {
-        expect(e.code).toBe('ROOM_NOT_FOUND');
-      }
+      await expect(joinRoom('12345', { uid: 'guest456' })).rejects.toMatchObject({ code: 'ROOM_NOT_FOUND' });
     });
 
     it('should throw SELF_JOIN if host tries to join their own room', async () => {
@@ -227,12 +217,7 @@ describe('Phase 8A PvP Foundation', () => {
         })
       });
 
-      try {
-        await joinRoom('12345', { uid: 'host123' });
-        fail('Should have thrown');
-      } catch (e) {
-        expect(e.code).toBe('SELF_JOIN');
-      }
+      await expect(joinRoom('12345', { uid: 'host123' })).rejects.toMatchObject({ code: 'SELF_JOIN' });
     });
     
     it('should correctly handle leaving a closed room cleanly', async () => {

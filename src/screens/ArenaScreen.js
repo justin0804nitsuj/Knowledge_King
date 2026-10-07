@@ -26,6 +26,7 @@ export default function ArenaScreen({ navigation }) {
     setIsCreating(true);
     try {
       await createRoom();
+      console.log('[PvP Lifecycle] CREATE success');
       navigation.navigate('WaitingRoom');
     } catch (e) {
       console.error(e);
@@ -48,6 +49,10 @@ export default function ArenaScreen({ navigation }) {
   const handleJoinRoom = () => {
     navigation.navigate('JoinRoom');
   };
+
+  React.useEffect(() => {
+    return () => console.log('[PvP Lifecycle] Arena unmount');
+  }, []);
 
   return (
     <View style={styles.container}>

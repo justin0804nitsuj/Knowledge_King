@@ -20,6 +20,7 @@ export default function JoinRoomScreen({ navigation }) {
     setErrorMsg('');
     try {
       await joinRoom(code);
+      console.log('[PvP Lifecycle] JOIN success');
       navigation.replace('WaitingRoom');
     } catch (e) {
       console.error(e);
@@ -38,6 +39,10 @@ export default function JoinRoomScreen({ navigation }) {
       setIsJoining(false);
     }
   };
+
+  React.useEffect(() => {
+    return () => console.log('[PvP Lifecycle] JoinRoom unmount');
+  }, []);
 
   return (
     <View style={styles.container}>

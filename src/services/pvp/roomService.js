@@ -1,4 +1,4 @@
-import { ref, runTransaction, get, set, update, onValue, off, remove, serverTimestamp } from 'firebase/database';
+import { ref, runTransaction, get, set, update, onValue, off, remove, serverTimestamp, onDisconnect } from 'firebase/database';
 import { db } from '../firebase/firebaseDatabase';
 import { RoomStatus, PlayerRole } from '../../domain/pvp/roomConstants';
 import { getCompatibilityInfo } from '../../domain/game/pvpCompatibility';
@@ -125,8 +125,11 @@ export async function joinRoom(roomCode, user) {
     // 2. Atomic transaction on the players node
     const playersRef = ref(db, `rooms/${roomCode}/players`);
     const result = await runTransaction(playersRef, (currentPlayers) => {
-      // Return a dummy object if null to force server round-trip if local cache is empty
-      if (currentPlayers === null) return {};
+      // Seed with fetched data if local cache is empty.
+      // The transaction will still hash-mismatch on the server and retry with absolute truth.
+      if (currentPlayers === null) {
+        currentPlayers = { ...currentData.players };
+      }
       
       const playerIds = Object.keys(currentPlayers);
       
@@ -176,6 +179,7 @@ export async function joinRoom(roomCode, user) {
 export async function leaveRoom(roomCode, user) {
   if (!roomCode || !user || !user.uid) return;
   
+  console.log('[PvP Lifecycle] leaveRoom called');
   const roomRef = ref(db, `rooms/${roomCode}`);
   
   try {
@@ -190,10 +194,12 @@ export async function leaveRoom(roomCode, user) {
       // Host leaves: cancel and remove room
       await set(ref(db, `rooms/${roomCode}/meta/status`), RoomStatus.CANCELLED);
       await remove(roomRef);
+      console.log('[PvP Lifecycle] room removed');
     } else {
       // Guest leaves: just remove self
       const playerRef = ref(db, `rooms/${roomCode}/players/${user.uid}`);
       await remove(playerRef);
+      console.log('[PvP Lifecycle] player removed');
     }
   } catch (e) {
     console.error("Leave room failed", e);
@@ -206,7 +212,24 @@ export async function leaveRoom(roomCode, user) {
 export function subscribeToRoom(roomCode, callback) {
   const roomRef = ref(db, `rooms/${roomCode}`);
   const unsubscribe = onValue(roomRef, (snapshot) => {
+    console.log('[PvP Lifecycle] room snapshot received');
     callback(snapshot.val());
   });
   return () => off(roomRef, 'value', unsubscribe);
+}
+
+/**
+ * Configure onDisconnect behavior. 
+ * Both Host and Guest just remove their player node on disconnect.
+ */
+export function setupPresence(roomCode, user) {
+  if (!roomCode || !user || !user.uid) return () => {};
+  const playerRef = ref(db, `rooms/${roomCode}/players/${user.uid}`);
+  const onDisconnectRef = onDisconnect(playerRef);
+  onDisconnectRef.remove();
+  console.log('[PvP Lifecycle] onDisconnect registered');
+  
+  return () => {
+    onDisconnectRef.cancel();
+  };
 }
