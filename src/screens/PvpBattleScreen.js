@@ -20,8 +20,7 @@ export default function PvpBattleScreen({ navigation }) {
   const [isPotionPending, setIsPotionPending] = useState(false);
   const [selectedChoiceId, setSelectedChoiceId] = useState(null);
   
-  // Local derived state for immediate feedback
-  const [localIndex, setLocalIndex] = useState(0);
+  const [displayIndex, setDisplayIndex] = useState(0);
 
   useEffect(() => {
     if (!room || !room.match) {
@@ -114,6 +113,37 @@ export default function PvpBattleScreen({ navigation }) {
   const guestUid = playerUids.find(uid => uid !== hostUid);
   const opponentUid = myUid === hostUid ? guestUid : hostUid;
 
+  const myState = matchState?.players?.[myUid];
+  const safeMyState = myState || { hp: 100, score: 0, currentQuestionIndex: 0, potionsRemaining: 2 };
+  const authoritativeIndex = safeMyState.currentQuestionIndex;
+
+  useEffect(() => {
+    if (authoritativeIndex > displayIndex) {
+      const timer = setTimeout(() => {
+        setDisplayIndex(authoritativeIndex);
+        setIsLocked(false);
+        setSelectedChoiceId(null);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (authoritativeIndex < displayIndex) {
+      setDisplayIndex(authoritativeIndex);
+    }
+  }, [authoritativeIndex, displayIndex]);
+
+  useEffect(() => {
+    if (!gameState) return;
+    
+    let state = gameState;
+    while (state.questionNumber <= displayIndex && state.status !== 'DEFEAT' && state.status !== 'VICTORY') {
+      state = { ...state, status: 'QUESTION_RESOLVED' };
+      state = nextQuestion(state);
+    }
+    
+    if (state !== gameState) {
+      setGameState(state);
+    }
+  }, [displayIndex, gameState]);
+  
   const handleChoice = async (choiceId) => {
     if (isLocked || !gameState || !gameState.currentQuestion) return;
     
@@ -127,7 +157,7 @@ export default function PvpBattleScreen({ navigation }) {
     
     const isCorrect = choiceId === gameState.currentQuestion.correctChoiceId;
     const points = isCorrect ? 10 : 0;
-    const isLastQuestion = localIndex + 1 >= room.match.questionCount;
+    const isLastQuestion = displayIndex + 1 >= room.match.questionCount;
     
     try {
       await submitAnswer(
@@ -135,22 +165,11 @@ export default function PvpBattleScreen({ navigation }) {
         myUid, 
         opponentUid,
         room.match.matchId, 
-        localIndex, 
+        displayIndex, 
         isCorrect, 
         points, 
         isLastQuestion
       );
-      
-      // Delay before showing next question
-      setTimeout(() => {
-        if (!isLastQuestion) {
-          setGameState(prev => nextQuestion(prev));
-          setLocalIndex(prev => prev + 1);
-          setSelectedChoiceId(null);
-          setIsLocked(false);
-        }
-      }, 1000);
-      
     } catch (err) {
       console.error("Failed to submit answer:", err);
       Alert.alert("Error", "Failed to submit answer. Please try again.");
@@ -205,11 +224,10 @@ export default function PvpBattleScreen({ navigation }) {
   const myPlayer = room.players[myUid] || {};
   const opponentPlayer = room.players[opponentUid] || {};
   
-  const myState = matchState?.players?.[myUid] || { hp: 100, score: 0, currentQuestionIndex: 0, potionsRemaining: 2 };
   const oppState = matchState?.players?.[opponentUid] || { hp: 100, score: 0, currentQuestionIndex: 0, potionsRemaining: 2 };
   const totalQuestions = room.match.questionCount;
 
-  const canUsePotion = myState.hp > 0 && myState.hp < 100 && myState.potionsRemaining > 0 && room?.meta?.status === RoomStatus.IN_BATTLE && !isPotionPending;
+  const canUsePotion = safeMyState.hp > 0 && safeMyState.hp < 100 && safeMyState.potionsRemaining > 0 && room?.meta?.status === RoomStatus.IN_BATTLE && !isPotionPending;
 
 
   const getButtonStateStyle = (choiceId) => {
@@ -241,11 +259,11 @@ export default function PvpBattleScreen({ navigation }) {
       <View style={styles.header}>
         <View style={styles.playerStats}>
           <Text style={styles.playerName}>YOU</Text>
-          <Text style={styles.playerHpText}>HP {myState.hp} / 100</Text>
+          <Text style={styles.playerHpText}>HP {safeMyState.hp} / 100</Text>
           <View style={styles.hpBarContainer}>
-            <View style={[styles.hpBarFill, { width: `${Math.max(0, myState.hp)}%` }]} />
+            <View style={[styles.hpBarFill, { width: `${Math.max(0, safeMyState.hp)}%` }]} />
           </View>
-          <Text style={styles.playerProgress}>{myState.currentQuestionIndex} / {totalQuestions}</Text>
+          <Text style={styles.playerProgress}>{safeMyState.currentQuestionIndex} / {totalQuestions}</Text>
         </View>
         <View style={styles.vsContainer}>
           <Text style={styles.vsText}>VS</Text>
@@ -269,14 +287,14 @@ export default function PvpBattleScreen({ navigation }) {
           <Text style={styles.potionIcon}>🧪</Text>
           <View>
             <Text style={styles.potionTitle}>Heal +25</Text>
-            <Text style={styles.potionCount}>{myState.potionsRemaining} left</Text>
+            <Text style={styles.potionCount}>{safeMyState.potionsRemaining} left</Text>
           </View>
         </TouchableOpacity>
       </View>
 
       {gameState && gameState.currentQuestion && (
         <ScrollView style={styles.questionContainer}>
-          <Text style={styles.questionLabel}>Question {localIndex + 1}</Text>
+          <Text style={styles.questionLabel}>Question {displayIndex + 1}</Text>
           <Text style={styles.questionText}>{gameState.currentQuestion.word}</Text>
           
           <View style={styles.choicesContainer}>
@@ -294,7 +312,7 @@ export default function PvpBattleScreen({ navigation }) {
         </ScrollView>
       )}
       
-      {myState.completed && (
+      {safeMyState.completed && (
         <View style={styles.waitingContainer}>
           <Text style={styles.waitingText}>Waiting for opponent to finish...</Text>
         </View>
