@@ -1,0 +1,22 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['displayName'])",
+        "displayName": { ".validate": "newData.isString()" },
+        "photoURL": { ".validate": "newData.isString() || !newData.exists()" },
+        "createdAt": { ".validate": "newData.val() <= now" },
+        "updatedAt": { ".validate": "newData.val() <= now" },
+        "$other": { ".validate": false }
+      }
+    },
+    "rooms": {
+      "$roomId": {
+        ".read": false,
+        ".write": false
+      }
+    }
+  }
+}

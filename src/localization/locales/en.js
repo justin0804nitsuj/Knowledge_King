@@ -112,6 +112,7 @@ export default {
     offlineMessage: 'Online Arena requires Internet.',
     googleRequirement: 'Sign in with Google to challenge players.',
     futurePlaceholder: 'Online Arena — coming in Phase 8',
+    onlineReady: 'Online Arena ready.',
   },
   auth: {
     signingIn: 'Signing In...',

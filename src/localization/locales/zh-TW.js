@@ -112,6 +112,7 @@ export default {
     offlineMessage: '競技場需要網路連線。',
     googleRequirement: '請先使用 Google 登入以挑戰其他玩家。',
     futurePlaceholder: '線上競技場 — 將於 Phase 8 推出',
+    onlineReady: '競技場已就緒',
   },
   auth: {
     signingIn: '登入中...',

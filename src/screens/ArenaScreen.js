@@ -1,21 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import NetInfo from '@react-native-community/netinfo';
 import { useAuth } from '../context/AuthContext';
+import { useOnline } from '../context/OnlineContext';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../theme';
 
 export default function ArenaScreen({ navigation }) {
   const { isSignedIn, signInWithGoogle } = useAuth();
+  const { isOnline } = useOnline();
   const { t } = useTranslation();
-  const [isOffline, setIsOffline] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener(state => {
-      setIsOffline(state.isConnected === false);
-    });
-    return () => unsubscribe();
-  }, []);
 
   const handleSignIn = async () => {
     try {
@@ -30,17 +23,17 @@ export default function ArenaScreen({ navigation }) {
       <Text style={styles.title}>{t('navigation.arena')}</Text>
       
       <View style={styles.card}>
-        {isOffline ? (
+        {!isOnline ? (
           <Text style={styles.message}>{t('arena.offlineMessage')}</Text>
-        ) : isSignedIn ? (
-          <Text style={styles.message}>{t('arena.futurePlaceholder')}</Text>
-        ) : (
+        ) : !isSignedIn ? (
           <>
             <Text style={styles.message}>{t('arena.googleRequirement')}</Text>
             <TouchableOpacity style={styles.googleBtn} onPress={handleSignIn}>
               <Text style={styles.googleBtnText}>{t('profile.signInWithGoogle')}</Text>
             </TouchableOpacity>
           </>
+        ) : (
+          <Text style={styles.message}>{t('arena.onlineReady')}</Text>
         )}
       </View>
     </View>

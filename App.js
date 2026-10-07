@@ -9,6 +9,7 @@ import BattleResultScreen from './src/screens/BattleResultScreen';
 import StagePreviewScreen from './src/screens/StagePreviewScreen';
 import MistakeReviewScreen from './src/screens/MistakeReviewScreen';
 import { AuthProvider } from './src/context/AuthContext';
+import { OnlineProvider } from './src/context/OnlineContext';
 import { initI18n } from './src/localization/i18n';
 
 const Stack = createNativeStackNavigator();
@@ -33,15 +34,17 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <NavigationContainer>
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="MainTabs" component={MainTabs} />
-            <Stack.Screen name="StagePreview" component={StagePreviewScreen} />
-            <Stack.Screen name="Battle" component={BattleScreen} />
-            <Stack.Screen name="BattleResult" component={BattleResultScreen} />
-            <Stack.Screen name="MistakeReview" component={MistakeReviewScreen} />
-          </Stack.Navigator>
-        </NavigationContainer>
+          <OnlineProvider>
+            <NavigationContainer>
+              <Stack.Navigator screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="MainTabs" component={MainTabs} />
+                <Stack.Screen name="StagePreview" component={StagePreviewScreen} />
+                <Stack.Screen name="Battle" component={BattleScreen} />
+                <Stack.Screen name="BattleResult" component={BattleResultScreen} />
+                <Stack.Screen name="MistakeReview" component={MistakeReviewScreen} />
+              </Stack.Navigator>
+            </NavigationContainer>
+          </OnlineProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

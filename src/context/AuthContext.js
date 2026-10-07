@@ -25,7 +25,6 @@ export function AuthProvider({ children }) {
           setUser({
             uid: firebaseUser.uid,
             displayName: firebaseUser.displayName,
-            email: firebaseUser.email,
             photoURL: firebaseUser.photoURL
           });
           setStatus(AuthState.SIGNED_IN);
