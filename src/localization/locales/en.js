@@ -125,6 +125,7 @@ export default {
     joining: 'Joining...',
     join: 'Join',
     roomClosed: 'Room closed by host.',
+    challengerLeft: 'The challenger has left the room.',
     leaveConfirmTitle: 'Leave this room?',
     waitingRoom: 'Waiting Room',
     reconnecting: 'Reconnecting...',

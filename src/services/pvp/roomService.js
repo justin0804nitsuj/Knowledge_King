@@ -227,18 +227,26 @@ export async function verifyRoomExists(roomCode) {
 }
 
 /**
- * Configure onDisconnect behavior. 
- * Both Host and Guest just remove their player node on disconnect.
+ * Configure WAITING room onDisconnect behavior.
+ * Host disconnects: entire room is removed.
+ * Guest disconnects: only Guest player node is removed.
  */
-export function setupPresence(roomCode, user) {
+export function setupWaitingRoomPresence(roomCode, user, isHost) {
   if (!roomCode || !user || !user.uid) return () => {};
-  const playerRef = ref(db, `rooms/${roomCode}/players/${user.uid}`);
-  const onDisconnectRef = onDisconnect(playerRef);
+  
+  let targetRef;
+  if (isHost) {
+    targetRef = ref(db, `rooms/${roomCode}`);
+  } else {
+    targetRef = ref(db, `rooms/${roomCode}/players/${user.uid}`);
+  }
+  
+  const onDisconnectRef = onDisconnect(targetRef);
   onDisconnectRef.remove();
-  console.log('[PVP-TRACE] onDisconnect registered');
+  console.log(`[PVP-TRACE] onDisconnect registered (isHost=${isHost})`);
   
   return () => {
     onDisconnectRef.cancel();
-    console.log('[PVP-TRACE] onDisconnect cancelled');
+    console.log(`[PVP-TRACE] onDisconnect cancelled (isHost=${isHost})`);
   };
 }

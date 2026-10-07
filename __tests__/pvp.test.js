@@ -12,7 +12,8 @@ jest.mock('firebase/database', () => {
     serverTimestamp: jest.fn(() => 'MOCK_TIMESTAMP'),
     runTransaction: jest.fn(),
     onValue: jest.fn(),
-    off: jest.fn()
+    off: jest.fn(),
+    onDisconnect: jest.fn(() => ({ remove: jest.fn(), cancel: jest.fn() }))
   };
 });
 
@@ -251,6 +252,28 @@ describe('Phase 8A PvP Foundation', () => {
         await leaveRoom('12345', { uid: 'host123' });
         expect(set).toHaveBeenCalledWith('rooms/12345/meta/status', 'CANCELLED');
         expect(remove).toHaveBeenCalledWith('rooms/12345');
+      });
+    });
+
+    describe('Presence Behavior', () => {
+      it('should target Guest node only for Guest presence cleanup', () => {
+        const { onDisconnect, ref } = require('firebase/database');
+        const { setupWaitingRoomPresence } = require('../src/services/pvp/roomService');
+        
+        setupWaitingRoomPresence('12345', { uid: 'guest456' }, false);
+        
+        expect(ref).toHaveBeenCalledWith(undefined, 'rooms/12345/players/guest456');
+        expect(onDisconnect).toHaveBeenCalled();
+      });
+
+      it('should target full room for Host presence cleanup in WAITING state', () => {
+        const { onDisconnect, ref } = require('firebase/database');
+        const { setupWaitingRoomPresence } = require('../src/services/pvp/roomService');
+        
+        setupWaitingRoomPresence('12345', { uid: 'host123' }, true);
+        
+        expect(ref).toHaveBeenCalledWith(undefined, 'rooms/12345');
+        expect(onDisconnect).toHaveBeenCalled();
       });
     });
   });

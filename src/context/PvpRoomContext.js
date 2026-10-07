@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { createRoom as serviceCreateRoom, joinRoom as serviceJoinRoom, leaveRoom as serviceLeaveRoom, subscribeToRoom, setupPresence, verifyRoomExists } from '../services/pvp/roomService';
+import { createRoom as serviceCreateRoom, joinRoom as serviceJoinRoom, leaveRoom as serviceLeaveRoom, subscribeToRoom, setupWaitingRoomPresence, verifyRoomExists } from '../services/pvp/roomService';
 import { useAuth } from './AuthContext';
 import { RoomStatus } from '../domain/pvp/roomConstants';
 
@@ -52,14 +52,23 @@ export function PvpRoomProvider({ children }) {
       }
     });
 
-    const cleanupPresence = setupPresence(roomId, user);
-
     return () => {
       console.log(`[PVP-TRACE] CONTEXT unsubscribe for ${roomId}`);
       unsubscribeRoom();
-      cleanupPresence();
     };
   }, [roomId, userUid]);
+
+  useEffect(() => {
+    if (!roomId || !userUid || !room) return;
+    
+    if (room.meta.status === RoomStatus.WAITING) {
+      const isActuallyHost = room.meta.hostUid === userUid;
+      const cleanupPresence = setupWaitingRoomPresence(roomId, user, isActuallyHost);
+      return () => {
+        cleanupPresence();
+      };
+    }
+  }, [roomId, userUid, room?.meta?.status, room?.meta?.hostUid]);
 
   const createRoom = useCallback(async () => {
     if (!user) return null;

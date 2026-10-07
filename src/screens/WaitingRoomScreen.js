@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, BackHandler } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as Clipboard from 'expo-clipboard';
@@ -48,6 +48,27 @@ export default function WaitingRoomScreen({ navigation }) {
       navigation.navigate('MainTabs', { screen: 'Arena' });
     }
   }, [room, status, isHost, navigation, t, isLoadingRoom, roomId]);
+
+  // Track Guest presence to alert Host when Guest leaves
+  const previousGuestUidRef = useRef(null);
+  useEffect(() => {
+    if (isLoadingRoom || !room || !isHost || status !== RoomStatus.WAITING) return;
+    
+    // Find current Guest
+    const currentGuestUid = Object.keys(room.players || {}).find(
+      uid => room.players[uid].role === PlayerRole.GUEST
+    );
+    
+    const previousGuestUid = previousGuestUidRef.current;
+    
+    if (previousGuestUid && !currentGuestUid) {
+      console.log(`[PVP-TRACE] Guest departed: ${previousGuestUid}`);
+      Alert.alert('', t('arena.challengerLeft'));
+    }
+    
+    // Update ref to current state
+    previousGuestUidRef.current = currentGuestUid || null;
+  }, [room, isHost, isLoadingRoom, status, t]);
 
   useEffect(() => {
     const onBackPress = () => {
