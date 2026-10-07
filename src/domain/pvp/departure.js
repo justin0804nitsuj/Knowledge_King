@@ -72,3 +72,118 @@ export async function performExplicitDeparture({ isHost, setIntent, leave, clear
   }
   clearActiveRoom();
 }
+
+/**
+ * One room session's notification guards. Created when a room is
+ * created/joined; never reset by re-renders or WaitingRoom remounts.
+ */
+export function createDepartureSession(roomCode = null) {
+  let roomGoneHandled = false;
+  let previousGuestUid = null;
+  return {
+    roomCode,
+    /** Returns true only for the first caller in this session. */
+    claimRoomGone() {
+      if (roomGoneHandled) return false;
+      roomGoneHandled = true;
+      return true;
+    },
+    isRoomGoneHandled: () => roomGoneHandled,
+    /** Records the current Guest and returns the transition. */
+    observeGuest(currentGuestUid) {
+      const prev = previousGuestUid;
+      previousGuestUid = currentGuestUid || null;
+      return { previousGuestUid: prev, currentGuestUid: previousGuestUid };
+    },
+  };
+}
+
+const noop = () => {};
+
+/**
+ * Handle "room is gone" (deleted/cancelled/cleared) exactly once per session.
+ *
+ * The guard is claimed synchronously BEFORE verification, alert or navigation,
+ * so repeated snapshots / effect reruns cannot both pass it.
+ * verify() is diagnostic only; its result is ignored if the session changed.
+ *
+ * @returns {string|null} alert key shown, or null
+ */
+export function processRoomGone({
+  session,
+  getCurrentSession,
+  departureIntent,
+  wasHost,
+  showAlert,
+  navigateToArena,
+  verify,
+  log = noop,
+}) {
+  if (!session || getCurrentSession() !== session) {
+    log('[PVP-ALERT] roomClosed ignored (stale session)');
+    return null;
+  }
+  if (!session.claimRoomGone()) {
+    log('[PVP-ALERT] roomClosed suppressed duplicate');
+    return null;
+  }
+
+  // Local explicit leave/close: the leave handler navigates, no alert.
+  if (departureIntent && departureIntent !== DepartureIntent.NONE) {
+    log(`[PVP-ALERT] room gone after local departure (${departureIntent}), no alert`);
+    return null;
+  }
+
+  if (verify && session.roomCode) {
+    const code = session.roomCode;
+    log('[PVP-ALERT] verification started');
+    Promise.resolve()
+      .then(() => verify(code))
+      .then((exists) => {
+        if (getCurrentSession() !== session) {
+          log('[PVP-ALERT] verification result ignored (stale session)');
+          return;
+        }
+        log(`[PVP-ALERT] verification result exists=${exists}`);
+      })
+      .catch(noop);
+  }
+
+  const alertKey = resolveDepartureAlert({ departureIntent, roomGone: true, wasHost });
+  if (alertKey) {
+    log(`[PVP-ALERT] ${alertKey} requested`);
+    showAlert(alertKey);
+  }
+  log('[PVP-ALERT] navigation to Arena');
+  navigateToArena();
+  return alertKey;
+}
+
+/**
+ * Handle a live room snapshot on the Host: alert challengerLeft only on the
+ * Guest present -> absent transition (repeated absent snapshots are ignored).
+ */
+export function processGuestSnapshot({
+  session,
+  getCurrentSession,
+  departureIntent,
+  wasHost,
+  currentGuestUid,
+  showAlert,
+  log = noop,
+}) {
+  if (!session || getCurrentSession() !== session) return null;
+  const transition = session.observeGuest(currentGuestUid);
+  const alertKey = resolveDepartureAlert({
+    departureIntent,
+    roomGone: false,
+    wasHost,
+    previousGuestUid: transition.previousGuestUid,
+    currentGuestUid: transition.currentGuestUid,
+  });
+  if (alertKey) {
+    log(`[PVP-ALERT] ${alertKey} requested (${transition.previousGuestUid})`);
+    showAlert(alertKey);
+  }
+  return alertKey;
+}

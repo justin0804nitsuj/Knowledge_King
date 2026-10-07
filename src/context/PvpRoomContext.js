@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import { createRoom as serviceCreateRoom, joinRoom as serviceJoinRoom, leaveRoom as serviceLeaveRoom, subscribeToRoom, setupWaitingRoomPresence, verifyRoomExists } from '../services/pvp/roomService';
 import { useAuth } from './AuthContext';
 import { RoomStatus } from '../domain/pvp/roomConstants';
-import { DepartureIntent, performExplicitDeparture } from '../domain/pvp/departure';
+import { DepartureIntent, performExplicitDeparture, createDepartureSession } from '../domain/pvp/departure';
 
 const PvpRoomContext = createContext(null);
 
@@ -17,6 +17,9 @@ export function PvpRoomProvider({ children }) {
     departureIntentRef.current = intent;
   }, []);
   const getDepartureIntent = useCallback(() => departureIntentRef.current, []);
+  // One-shot remote-departure notification guards for the current room session.
+  const departureSessionRef = useRef(createDepartureSession(null));
+  const getDepartureSession = useCallback(() => departureSessionRef.current, []);
   
   // Track room status
   const status = room?.meta?.status || null;
@@ -47,6 +50,7 @@ export function PvpRoomProvider({ children }) {
       setIsLoadingRoom(false);
       
       if (!roomData) {
+        if (__DEV__) console.log(`[PVP-ALERT] room snapshot null (${roomId})`);
         // Room was deleted
         setRoom(null);
         setRoomId(null);
@@ -90,6 +94,7 @@ export function PvpRoomProvider({ children }) {
       const exists = await verifyRoomExists(code);
       console.log(`[PVP-TRACE] CREATE VERIFY: room exists = ${exists}`);
       
+      departureSessionRef.current = createDepartureSession(code);
       setRoomId(code);
       return code;
     } catch (e) {
@@ -106,6 +111,7 @@ export function PvpRoomProvider({ children }) {
     try {
       const joinedCode = await serviceJoinRoom(code, user);
       console.log(`[PVP-TRACE] JOIN Firebase success roomCode=${joinedCode}`);
+      departureSessionRef.current = createDepartureSession(joinedCode);
       setRoomId(joinedCode);
       return joinedCode;
     } catch (e) {
@@ -138,7 +144,8 @@ export function PvpRoomProvider({ children }) {
     createRoom,
     joinRoom,
     leaveRoom,
-    getDepartureIntent
+    getDepartureIntent,
+    getDepartureSession
   };
 
   return (

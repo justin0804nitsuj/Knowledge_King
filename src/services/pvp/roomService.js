@@ -211,10 +211,15 @@ export async function leaveRoom(roomCode, user) {
  */
 export function subscribeToRoom(roomCode, callback) {
   const roomRef = ref(db, `rooms/${roomCode}`);
+  // onValue returns its own unsubscribe. (Previously off() was called with
+  // that unsubscribe function as the callback, which matched no listener,
+  // so room listeners were never detached.)
   const unsubscribe = onValue(roomRef, (snapshot) => {
     callback(snapshot.val());
   });
-  return () => off(roomRef, 'value', unsubscribe);
+  return () => {
+    if (typeof unsubscribe === 'function') unsubscribe();
+  };
 }
 
 /**

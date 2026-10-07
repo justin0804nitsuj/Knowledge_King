@@ -6,12 +6,14 @@ import { usePvpRoom } from '../context/PvpRoomContext';
 import { useOnline } from '../context/OnlineContext';
 import { verifyRoomExists } from '../services/pvp/roomService';
 import { PlayerRole, RoomStatus } from '../domain/pvp/roomConstants';
-import { DepartureIntent, resolveDepartureAlert } from '../domain/pvp/departure';
+import { processRoomGone, processGuestSnapshot } from '../domain/pvp/departure';
 import { theme } from '../theme';
+
+const devLog = (msg) => { if (__DEV__) console.log(msg); };
 
 export default function WaitingRoomScreen({ navigation }) {
   const { t } = useTranslation();
-  const { roomId, room, role, isHost, isLoadingRoom, leaveRoom, status, getDepartureIntent } = usePvpRoom();
+  const { roomId, room, role, isHost, isLoadingRoom, leaveRoom, status, getDepartureIntent, getDepartureSession } = usePvpRoom();
   const { isOnline } = useOnline();
   const [copied, setCopied] = useState(false);
 
@@ -38,34 +40,27 @@ export default function WaitingRoomScreen({ navigation }) {
       hostPlayerExists: !!(room?.meta?.hostUid && room?.players?.[room.meta.hostUid])
     }, null, 2));
 
-    // If room is cancelled or deleted, kick guest back to Arena
+    // If room is cancelled or deleted, kick guest back to Arena.
+    // processRoomGone claims a per-session one-shot guard synchronously, so
+    // repeated null/CANCELLED snapshots or effect reruns alert/navigate once.
     if (!room || status === RoomStatus.CANCELLED) {
       const departureIntent = getDepartureIntent();
       console.log(`[PVP-TRACE] WAITING reason for redirect: room=${!!room}, status=${status}, intent=${departureIntent}`);
-
-      // Local explicit leave/close: confirmLeave handles navigation, no alert.
-      if (departureIntent !== DepartureIntent.NONE) return;
-      
-      // Async verify before kicking
-      verifyRoomExists(roomId).then(exists => {
-        console.log(`[PVP-TRACE] PRE-ALERT VERIFY: room exists = ${exists}`);
-      });
-      
-      const alertKey = resolveDepartureAlert({
+      processRoomGone({
+        session: getDepartureSession(),
+        getCurrentSession: getDepartureSession,
         departureIntent,
-        roomGone: true,
         wasHost: wasHostRef.current,
+        verify: verifyRoomExists,
+        showAlert: (key) => Alert.alert('', t(`arena.${key}`)),
+        navigateToArena: () => navigation.navigate('MainTabs', { screen: 'Arena' }),
+        log: devLog,
       });
-      if (alertKey) {
-        console.log('[PVP-TRACE] WAITING alert shown');
-        Alert.alert('', t(`arena.${alertKey}`));
-      }
-      navigation.navigate('MainTabs', { screen: 'Arena' });
     }
-  }, [room, status, isHost, navigation, t, isLoadingRoom, roomId, getDepartureIntent]);
+  }, [room, status, isHost, navigation, t, isLoadingRoom, roomId, getDepartureIntent, getDepartureSession]);
 
-  // Track Guest presence to alert Host when Guest leaves
-  const previousGuestUidRef = useRef(null);
+  // Track Guest presence to alert Host when Guest leaves (transition-based,
+  // stored in the room session so remounts/reruns cannot re-alert).
   useEffect(() => {
     if (isLoadingRoom || !room || !isHost || status !== RoomStatus.WAITING) return;
     
@@ -74,23 +69,16 @@ export default function WaitingRoomScreen({ navigation }) {
       uid => room.players[uid].role === PlayerRole.GUEST
     );
     
-    const previousGuestUid = previousGuestUidRef.current;
-    
-    const alertKey = resolveDepartureAlert({
+    processGuestSnapshot({
+      session: getDepartureSession(),
+      getCurrentSession: getDepartureSession,
       departureIntent: getDepartureIntent(),
-      roomGone: false,
       wasHost: true,
-      previousGuestUid,
       currentGuestUid: currentGuestUid || null,
+      showAlert: (key) => Alert.alert('', t(`arena.${key}`)),
+      log: devLog,
     });
-    if (alertKey) {
-      console.log(`[PVP-TRACE] Guest departed: ${previousGuestUid}`);
-      Alert.alert('', t(`arena.${alertKey}`));
-    }
-    
-    // Update ref to current state
-    previousGuestUidRef.current = currentGuestUid || null;
-  }, [room, isHost, isLoadingRoom, status, t, getDepartureIntent]);
+  }, [room, isHost, isLoadingRoom, status, t, getDepartureIntent, getDepartureSession]);
 
   useEffect(() => {
     const onBackPress = () => {
