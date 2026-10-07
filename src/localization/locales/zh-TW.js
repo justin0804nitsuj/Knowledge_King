@@ -138,6 +138,8 @@ export default {
     permissionDenied: '伺服器拒絕存取，請檢查遊戲版本是否最新。',
     roomCodeExhausted: '伺服器忙碌中，無法產生唯一的房間號碼。',
     networkError: '網路錯誤，請檢查您的連線。',
+    roomNotJoinable: '此房間正在遊戲中或已關閉。',
+    selfJoin: '不能加入自己建立的房間，請使用另一個帳號測試。',
   },
   auth: {
     signingIn: '登入中...',

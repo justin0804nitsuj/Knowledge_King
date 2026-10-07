@@ -138,6 +138,8 @@ export default {
     permissionDenied: 'Permission denied by server. Please check game updates.',
     roomCodeExhausted: 'Servers are busy. Could not generate a unique room code.',
     networkError: 'Network error. Please check your connection.',
+    roomNotJoinable: 'This room is already in a game or closed.',
+    selfJoin: 'You cannot join your own room. Use another account to test multiplayer.',
   },
   auth: {
     signingIn: 'Signing In...',

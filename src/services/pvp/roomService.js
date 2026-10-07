@@ -73,8 +73,16 @@ export async function createRoom(user) {
  * Join an existing WAITING room.
  */
 export async function joinRoom(roomCode, user) {
-  if (!user || !user.uid) throw new Error("Unauthenticated user");
-  if (!/^\d{5}$/.test(roomCode)) throw new Error("Invalid room code");
+  if (!user || !user.uid) {
+    const e = new Error("Unauthenticated user");
+    e.code = 'AUTH_REQUIRED';
+    throw e;
+  }
+  if (!/^\d{5}$/.test(roomCode)) {
+    const e = new Error("Room not found");
+    e.code = 'ROOM_NOT_FOUND';
+    throw e;
+  }
 
   const roomRef = ref(db, `rooms/${roomCode}`);
   
@@ -84,11 +92,21 @@ export async function joinRoom(roomCode, user) {
     const currentData = snapshot.val();
     
     if (currentData === null) {
-      throw new Error("Room not found");
+      const e = new Error("Room not found");
+      e.code = 'ROOM_NOT_FOUND';
+      throw e;
     }
     
     if (currentData.meta.status !== RoomStatus.WAITING) {
-      throw new Error("Room is not waiting for players");
+      const e = new Error("Room is not waiting for players");
+      e.code = 'ROOM_NOT_JOINABLE';
+      throw e;
+    }
+    
+    if (currentData.meta.hostUid === user.uid) {
+      const e = new Error("Cannot join your own room");
+      e.code = 'SELF_JOIN';
+      throw e;
     }
     
     const comp = getCompatibilityInfo();
@@ -97,13 +115,18 @@ export async function joinRoom(roomCode, user) {
       currentData.meta.vocabularyVersion !== comp.vocabularyVersion ||
       currentData.meta.vocabularySchemaVersion !== comp.vocabularySchemaVersion
     ) {
-      throw new Error("Game versions are incompatible. Please update the app.");
+      const e = new Error("Game versions are incompatible. Please update the app.");
+      e.code = 'INCOMPATIBLE';
+      throw e;
     }
+
+    let abortReason = null;
 
     // 2. Atomic transaction on the players node
     const playersRef = ref(db, `rooms/${roomCode}/players`);
     const result = await runTransaction(playersRef, (currentPlayers) => {
-      if (currentPlayers === null) return; // Should not happen if room exists, but abort if so
+      // Return a dummy object if null to force server round-trip if local cache is empty
+      if (currentPlayers === null) return {};
       
       const playerIds = Object.keys(currentPlayers);
       
@@ -114,6 +137,7 @@ export async function joinRoom(roomCode, user) {
       
       // Concurrency check: abort if full
       if (playerIds.length >= 2) {
+        abortReason = 'ROOM_FULL';
         return; 
       }
       
@@ -129,15 +153,19 @@ export async function joinRoom(roomCode, user) {
     });
 
     if (result.committed) {
-      const resultingPlayers = result.snapshot.val();
-      if (!resultingPlayers || !resultingPlayers[user.uid]) {
-        throw new Error("Room is full"); // Transaction aborted because it was full
-      }
       return roomCode;
     } else {
-      throw new Error("Failed to join room");
+      if (abortReason === 'ROOM_FULL') {
+        const e = new Error("Room is full");
+        e.code = 'ROOM_FULL';
+        throw e;
+      }
+      const e = new Error("Failed to join room");
+      e.code = 'DATABASE_ERROR';
+      throw e;
     }
   } catch (e) {
+    console.error(`[PvP] join room code=${roomCode} - Firebase error:`, e.code || e.message);
     throw e;
   }
 }

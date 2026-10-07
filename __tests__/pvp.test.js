@@ -176,7 +176,12 @@ describe('Phase 8A PvP Foundation', () => {
         return Promise.resolve({ committed: true, snapshot: { val: () => newState } });
       });
 
-      await expect(joinRoom('12345', { uid: 'guestB', displayName: 'Guest B' })).rejects.toThrow('Room is full');
+      try {
+        await joinRoom('12345', { uid: 'guestB', displayName: 'Guest B' });
+        fail('Should have thrown');
+      } catch (e) {
+        expect(e.code).toBe('ROOM_FULL');
+      }
     });
 
     it('should treat same UID re-entry as successful idempotent join', async () => {
@@ -199,6 +204,35 @@ describe('Phase 8A PvP Foundation', () => {
 
       const result = await joinRoom('12345', { uid: 'guestA', displayName: 'Guest A' });
       expect(result).toBe('12345');
+    });
+
+    it('should throw ROOM_NOT_FOUND if room does not exist', async () => {
+      const { get } = require('firebase/database');
+      get.mockResolvedValue({ val: () => null });
+      
+      try {
+        await joinRoom('12345', { uid: 'guest456' });
+        fail('Should have thrown');
+      } catch (e) {
+        expect(e.code).toBe('ROOM_NOT_FOUND');
+      }
+    });
+
+    it('should throw SELF_JOIN if host tries to join their own room', async () => {
+      const { get } = require('firebase/database');
+      get.mockResolvedValue({
+        val: () => ({
+          meta: { status: 'WAITING', hostUid: 'host123', rulesetVersion: '1.0.0', vocabularyVersion: '1.0.0', vocabularySchemaVersion: "1.0" },
+          players: { host123: {} }
+        })
+      });
+
+      try {
+        await joinRoom('12345', { uid: 'host123' });
+        fail('Should have thrown');
+      } catch (e) {
+        expect(e.code).toBe('SELF_JOIN');
+      }
     });
     
     it('should correctly handle leaving a closed room cleanly', async () => {

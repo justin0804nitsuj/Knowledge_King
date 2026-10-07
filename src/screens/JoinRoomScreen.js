@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { usePvpRoom } from '../context/PvpRoomContext';
+import { useOnline } from '../context/OnlineContext';
 import { theme } from '../theme';
 
 export default function JoinRoomScreen({ navigation }) {
   const { t } = useTranslation();
   const { joinRoom } = usePvpRoom();
+  const { isOnline } = useOnline();
   const [code, setCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -22,9 +24,14 @@ export default function JoinRoomScreen({ navigation }) {
     } catch (e) {
       console.error(e);
       let localizedError = t('arena.joinError');
-      if (e.message === 'Room not found') localizedError = t('arena.roomNotFound');
-      else if (e.message === 'Room is full') localizedError = t('arena.roomFull');
-      else if (e.message.includes('incompatible')) localizedError = t('arena.incompatible');
+      if (e.code === 'ROOM_NOT_FOUND') localizedError = t('arena.roomNotFound');
+      else if (e.code === 'ROOM_FULL') localizedError = t('arena.roomFull');
+      else if (e.code === 'SELF_JOIN') localizedError = t('arena.selfJoin');
+      else if (e.code === 'AUTH_REQUIRED') localizedError = t('arena.authRequired');
+      else if (e.code === 'INCOMPATIBLE') localizedError = t('arena.incompatible');
+      else if (e.code === 'ROOM_NOT_JOINABLE') localizedError = t('arena.roomNotJoinable');
+      else if (e.code === 'PERMISSION_DENIED' || e.message?.includes('permission_denied')) localizedError = t('arena.permissionDenied');
+      else if (!isOnline || e.message?.includes('network')) localizedError = t('arena.networkError');
       
       setErrorMsg(localizedError);
     } finally {
