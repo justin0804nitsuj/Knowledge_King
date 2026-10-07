@@ -219,7 +219,14 @@ export async function setPlayerReady(roomCode, user, isReady) {
     throw e;
   }
   const playerReadyRef = ref(db, `rooms/${roomCode}/players/${user.uid}/ready`);
-  await set(playerReadyRef, isReady);
+  try {
+    console.log(`[PVP-PERM] setPlayerReady begin path=rooms/${roomCode}/players/${user.uid}/ready`);
+    await set(playerReadyRef, isReady);
+    console.log(`[PVP-PERM] setPlayerReady success`);
+  } catch (e) {
+    console.log(`[PVP-PERM] setPlayerReady error code=${e.code} message=${e.message}`);
+    throw e;
+  }
 }
 
 /**
@@ -233,8 +240,11 @@ export async function startMatch(roomCode, user) {
   }
 
   const roomRef = ref(db, `rooms/${roomCode}`);
-  const result = await runTransaction(roomRef, (currentData) => {
-    if (currentData === null) return; // aborted
+  console.log(`[PVP-PERM] startMatch begin transaction path=rooms/${roomCode}`);
+  let result;
+  try {
+    result = await runTransaction(roomRef, (currentData) => {
+      if (currentData === null) return; // aborted
     
     // Check authority
     if (currentData.meta.hostUid !== user.uid) {
@@ -285,6 +295,12 @@ export async function startMatch(roomCode, user) {
   if (!result.committed) {
     const e = new Error("Failed to start match");
     e.code = 'START_FAILED';
+    throw e;
+  }
+  
+  console.log(`[PVP-PERM] startMatch success`);
+  } catch (e) {
+    console.log(`[PVP-PERM] startMatch error code=${e.code} message=${e.message}`);
     throw e;
   }
 }

@@ -196,13 +196,27 @@ export default function WaitingRoomScreen({ navigation }) {
 
       <View style={styles.actionContainer}>
         {isHost && guestPlayer && isBothReady ? (
-          <TouchableOpacity style={styles.startBtn} onPress={startMatch}>
+          <TouchableOpacity style={styles.startBtn} onPress={async () => {
+            try {
+              await startMatch();
+            } catch (e) {
+              console.warn("Start Match Failed:", e);
+              Alert.alert('', t('arena.startFailed') || "Failed to start match.");
+            }
+          }}>
             <Text style={styles.startBtnText}>{t('arena.startMatch')}</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity 
             style={[styles.readyBtn, myReady && styles.readyBtnActive]} 
-            onPress={() => setReady(!myReady)}
+            onPress={async () => {
+              try {
+                await setReady(!myReady);
+              } catch (e) {
+                console.warn("Set Ready Failed:", e);
+                Alert.alert('', t('arena.readyFailed') || "Failed to update ready state.");
+              }
+            }}
           >
             <Text style={styles.readyBtnText}>{myReady ? t('arena.cancelReady') : t('arena.ready')}</Text>
           </TouchableOpacity>
