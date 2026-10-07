@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { theme } from '../theme';
 import { getStageById, STAGE_TYPES } from '../domain/adventure/campaignConfig';
 import { loadCampaignProgress } from '../storage/campaignStorage';
+import { useTranslation } from 'react-i18next';
 
 export default function StagePreviewScreen({ route, navigation }) {
+  const { t } = useTranslation();
   const { stageId } = route.params;
   const stage = getStageById(stageId);
   const [bestStars, setBestStars] = useState(0);
@@ -34,16 +36,25 @@ export default function StagePreviewScreen({ route, navigation }) {
     navigation.goBack();
   };
 
+  let stageName = stage.title;
+  if (stage.type === STAGE_TYPES.NORMAL) {
+    stageName = `${t('adventure.stage')} ${stage.stageNumber}`;
+  } else if (stage.type === STAGE_TYPES.ELITE) {
+    stageName = t('adventure.eliteGatekeeper');
+  } else if (stage.type === STAGE_TYPES.BOSS) {
+    stageName = t('adventure.boss');
+  }
+
   return (
     <View style={styles.container}>
       <View style={[styles.card, { borderColor: typeColor }]}>
-        <Text style={[styles.title, { color: typeColor }]}>{stage.title}</Text>
-        <Text style={styles.subtitle}>World {stage.world} - Level {stage.vocabularyLevel}</Text>
+        <Text style={[styles.title, { color: typeColor }]}>{stageName}</Text>
+        <Text style={styles.subtitle}>{t('adventure.world')} {stage.world} - {t('adventure.level')} {stage.vocabularyLevel}</Text>
         
         <View style={styles.statsContainer}>
-          <Text style={styles.statText}>Player HP: {stage.playerHp}</Text>
-          <Text style={styles.statText}>Enemy HP: {stage.enemyHp}</Text>
-          <Text style={styles.statText}>Timer: {stage.timePerQuestionMs / 1000}s</Text>
+          <Text style={styles.statText}>{t('stagePreview.playerHp')}: {stage.playerHp}</Text>
+          <Text style={styles.statText}>{t('stagePreview.enemyHp')}: {stage.enemyHp}</Text>
+          <Text style={styles.statText}>{t('stagePreview.timer')}: {stage.timePerQuestionMs / 1000}s</Text>
         </View>
 
         <View style={styles.starsContainer}>
@@ -53,11 +64,11 @@ export default function StagePreviewScreen({ route, navigation }) {
         </View>
 
         <TouchableOpacity style={[styles.startBtn, { backgroundColor: typeColor }]} onPress={handleStart}>
-          <Text style={styles.startBtnText}>Start Battle</Text>
+          <Text style={styles.startBtnText}>{t('adventure.startBattle')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
-          <Text style={styles.backBtnText}>Back to Adventure</Text>
+          <Text style={styles.backBtnText}>{t('battleResult.backToAdventure')}</Text>
         </TouchableOpacity>
       </View>
     </View>

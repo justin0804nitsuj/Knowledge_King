@@ -6,11 +6,13 @@ import { loadPlayerProgress } from '../storage/playerProgressStorage';
 import { getPlayerLevelInfo } from '../domain/player/levelSystem';
 import { loadMistakes, getActiveMistakes } from '../storage/mistakeStorage';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 export default function HomeScreen({ navigation }) {
   const [playerInfo, setPlayerInfo] = useState(null);
   const [mistakeCount, setMistakeCount] = useState(0);
   const { user, isSignedIn } = useAuth();
+  const { t } = useTranslation();
 
   useFocusEffect(
     useCallback(() => {
@@ -39,19 +41,19 @@ export default function HomeScreen({ navigation }) {
 
       {/* Level Card */}
       <View style={styles.levelCard}>
-        <Text style={styles.identityText}>{isSignedIn ? user?.displayName : 'Guest'}</Text>
-        <Text style={styles.levelTitle}>Player Level {level}</Text>
-        <Text style={styles.xpText}>{Math.floor(xpIntoCurrentLevel)} / {xpRequiredForNextLevel} XP</Text>
+        <Text style={styles.identityText}>{isSignedIn ? user?.displayName : t('home.guest')}</Text>
+        <Text style={styles.levelTitle}>{t('home.playerLevel')} {level}</Text>
+        <Text style={styles.xpText}>{Math.floor(xpIntoCurrentLevel)} / {xpRequiredForNextLevel} {t('home.xp')}</Text>
         <View style={styles.progressBarBg}>
           <View style={[styles.progressBarFill, { width: `${progressRatio * 100}%` }]} />
         </View>
-        <Text style={styles.streakText}>🔥 Daily Streak: {streak} days</Text>
+        <Text style={styles.streakText}>🔥 {t('home.streak')}: {streak}</Text>
       </View>
 
       {/* Quick Actions */}
       <View style={styles.actionRow}>
         <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Adventure')}>
-          <Text style={styles.actionBtnText}>Adventure</Text>
+          <Text style={styles.actionBtnText}>{t('home.continueAdventure')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -59,30 +61,30 @@ export default function HomeScreen({ navigation }) {
           onPress={() => mistakeCount > 0 && navigation.navigate('MistakeReview')}
           disabled={mistakeCount === 0}
         >
-          <Text style={styles.actionBtnText}>Review ({mistakeCount})</Text>
+          <Text style={styles.actionBtnText}>{t('home.mistakeReview')} ({mistakeCount})</Text>
         </TouchableOpacity>
       </View>
 
       {/* Daily Missions */}
       <View style={styles.missionsCard}>
-        <Text style={styles.sectionTitle}>Daily Missions</Text>
+        <Text style={styles.sectionTitle}>{t('home.dailyMissions')}</Text>
         
         <MissionRow 
-          title="Answer 20 questions" 
+          title={t('dailyMissions.answer20')}
           progress={missions.m1.progress} 
           target={20} 
           claimed={missions.m1.claimed} 
           reward="+30 XP" 
         />
         <MissionRow 
-          title="Win 2 Adventure battles" 
+          title={t('dailyMissions.win2')}
           progress={missions.m2.progress} 
           target={2} 
           claimed={missions.m2.claimed} 
           reward="+40 XP" 
         />
         <MissionRow 
-          title="1 Perfect Victory" 
+          title={t('dailyMissions.perfectVictory')}
           progress={missions.m3.progress} 
           target={1} 
           claimed={missions.m3.claimed} 

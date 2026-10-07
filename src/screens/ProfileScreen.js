@@ -7,11 +7,16 @@ import { loadPlayerProgress } from '../storage/playerProgressStorage';
 import { loadBattleHistory } from '../storage/battleHistoryStorage';
 import { getPlayerLevelInfo } from '../domain/player/levelSystem';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
+import { changeLanguage } from '../localization/i18n';
+import { LANGUAGE_PREF, loadSettings } from '../storage/settingsStorage';
 
 export default function ProfileScreen({ navigation }) {
   const [playerInfo, setPlayerInfo] = useState(null);
   const [recentBattles, setRecentBattles] = useState([]);
+  const [currentLang, setCurrentLang] = useState(LANGUAGE_PREF.SYSTEM);
   const { user, isSignedIn, signInWithGoogle, signOut, isInitializing } = useAuth();
+  const { t } = useTranslation();
   
   useFocusEffect(
     useCallback(() => {
@@ -21,6 +26,9 @@ export default function ProfileScreen({ navigation }) {
         
         const hObj = await loadBattleHistory();
         setRecentBattles(hObj.records.slice(0, 5));
+
+        const settings = await loadSettings();
+        setCurrentLang(settings.language);
       }
       loadData();
     }, [])
@@ -28,20 +36,24 @@ export default function ProfileScreen({ navigation }) {
 
   const handleReset = () => {
     Alert.alert(
-      "Reset Adventure Progress",
-      "Are you sure you want to completely wipe all campaign progress? This cannot be undone.",
+      t('profile.confirmReset'),
+      t('profile.confirmResetMessage'),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t('profile.cancel'), style: "cancel" },
         { 
-          text: "Reset", 
+          text: t('profile.reset'), 
           style: "destructive",
           onPress: async () => {
             await resetCampaignProgress();
-            Alert.alert("Success", "Adventure progress has been reset.");
           }
         }
       ]
     );
+  };
+
+  const handleLangChange = async (lang) => {
+    await changeLanguage(lang);
+    setCurrentLang(lang);
   };
 
   const handleLogin = async () => {
@@ -72,69 +84,85 @@ export default function ProfileScreen({ navigation }) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Player Profile</Text>
+      <Text style={styles.title}>{t('navigation.profile')}</Text>
 
       <View style={styles.headerCard}>
         <View style={styles.avatarPlaceholder}><Text style={styles.avatarText}>L{level}</Text></View>
         <View style={styles.headerInfo}>
-          <Text style={styles.playerName}>{isSignedIn ? user?.displayName : 'Local Player'}</Text>
+          <Text style={styles.playerName}>{isSignedIn ? user?.displayName : t('profile.guestPlayer')}</Text>
           {isSignedIn && <Text style={styles.playerEmail}>{user?.email}</Text>}
-          <Text style={styles.playerXp}>Total XP: {playerInfo.totalXp}</Text>
-          <Text style={styles.playerStreak}>Streak: {playerInfo.daily.streak} Days</Text>
+          <Text style={styles.playerXp}>{t('home.xp')}: {playerInfo.totalXp}</Text>
+          <Text style={styles.playerStreak}>{t('home.streak')}: {playerInfo.daily.streak}</Text>
         </View>
       </View>
 
       <View style={styles.authCard}>
         {isSignedIn ? (
           <>
-            <Text style={styles.authStatus}>Signed in with Google</Text>
             <TouchableOpacity style={styles.signOutBtn} onPress={handleLogout}>
-              <Text style={styles.signOutBtnText}>Sign Out</Text>
+              <Text style={styles.signOutBtnText}>{t('profile.signOut')}</Text>
             </TouchableOpacity>
           </>
         ) : (
           <>
-            <Text style={styles.authStatus}>You are currently a Guest.</Text>
             <TouchableOpacity style={styles.googleBtn} onPress={handleLogin}>
-              <Text style={styles.googleBtnText}>Sign in with Google</Text>
+              <Text style={styles.googleBtnText}>{t('profile.signInWithGoogle')}</Text>
             </TouchableOpacity>
-            <Text style={styles.guestHelpText}>Continue as Guest to play offline.</Text>
           </>
         )}
       </View>
 
       <View style={styles.statsCard}>
-        <Text style={styles.sectionTitle}>Lifetime Statistics</Text>
-        <StatRow label="Battles Played" value={st.battlesPlayed} />
-        <StatRow label="Wins / Losses" value={`${st.battlesWon} / ${st.battlesLost}`} />
-        <StatRow label="Win Rate" value={`${winRate}%`} />
-        <StatRow label="Total Questions" value={st.totalQuestions} />
-        <StatRow label="Overall Accuracy" value={`${accuracy}%`} />
-        <StatRow label="Best Combo" value={st.bestCombo} />
-        <StatRow label="Bosses Defeated" value={st.bossWins} />
-        <StatRow label="Perfect Victories" value={st.perfectVictories} />
+        <Text style={styles.sectionTitle}>{t('profile.localStats')}</Text>
+        <StatRow label={t('profile.battles')} value={st.battlesPlayed} />
+        <StatRow label={t('profile.wins')} value={`${st.battlesWon} / ${st.battlesLost}`} />
+        <StatRow label={t('profile.accuracy')} value={`${accuracy}%`} />
+        <StatRow label={t('profile.bestCombo')} value={st.bestCombo} />
+        <StatRow label={t('profile.bossesDefeated')} value={st.bossWins} />
       </View>
 
       {recentBattles.length > 0 && (
         <View style={styles.historyCard}>
-          <Text style={styles.sectionTitle}>Recent Battles</Text>
+          <Text style={styles.sectionTitle}>{t('profile.recentBattles')}</Text>
           {recentBattles.map((b, i) => (
             <View key={b.id || i} style={styles.historyRow}>
               <Text style={styles.historyDate}>{new Date(b.timestamp).toLocaleDateString()}</Text>
               <Text style={styles.historyStage}>{b.stageId}</Text>
               <Text style={[styles.historyResult, { color: b.result === 'VICTORY' ? theme.colors.success : theme.colors.danger }]}>
-                {b.result}
+                {b.result === 'VICTORY' ? t('battleResult.victory') : t('battleResult.defeat')}
               </Text>
-              <Text style={styles.historyScore}>{b.score} pts</Text>
+              <Text style={styles.historyScore}>{b.score}</Text>
             </View>
           ))}
         </View>
       )}
-      
+
       <View style={styles.devSection}>
-        <Text style={styles.devTitle}>Developer / Local Data</Text>
+        <Text style={styles.devTitle}>{t('profile.settings')}</Text>
+        <Text style={styles.statLabel}>{t('profile.language')}</Text>
+        <View style={styles.langRow}>
+          <TouchableOpacity 
+            style={[styles.langBtn, currentLang === LANGUAGE_PREF.SYSTEM && styles.langBtnActive]}
+            onPress={() => handleLangChange(LANGUAGE_PREF.SYSTEM)}>
+            <Text style={[styles.langBtnText, currentLang === LANGUAGE_PREF.SYSTEM && styles.langBtnTextActive]}>{t('profile.languageSystem')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.langBtn, currentLang === LANGUAGE_PREF.ZH_TW && styles.langBtnActive]}
+            onPress={() => handleLangChange(LANGUAGE_PREF.ZH_TW)}>
+            <Text style={[styles.langBtnText, currentLang === LANGUAGE_PREF.ZH_TW && styles.langBtnTextActive]}>{t('profile.languageZhTw')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.langBtn, currentLang === LANGUAGE_PREF.EN && styles.langBtnActive]}
+            onPress={() => handleLangChange(LANGUAGE_PREF.EN)}>
+            <Text style={[styles.langBtnText, currentLang === LANGUAGE_PREF.EN && styles.langBtnTextActive]}>{t('profile.languageEn')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+      
+      <View style={[styles.devSection, { marginTop: theme.spacing.large }]}>
+        <Text style={styles.devTitle}>{t('profile.developerOptions')}</Text>
         <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
-          <Text style={styles.resetBtnText}>Reset Adventure Progress</Text>
+          <Text style={styles.resetBtnText}>{t('profile.resetAdventure')}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -322,6 +350,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.textMuted,
     marginBottom: theme.spacing.medium,
+  },
+  langRow: {
+    flexDirection: 'row',
+    marginTop: theme.spacing.small,
+    marginBottom: theme.spacing.medium,
+  },
+  langBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    marginRight: 8,
+    borderRadius: 8,
+  },
+  langBtnActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  langBtnText: {
+    color: theme.colors.textMain,
+    fontSize: 14,
+  },
+  langBtnTextActive: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   resetBtn: {
     backgroundColor: theme.colors.danger,

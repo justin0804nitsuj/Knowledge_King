@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../theme';
 
 export default function ArenaScreen({ navigation }) {
   const { isSignedIn, signInWithGoogle } = useAuth();
+  const { t } = useTranslation();
   const [isOffline, setIsOffline] = useState(false);
 
   useEffect(() => {
@@ -25,18 +27,18 @@ export default function ArenaScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Arena</Text>
+      <Text style={styles.title}>{t('navigation.arena')}</Text>
       
       <View style={styles.card}>
         {isOffline ? (
-          <Text style={styles.message}>Online Arena requires Internet.</Text>
+          <Text style={styles.message}>{t('arena.offlineMessage')}</Text>
         ) : isSignedIn ? (
-          <Text style={styles.message}>Online Arena — coming in Phase 8</Text>
+          <Text style={styles.message}>{t('arena.futurePlaceholder')}</Text>
         ) : (
           <>
-            <Text style={styles.message}>Sign in with Google to challenge players.</Text>
+            <Text style={styles.message}>{t('arena.googleRequirement')}</Text>
             <TouchableOpacity style={styles.googleBtn} onPress={handleSignIn}>
-              <Text style={styles.googleBtnText}>Sign in with Google</Text>
+              <Text style={styles.googleBtnText}>{t('profile.signInWithGoogle')}</Text>
             </TouchableOpacity>
           </>
         )}

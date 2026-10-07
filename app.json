@@ -4,8 +4,11 @@
     "slug": "Knowledge_King",
     "version": "1.0.0",
     "orientation": "portrait",
-
     "userInterfaceStyle": "light",
+    "locales": {
+      "zh-TW": "./locales/zh-TW.json",
+      "en": "./locales/en.json"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.justin.knowledgeking",
@@ -15,10 +18,15 @@
       "package": "com.justin.knowledgeking",
       "googleServicesFile": "./google-services.json"
     },
-    "web": {
-    },
+    "web": {},
     "plugins": [
-      "react-native-nitro-google-signin"
-    ]
+      "react-native-nitro-google-signin",
+      "expo-localization"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "61705626-0364-423f-b0f7-3ab13d29dca6"
+      }
+    }
   }
 }

@@ -6,8 +6,11 @@ import { processBattleResult } from '../domain/game/resultProcessor';
 import { getStageById, getNextStage } from '../domain/adventure/campaignConfig';
 import { getPlayerLevelInfo } from '../domain/player/levelSystem';
 import { loadPlayerProgress } from '../storage/playerProgressStorage';
+import { useTranslation } from 'react-i18next';
+import { STAGE_TYPES } from '../domain/adventure/campaignConfig';
 
 export default function BattleResultScreen({ route, navigation }) {
+  const { t } = useTranslation();
   const { stageId, battleId, finalState } = route.params;
   const { status, score, maxCombo, correctCount, wrongCount, timeoutCount, questionNumber } = finalState;
 
@@ -64,13 +67,22 @@ export default function BattleResultScreen({ route, navigation }) {
     });
   };
 
+  let stageName = stage.title;
+  if (stage.type === STAGE_TYPES.NORMAL) {
+    stageName = `${t('adventure.stage')} ${stage.stageNumber}`;
+  } else if (stage.type === STAGE_TYPES.ELITE) {
+    stageName = t('adventure.eliteGatekeeper');
+  } else if (stage.type === STAGE_TYPES.BOSS) {
+    stageName = t('adventure.boss');
+  }
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={[styles.title, { color: isVictory ? theme.colors.success : theme.colors.danger }]}>
-        {isVictory ? (stage.type === 'BOSS' ? 'BOSS DEFEATED!' : 'VICTORY') : 'DEFEAT'}
+        {isVictory ? (stage.type === STAGE_TYPES.BOSS ? t('battleResult.bossDefeated') : t('battleResult.victory')) : t('battleResult.defeat')}
       </Text>
       
-      <Text style={styles.stageTitle}>{stage.title}</Text>
+      <Text style={styles.stageTitle}>{stageName}</Text>
 
       {resultData && (
         <View style={styles.starsContainer}>
@@ -82,36 +94,36 @@ export default function BattleResultScreen({ route, navigation }) {
 
       {levelUpInfo && (
         <View style={styles.levelUpBox}>
-          <Text style={styles.levelUpText}>LEVEL UP!</Text>
-          <Text style={styles.levelUpSub}>Level {levelUpInfo.from} → Level {levelUpInfo.to}</Text>
+          <Text style={styles.levelUpText}>{t('battleResult.levelUp')}</Text>
+          <Text style={styles.levelUpSub}>{t('home.playerLevel')} {levelUpInfo.from} → {t('home.playerLevel')} {levelUpInfo.to}</Text>
         </View>
       )}
 
       {resultData && resultData.xpEarned > 0 && (
-        <Text style={styles.xpText}>+{resultData.xpEarned} XP</Text>
+        <Text style={styles.xpText}>+{resultData.xpEarned} {t('home.xp')}</Text>
       )}
 
       <View style={styles.statsCard}>
-        <Text style={styles.statRow}>Final Score: <Text style={styles.statValue}>{score}</Text></Text>
-        <Text style={styles.statRow}>Max Combo: <Text style={styles.statValue}>{maxCombo}</Text></Text>
-        <Text style={styles.statRow}>Questions Answered: <Text style={styles.statValue}>{questionNumber}</Text></Text>
+        <Text style={styles.statRow}>{t('battle.score')}: <Text style={styles.statValue}>{score}</Text></Text>
+        <Text style={styles.statRow}>{t('battleResult.maxCombo')}: <Text style={styles.statValue}>{maxCombo}</Text></Text>
+        <Text style={styles.statRow}>{t('battleResult.questionsAnswered')}: <Text style={styles.statValue}>{questionNumber}</Text></Text>
         <View style={styles.divider} />
-        <Text style={styles.statRow}>Correct: <Text style={styles.statValue}>{correctCount}</Text></Text>
-        <Text style={styles.statRow}>Wrong: <Text style={styles.statValue}>{wrongCount}</Text></Text>
-        <Text style={styles.statRow}>Timeouts: <Text style={styles.statValue}>{timeoutCount}</Text></Text>
+        <Text style={styles.statRow}>{t('battleResult.correct')}: <Text style={styles.statValue}>{correctCount}</Text></Text>
+        <Text style={styles.statRow}>{t('battleResult.wrong')}: <Text style={styles.statValue}>{wrongCount}</Text></Text>
+        <Text style={styles.statRow}>{t('battleResult.timeouts')}: <Text style={styles.statValue}>{timeoutCount}</Text></Text>
       </View>
 
       <View style={styles.btnContainer}>
         {isVictory && nextStageId && (
           <TouchableOpacity style={styles.btnPrimary} onPress={handleNext}>
-            <Text style={styles.btnTextPrimary}>Next Stage</Text>
+            <Text style={styles.btnTextPrimary}>{t('battleResult.continue')}</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity style={styles.btnSecondary} onPress={handleReplay}>
-          <Text style={styles.btnTextSecondary}>{isVictory ? 'Replay' : 'Retry'}</Text>
+          <Text style={styles.btnTextSecondary}>{isVictory ? t('battleResult.replay') : t('battleResult.retry')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.btnSecondary} onPress={handleBack}>
-          <Text style={styles.btnTextSecondary}>Back to Adventure</Text>
+          <Text style={styles.btnTextSecondary}>{t('battleResult.backToAdventure')}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

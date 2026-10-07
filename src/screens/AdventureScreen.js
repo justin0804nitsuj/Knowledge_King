@@ -5,9 +5,11 @@ import { theme } from '../theme';
 import { getWorlds, getStagesForWorld, STAGE_TYPES } from '../domain/adventure/campaignConfig';
 import { loadCampaignProgress } from '../storage/campaignStorage';
 import { isStageUnlocked, isWorldCompleted, isCampaignCompleted } from '../domain/adventure/campaignProgress';
+import { useTranslation } from 'react-i18next';
 
 export default function AdventureScreen({ navigation }) {
   const [progress, setProgress] = useState(null);
+  const { t } = useTranslation();
 
   useFocusEffect(
     useCallback(() => {
@@ -16,7 +18,7 @@ export default function AdventureScreen({ navigation }) {
   );
 
   if (!progress) {
-    return <View style={styles.container}><Text>Loading Campaign...</Text></View>;
+    return <View style={styles.container}><Text>Loading...</Text></View>;
   }
 
   const handleSelectStage = (stageId) => {
@@ -27,11 +29,11 @@ export default function AdventureScreen({ navigation }) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Adventure Campaign</Text>
+      <Text style={styles.title}>{t('navigation.adventure')}</Text>
       
       {campaignDone && (
         <View style={styles.campaignCompleteBox}>
-          <Text style={styles.campaignCompleteText}>ADVENTURE COMPLETE!</Text>
+          <Text style={styles.campaignCompleteText}>{t('battleResult.adventureComplete')}</Text>
         </View>
       )}
 
@@ -42,15 +44,15 @@ export default function AdventureScreen({ navigation }) {
         if (!isStageUnlocked(progress, firstStageId) && world !== 1) {
           return (
             <View key={world} style={styles.lockedWorld}>
-              <Text style={styles.lockedWorldText}>Level {world} Locked</Text>
+              <Text style={styles.lockedWorldText}>{t('adventure.world')} {world} {t('adventure.locked')}</Text>
             </View>
           );
         }
 
         return (
           <View key={world} style={styles.worldContainer}>
-            <Text style={styles.worldTitle}>LEVEL {world}</Text>
-            {worldCompleted && <Text style={styles.worldCompletedText}>Cleared!</Text>}
+            <Text style={styles.worldTitle}>{t('adventure.world')} {world}</Text>
+            {worldCompleted && <Text style={styles.worldCompletedText}>{t('adventure.unlocked')}</Text>}
             <View style={styles.divider} />
             
             {getStagesForWorld(world).map((stage, index) => {
@@ -74,6 +76,15 @@ export default function AdventureScreen({ navigation }) {
               
               if (!unlocked) stageColor = theme.colors.textMuted;
 
+              let stageName = stage.title;
+              if (stage.type === STAGE_TYPES.NORMAL) {
+                stageName = `${t('adventure.stage')} ${stage.stageNumber}`;
+              } else if (stage.type === STAGE_TYPES.ELITE) {
+                stageName = t('adventure.eliteGatekeeper');
+              } else if (stage.type === STAGE_TYPES.BOSS) {
+                stageName = t('adventure.boss');
+              }
+
               return (
                 <View key={stage.id} style={styles.stageRow}>
                   <TouchableOpacity 
@@ -83,7 +94,7 @@ export default function AdventureScreen({ navigation }) {
                   >
                     <Text style={[styles.stageIcon, { color: stageColor }]}>{icon}</Text>
                     <Text style={[styles.stageName, { color: stageColor }]}>
-                      {stage.title}
+                      {stageName}
                     </Text>
                     <Text style={styles.stageStars}>{starString}</Text>
                   </TouchableOpacity>

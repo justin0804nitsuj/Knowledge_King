@@ -7,8 +7,10 @@ import { getWordById, getWordsByLevel } from '../domain/vocabulary/vocabularyRep
 import { generateQuestion } from '../domain/vocabulary/questionGenerator';
 import { createSeededRandom } from '../domain/game/seededRandom';
 import { processReviewAnswer } from '../domain/game/reviewProcessor';
+import { useTranslation } from 'react-i18next';
 
 export default function MistakeReviewScreen({ navigation }) {
+  const { t } = useTranslation();
   const [activeMistakes, setActiveMistakes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentQuestion, setCurrentQuestion] = useState(null);
@@ -102,13 +104,13 @@ export default function MistakeReviewScreen({ navigation }) {
     return (
       <View style={styles.container}>
         <View style={styles.card}>
-          <Text style={styles.title}>Review Complete</Text>
-          <Text style={styles.stat}>Reviewed: {sessionResults.reviewed}</Text>
-          <Text style={styles.stat}>Correct: {sessionResults.correct}</Text>
-          <Text style={styles.stat}>Recovered Words: {sessionResults.recoveredCount}</Text>
-          <Text style={styles.stat}>XP Earned: +{sessionResults.xpEarned}</Text>
+          <Text style={styles.title}>{t('mistakeReview.reviewComplete')}</Text>
+          <Text style={styles.stat}>{t('mistakeReview.reviewed')}: {sessionResults.reviewed}</Text>
+          <Text style={styles.stat}>{t('mistakeReview.correct')}: {sessionResults.correct}</Text>
+          <Text style={styles.stat}>{t('mistakeReview.recoveredWords')}: {sessionResults.recoveredCount}</Text>
+          <Text style={styles.stat}>{t('mistakeReview.xpEarned')}: +{sessionResults.xpEarned}</Text>
           <TouchableOpacity style={styles.btn} onPress={() => navigation.goBack()}>
-            <Text style={styles.btnText}>Back to Menu</Text>
+            <Text style={styles.btnText}>{t('mistakeReview.backToMenu')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -117,7 +119,7 @@ export default function MistakeReviewScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Mistake Review ({currentIndex + 1}/{activeMistakes.length})</Text>
+      <Text style={styles.header}>{t('mistakeReview.progress', { current: currentIndex + 1, total: activeMistakes.length })}</Text>
       
       <View style={styles.questionCard}>
         <Text style={styles.targetWord}>{currentQuestion.targetText}</Text>

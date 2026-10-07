@@ -4,8 +4,10 @@ import { theme } from '../theme';
 import { createInitialState, nextQuestion, answerQuestion, BATTLE_STATES } from '../domain/game/battleEngine';
 import { getWordsByLevel } from '../domain/vocabulary/vocabularyRepository';
 import { getStageById } from '../domain/adventure/campaignConfig';
+import { useTranslation } from 'react-i18next';
 
 export default function BattleScreen({ route, navigation }) {
+  const { t } = useTranslation();
   const { stageId } = route.params;
   const stage = getStageById(stageId);
   
@@ -87,19 +89,19 @@ export default function BattleScreen({ route, navigation }) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.scoreText}>Score: {score}</Text>
-        <Text style={styles.scoreText}>Combo: {combo}</Text>
+        <Text style={styles.scoreText}>{t('battle.score')}: {score}</Text>
+        <Text style={styles.scoreText}>{t('battle.combo')}: {combo}</Text>
       </View>
 
       {/* HP Bars */}
       <View style={styles.hpContainer}>
         <View style={styles.hpBox}>
-          <Text style={styles.hpTitle}>Player</Text>
+          <Text style={styles.hpTitle}>{t('battle.player')}</Text>
           <Text style={styles.hpValue}>{playerHp} HP</Text>
         </View>
         <Text style={styles.vs}>VS</Text>
         <View style={styles.hpBox}>
-          <Text style={styles.hpTitle}>Gatekeeper</Text>
+          <Text style={styles.hpTitle}>{t('battle.gatekeeper')}</Text>
           <Text style={styles.hpValue}>{opponentHp} HP</Text>
         </View>
       </View>
@@ -107,7 +109,7 @@ export default function BattleScreen({ route, navigation }) {
       {/* Target Word */}
       {currentQuestion && (
         <View style={styles.questionContainer}>
-          <Text style={styles.questionNumber}>Question {questionNumber}</Text>
+          <Text style={styles.questionNumber}>{t('battle.questionNumber', { current: questionNumber })}</Text>
           <Text style={styles.targetWord}>{currentQuestion.word}</Text>
           <Text style={styles.posText}>({currentQuestion.partOfSpeech})</Text>
         </View>
@@ -155,15 +157,15 @@ export default function BattleScreen({ route, navigation }) {
       {(status === BATTLE_STATES.QUESTION_RESOLVED || status === BATTLE_STATES.VICTORY || status === BATTLE_STATES.DEFEAT) && (
         <View style={styles.feedbackContainer}>
           {currentQuestion.isTimeout ? (
-            <Text style={[styles.feedbackText, { color: theme.colors.danger }]}>Timeout!</Text>
+            <Text style={[styles.feedbackText, { color: theme.colors.danger }]}>{t('battle.timeout')}</Text>
           ) : currentQuestion.isCorrect ? (
-            <Text style={[styles.feedbackText, { color: theme.colors.success }]}>Correct!</Text>
+            <Text style={[styles.feedbackText, { color: theme.colors.success }]}>{t('battle.correct')}</Text>
           ) : (
-            <Text style={[styles.feedbackText, { color: theme.colors.danger }]}>Wrong!</Text>
+            <Text style={[styles.feedbackText, { color: theme.colors.danger }]}>{t('battle.wrong')}</Text>
           )}
           <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
             <Text style={styles.nextBtnText}>
-              {status === BATTLE_STATES.QUESTION_RESOLVED ? "Next Question" : "View Results"}
+              {status === BATTLE_STATES.QUESTION_RESOLVED ? t('battle.nextQuestion') : t('battle.viewResults')}
             </Text>
           </TouchableOpacity>
         </View>
