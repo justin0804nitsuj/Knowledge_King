@@ -1,67 +1,12 @@
 [
   {
-    "id": "cookie-190",
-    "word": "cookie",
-    "level": 1,
-    "partOfSpeech": "n.",
-    "currentMeaning": "餅幹",
-    "problemType": "WRONG_CHARACTER",
-    "suggestedMeaning": "餅乾",
-    "confidence": "AUTO_FIX_HIGH_CONFIDENCE",
-    "sourceFile": "level-1.json"
-  },
-  {
-    "id": "taxicab/taxi/cab-856",
-    "word": "taxicab/taxi/cab",
-    "level": 1,
-    "partOfSpeech": "n.",
-    "currentMeaning": "出租車",
-    "problemType": "REGIONAL_TERM",
-    "suggestedMeaning": "計程車",
-    "confidence": "AUTO_FIX_HIGH_CONFIDENCE",
-    "sourceFile": "level-1.json"
-  },
-  {
-    "id": "biscuit-1095",
-    "word": "biscuit",
-    "level": 2,
-    "partOfSpeech": "n.",
-    "currentMeaning": "餅幹",
-    "problemType": "WRONG_CHARACTER",
-    "suggestedMeaning": "餅乾",
-    "confidence": "AUTO_FIX_HIGH_CONFIDENCE",
-    "sourceFile": "level-2.json"
-  },
-  {
-    "id": "network-1581",
-    "word": "network",
-    "level": 2,
-    "partOfSpeech": "n./v.",
-    "currentMeaning": "網絡",
-    "problemType": "REGIONAL_TERM",
-    "suggestedMeaning": "網路",
-    "confidence": "AUTO_FIX_HIGH_CONFIDENCE",
-    "sourceFile": "level-2.json"
-  },
-  {
-    "id": "cracker-5213",
-    "word": "cracker",
-    "level": 6,
-    "partOfSpeech": "n.",
-    "currentMeaning": "餅幹",
-    "problemType": "WRONG_CHARACTER",
-    "suggestedMeaning": "餅乾",
-    "confidence": "AUTO_FIX_HIGH_CONFIDENCE",
-    "sourceFile": "level-6.json"
-  },
-  {
     "id": "able-3",
     "word": "able",
     "level": 1,
     "partOfSpeech": "adj.",
-    "currentMeaning": "能幹的",
+    "currentMeaning": "能乾的",
     "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 幹",
+    "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
   },
@@ -99,24 +44,24 @@
     "sourceFile": "level-1.json"
   },
   {
-    "id": "bread-116",
-    "word": "bread",
-    "level": 1,
-    "partOfSpeech": "n.",
-    "currentMeaning": "面包",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 面",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-1.json"
-  },
-  {
     "id": "clean-170",
     "word": "clean",
     "level": 1,
     "partOfSpeech": "adj./v./adv./n.",
-    "currentMeaning": "幹淨的",
+    "currentMeaning": "乾淨的",
     "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 幹",
+    "reason": "Contains suspicious char: 乾",
+    "confidence": "HUMAN_REVIEW_REQUIRED",
+    "sourceFile": "level-1.json"
+  },
+  {
+    "id": "cookie-190",
+    "word": "cookie",
+    "level": 1,
+    "partOfSpeech": "n.",
+    "currentMeaning": "餅乾",
+    "problemType": "NEEDS_HUMAN_REVIEW",
+    "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
   },
@@ -147,9 +92,9 @@
     "word": "dry",
     "level": 1,
     "partOfSpeech": "adj./v.",
-    "currentMeaning": "幹的",
+    "currentMeaning": "乾的",
     "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 幹",
+    "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
   },
@@ -176,17 +121,6 @@
     "sourceFile": "level-1.json"
   },
   {
-    "id": "hair-371",
-    "word": "hair",
-    "level": 1,
-    "partOfSpeech": "n.",
-    "currentMeaning": "頭發",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 發",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-1.json"
-  },
-  {
     "id": "happen-376",
     "word": "happen",
     "level": 1,
@@ -202,7 +136,7 @@
     "word": "hide",
     "level": 1,
     "partOfSpeech": "v.",
-    "currentMeaning": "躲藏／隱藏",
+    "currentMeaning": "躲藏 / 隱藏",
     "problemType": "NEEDS_HUMAN_REVIEW",
     "reason": "Contains suspicious word: hide",
     "confidence": "HUMAN_REVIEW_REQUIRED",
@@ -253,17 +187,6 @@
     "sourceFile": "level-1.json"
   },
   {
-    "id": "repeat-708",
-    "word": "repeat",
-    "level": 1,
-    "partOfSpeech": "v.",
-    "currentMeaning": "重復",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 復",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-1.json"
-  },
-  {
     "id": "send-751",
     "word": "send",
     "level": 1,
@@ -286,35 +209,13 @@
     "sourceFile": "level-1.json"
   },
   {
-    "id": "bakery-1066",
-    "word": "bakery",
+    "id": "biscuit-1095",
+    "word": "biscuit",
     "level": 2,
     "partOfSpeech": "n.",
-    "currentMeaning": "面包店",
+    "currentMeaning": "餅乾",
     "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 面",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-2.json"
-  },
-  {
-    "id": "barber-1072",
-    "word": "barber",
-    "level": 2,
-    "partOfSpeech": "n.",
-    "currentMeaning": "理發師",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 發",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-2.json"
-  },
-  {
-    "id": "bun-1116",
-    "word": "bun",
-    "level": 2,
-    "partOfSpeech": "n.",
-    "currentMeaning": "小面包",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 面",
+    "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-2.json"
   },
@@ -356,9 +257,9 @@
     "word": "dryer",
     "level": 2,
     "partOfSpeech": "n.",
-    "currentMeaning": "幹衣機",
+    "currentMeaning": "乾衣機",
     "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 幹",
+    "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-2.json"
   },
@@ -385,33 +286,11 @@
     "sourceFile": "level-2.json"
   },
   {
-    "id": "haircut-1422",
-    "word": "haircut",
-    "level": 2,
-    "partOfSpeech": "n.",
-    "currentMeaning": "理發",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 發",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-2.json"
-  },
-  {
     "id": "mask-1529",
     "word": "mask",
     "level": 2,
     "partOfSpeech": "n./v.",
     "currentMeaning": "面具",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 面",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-2.json"
-  },
-  {
-    "id": "noodle-1585",
-    "word": "noodle",
-    "level": 2,
-    "partOfSpeech": "n.",
-    "currentMeaning": "面條",
     "problemType": "NEEDS_HUMAN_REVIEW",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
@@ -425,50 +304,6 @@
     "currentMeaning": "發生",
     "problemType": "NEEDS_HUMAN_REVIEW",
     "reason": "Contains suspicious char: 發",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-2.json"
-  },
-  {
-    "id": "paste-1619",
-    "word": "paste",
-    "level": 2,
-    "partOfSpeech": "n./v.",
-    "currentMeaning": "面團",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 面",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-2.json"
-  },
-  {
-    "id": "relation-1720",
-    "word": "relation",
-    "level": 2,
-    "partOfSpeech": "n.",
-    "currentMeaning": "關系",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 系",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-2.json"
-  },
-  {
-    "id": "relationship-1721",
-    "word": "relationship",
-    "level": 2,
-    "partOfSpeech": "n.",
-    "currentMeaning": "關系",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 系",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-2.json"
-  },
-  {
-    "id": "reply-1726",
-    "word": "reply",
-    "level": 2,
-    "partOfSpeech": "n./v.",
-    "currentMeaning": "答復",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 復",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-2.json"
   },
@@ -517,17 +352,6 @@
     "sourceFile": "level-2.json"
   },
   {
-    "id": "blouse-2088",
-    "word": "blouse",
-    "level": 3,
-    "partOfSpeech": "n.",
-    "currentMeaning": "寬松的上衣",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 松",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-3.json"
-  },
-  {
     "id": "detect-2239",
     "word": "detect",
     "level": 3,
@@ -535,28 +359,6 @@
     "currentMeaning": "發現",
     "problemType": "NEEDS_HUMAN_REVIEW",
     "reason": "Contains suspicious char: 發",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-3.json"
-  },
-  {
-    "id": "dumpling-2272",
-    "word": "dumpling",
-    "level": 3,
-    "partOfSpeech": "n.",
-    "currentMeaning": "面團布丁",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 面",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-3.json"
-  },
-  {
-    "id": "flour-2335",
-    "word": "flour",
-    "level": 3,
-    "partOfSpeech": "n.",
-    "currentMeaning": "面粉",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
   },
@@ -572,24 +374,13 @@
     "sourceFile": "level-3.json"
   },
   {
-    "id": "hairdresser-2379",
-    "word": "hairdresser",
-    "level": 3,
-    "partOfSpeech": "n.",
-    "currentMeaning": "美發師",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 發",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-3.json"
-  },
-  {
     "id": "hay-2393",
     "word": "hay",
     "level": 3,
     "partOfSpeech": "n.",
-    "currentMeaning": "幹草",
+    "currentMeaning": "乾草",
     "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 幹",
+    "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
   },
@@ -612,17 +403,6 @@
     "currentMeaning": "發明家",
     "problemType": "NEEDS_HUMAN_REVIEW",
     "reason": "Contains suspicious char: 發",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-3.json"
-  },
-  {
-    "id": "loaf-2502",
-    "word": "loaf",
-    "level": 3,
-    "partOfSpeech": "n.",
-    "currentMeaning": "一條面包",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
   },
@@ -664,9 +444,9 @@
     "word": "pint",
     "level": 3,
     "partOfSpeech": "n.",
-    "currentMeaning": "品脫(幹量或液量的單位)",
+    "currentMeaning": "品脫(乾量或液量的單位)",
     "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 幹",
+    "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
   },
@@ -678,39 +458,6 @@
     "currentMeaning": "發音",
     "problemType": "NEEDS_HUMAN_REVIEW",
     "reason": "Contains suspicious char: 發",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-3.json"
-  },
-  {
-    "id": "relax-2714",
-    "word": "relax",
-    "level": 3,
-    "partOfSpeech": "v.",
-    "currentMeaning": "放松",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 松",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-3.json"
-  },
-  {
-    "id": "robe-2743",
-    "word": "robe",
-    "level": 3,
-    "partOfSpeech": "n.",
-    "currentMeaning": "寬松長袍",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 松",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-3.json"
-  },
-  {
-    "id": "spaghetti-2822",
-    "word": "spaghetti",
-    "level": 3,
-    "partOfSpeech": "n.",
-    "currentMeaning": "意大利面條",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
   },
@@ -759,17 +506,6 @@
     "sourceFile": "level-3.json"
   },
   {
-    "id": "complicate-3174",
-    "word": "complicate",
-    "level": 4,
-    "partOfSpeech": "v.",
-    "currentMeaning": "弄復雜",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 復",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-4.json"
-  },
-  {
     "id": "consequent-3193",
     "word": "consequent",
     "level": 4,
@@ -799,17 +535,6 @@
     "currentMeaning": "假面目",
     "problemType": "NEEDS_HUMAN_REVIEW",
     "reason": "Contains suspicious char: 面",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-4.json"
-  },
-  {
-    "id": "elastic-3340",
-    "word": "elastic",
-    "level": 4,
-    "partOfSpeech": "adj./n.",
-    "currentMeaning": "松緊帶",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 松",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-4.json"
   },
@@ -847,17 +572,6 @@
     "sourceFile": "level-4.json"
   },
   {
-    "id": "loosen-3609",
-    "word": "loosen",
-    "level": 4,
-    "partOfSpeech": "v.",
-    "currentMeaning": "放松",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 松",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-4.json"
-  },
-  {
     "id": "marathon-3622",
     "word": "marathon",
     "level": 4,
@@ -865,17 +579,6 @@
     "currentMeaning": "馬拉松",
     "problemType": "NEEDS_HUMAN_REVIEW",
     "reason": "Contains suspicious char: 松",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-4.json"
-  },
-  {
-    "id": "pasta-3721",
-    "word": "pasta",
-    "level": 4,
-    "partOfSpeech": "n.",
-    "currentMeaning": "意大利面食",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-4.json"
   },
@@ -895,9 +598,9 @@
     "word": "raisin",
     "level": 4,
     "partOfSpeech": "n.",
-    "currentMeaning": "葡萄幹",
+    "currentMeaning": "葡萄乾",
     "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 幹",
+    "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-4.json"
   },
@@ -907,28 +610,6 @@
     "level": 4,
     "partOfSpeech": "n.",
     "currentMeaning": "恢復",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 復",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-4.json"
-  },
-  {
-    "id": "relaxation-3831",
-    "word": "relaxation",
-    "level": 4,
-    "partOfSpeech": "n.",
-    "currentMeaning": "松弛",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 松",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-4.json"
-  },
-  {
-    "id": "repetition-3839",
-    "word": "repetition",
-    "level": 4,
-    "partOfSpeech": "n.",
-    "currentMeaning": "重復",
     "problemType": "NEEDS_HUMAN_REVIEW",
     "reason": "Contains suspicious char: 復",
     "confidence": "HUMAN_REVIEW_REQUIRED",
@@ -979,46 +660,13 @@
     "sourceFile": "level-5.json"
   },
   {
-    "id": "batch-4087",
-    "word": "batch",
-    "level": 5,
-    "partOfSpeech": "n.",
-    "currentMeaning": "一次所烘的面包",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 面",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-5.json"
-  },
-  {
     "id": "competent-4186",
     "word": "competent",
     "level": 5,
     "partOfSpeech": "adj.",
-    "currentMeaning": "能幹的",
+    "currentMeaning": "能乾的",
     "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 幹",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-5.json"
-  },
-  {
-    "id": "complexity-4187",
-    "word": "complexity",
-    "level": 5,
-    "partOfSpeech": "n.",
-    "currentMeaning": "復雜",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 復",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-5.json"
-  },
-  {
-    "id": "complication-4189",
-    "word": "complication",
-    "level": 5,
-    "partOfSpeech": "n.",
-    "currentMeaning": "復雜化",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 復",
+    "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
   },
@@ -1034,35 +682,13 @@
     "sourceFile": "level-5.json"
   },
   {
-    "id": "correlation-4240",
-    "word": "correlation",
-    "level": 5,
-    "partOfSpeech": "n.",
-    "currentMeaning": "相互關系",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 系",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-5.json"
-  },
-  {
-    "id": "dough-4323",
-    "word": "dough",
-    "level": 5,
-    "partOfSpeech": "n.",
-    "currentMeaning": "生面團",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 面",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-5.json"
-  },
-  {
     "id": "drought-4326",
     "word": "drought",
     "level": 5,
     "partOfSpeech": "n.",
-    "currentMeaning": "幹旱",
+    "currentMeaning": "乾旱",
     "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 幹",
+    "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
   },
@@ -1111,17 +737,6 @@
     "sourceFile": "level-5.json"
   },
   {
-    "id": "plural-4647",
-    "word": "plural",
-    "level": 5,
-    "partOfSpeech": "adj./n.",
-    "currentMeaning": "復數",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 復",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-5.json"
-  },
-  {
     "id": "profile-4673",
     "word": "profile",
     "level": 5,
@@ -1151,28 +766,6 @@
     "currentMeaning": "後面",
     "problemType": "NEEDS_HUMAN_REVIEW",
     "reason": "Contains suspicious char: 面",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-5.json"
-  },
-  {
-    "id": "rifle-4746",
-    "word": "rifle",
-    "level": 5,
-    "partOfSpeech": "n./v.",
-    "currentMeaning": "來復槍",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 復",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-5.json"
-  },
-  {
-    "id": "sophisticated-4816",
-    "word": "sophisticated",
-    "level": 5,
-    "partOfSpeech": "adj.",
-    "currentMeaning": "復雜的",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 復",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
   },
@@ -1243,46 +836,24 @@
     "sourceFile": "level-5.json"
   },
   {
-    "id": "wig-4999",
-    "word": "wig",
-    "level": 5,
-    "partOfSpeech": "n.",
-    "currentMeaning": "假發",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 發",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-5.json"
-  },
-  {
-    "id": "blond/blonde-5097",
-    "word": "blond/blonde",
-    "level": 6,
-    "partOfSpeech": "n./adj.",
-    "currentMeaning": "(頭發)亞麻色的",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 發",
-    "confidence": "HUMAN_REVIEW_REQUIRED",
-    "sourceFile": "level-6.json"
-  },
-  {
     "id": "chili-5155",
     "word": "chili",
     "level": 6,
     "partOfSpeech": "n.",
-    "currentMeaning": "幹辣椒",
+    "currentMeaning": "乾辣椒",
     "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 幹",
+    "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
   },
   {
-    "id": "clone-5166",
-    "word": "clone",
+    "id": "cracker-5213",
+    "word": "cracker",
     "level": 6,
-    "partOfSpeech": "n./v.",
-    "currentMeaning": "無性系",
+    "partOfSpeech": "n.",
+    "currentMeaning": "餅乾",
     "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 系",
+    "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
   },

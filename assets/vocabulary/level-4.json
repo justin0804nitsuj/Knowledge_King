@@ -2893,7 +2893,8 @@
     "word": "complicate",
     "partOfSpeech": "v.",
     "level": 4,
-    "fallbackMeaning": "弄復雜",
+    "fallbackMeaning": "弄複雜",
+    "preferredMeaning": "弄複雜",
     "primaryDefinitions": [
       {
         "senseKey": "complicate%2:30:00::",
@@ -5710,7 +5711,8 @@
     "word": "elastic",
     "partOfSpeech": "adj./n.",
     "level": 4,
-    "fallbackMeaning": "松緊帶",
+    "fallbackMeaning": "鬆緊帶",
+    "preferredMeaning": "鬆緊帶",
     "primaryDefinitions": [
       {
         "senseKey": "elastic%3:00:00::",
@@ -10288,7 +10290,8 @@
     "word": "loosen",
     "partOfSpeech": "v.",
     "level": 4,
-    "fallbackMeaning": "放松",
+    "fallbackMeaning": "放鬆",
+    "preferredMeaning": "放鬆",
     "primaryDefinitions": [
       {
         "senseKey": "loosen%2:30:01::",
@@ -12178,7 +12181,8 @@
     "word": "pasta",
     "partOfSpeech": "n.",
     "level": 4,
-    "fallbackMeaning": "意大利面食",
+    "fallbackMeaning": "義大利麵食",
+    "preferredMeaning": "義大利麵食",
     "primaryDefinitions": [
       {
         "senseKey": "pasta%1:13:01::",
@@ -13578,7 +13582,8 @@
     "word": "raisin",
     "partOfSpeech": "n.",
     "level": 4,
-    "fallbackMeaning": "葡萄幹",
+    "fallbackMeaning": "葡萄乾",
+    "preferredMeaning": "葡萄乾",
     "primaryDefinitions": [
       {
         "senseKey": "raisin%1:13:00::",
@@ -13992,7 +13997,8 @@
     "word": "relaxation",
     "partOfSpeech": "n.",
     "level": 4,
-    "fallbackMeaning": "松弛",
+    "fallbackMeaning": "鬆弛",
+    "preferredMeaning": "鬆弛",
     "primaryDefinitions": [
       {
         "senseKey": "relaxation%1:22:01::",
@@ -14122,7 +14128,8 @@
     "word": "repetition",
     "partOfSpeech": "n.",
     "level": 4,
-    "fallbackMeaning": "重復",
+    "fallbackMeaning": "重複",
+    "preferredMeaning": "重複",
     "primaryDefinitions": [
       {
         "senseKey": "repetition%1:11:00::",

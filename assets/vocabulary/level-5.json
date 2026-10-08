@@ -1344,7 +1344,8 @@
     "word": "batch",
     "partOfSpeech": "n.",
     "level": 5,
-    "fallbackMeaning": "一次所烘的面包",
+    "fallbackMeaning": "一次所烘的麵包",
+    "preferredMeaning": "一次所烘的麵包",
     "primaryDefinitions": [
       {
         "senseKey": "batch%1:14:01::",
@@ -3029,7 +3030,8 @@
     "word": "competent",
     "partOfSpeech": "adj.",
     "level": 5,
-    "fallbackMeaning": "能幹的",
+    "fallbackMeaning": "能乾的",
+    "preferredMeaning": "能乾的",
     "primaryDefinitions": [
       {
         "senseKey": "competent%3:00:00::",
@@ -3044,7 +3046,8 @@
     "word": "complexity",
     "partOfSpeech": "n.",
     "level": 5,
-    "fallbackMeaning": "復雜",
+    "fallbackMeaning": "複雜",
+    "preferredMeaning": "複雜",
     "primaryDefinitions": [
       {
         "senseKey": "complexity%1:07:00::",
@@ -3074,7 +3077,8 @@
     "word": "complication",
     "partOfSpeech": "n.",
     "level": 5,
-    "fallbackMeaning": "復雜化",
+    "fallbackMeaning": "複雜化",
+    "preferredMeaning": "複雜化",
     "primaryDefinitions": [
       {
         "senseKey": "complication%1:04:00::",
@@ -3959,7 +3963,8 @@
     "word": "correlation",
     "partOfSpeech": "n.",
     "level": 5,
-    "fallbackMeaning": "相互關系",
+    "fallbackMeaning": "相互關係",
+    "preferredMeaning": "相互關係",
     "primaryDefinitions": [
       {
         "senseKey": "correlation%1:24:00::",
@@ -5334,7 +5339,8 @@
     "word": "dough",
     "partOfSpeech": "n.",
     "level": 5,
-    "fallbackMeaning": "生面團",
+    "fallbackMeaning": "生麵團",
+    "preferredMeaning": "生麵團",
     "primaryDefinitions": [
       {
         "senseKey": "dough%1:13:00::",
@@ -5379,7 +5385,8 @@
     "word": "drought",
     "partOfSpeech": "n.",
     "level": 5,
-    "fallbackMeaning": "幹旱",
+    "fallbackMeaning": "乾旱",
+    "preferredMeaning": "乾旱",
     "primaryDefinitions": [
       {
         "senseKey": "drought%1:26:00::",
@@ -10898,7 +10905,8 @@
     "word": "plural",
     "partOfSpeech": "adj./n.",
     "level": 5,
-    "fallbackMeaning": "復數",
+    "fallbackMeaning": "複數",
+    "preferredMeaning": "複數",
     "primaryDefinitions": [
       {
         "senseKey": "plural%3:00:01::",
@@ -12738,7 +12746,8 @@
     "word": "rifle",
     "partOfSpeech": "n./v.",
     "level": 5,
-    "fallbackMeaning": "來復槍",
+    "fallbackMeaning": "來福槍",
+    "preferredMeaning": "來福槍",
     "primaryDefinitions": [
       {
         "senseKey": "rifle%1:06:00::",
@@ -14053,7 +14062,8 @@
     "word": "sophisticated",
     "partOfSpeech": "adj.",
     "level": 5,
-    "fallbackMeaning": "復雜的",
+    "fallbackMeaning": "複雜的",
+    "preferredMeaning": "複雜的",
     "primaryDefinitions": [
       {
         "senseKey": "sophisticated%3:00:00::",
@@ -17225,7 +17235,8 @@
     "word": "wig",
     "partOfSpeech": "n.",
     "level": 5,
-    "fallbackMeaning": "假發",
+    "fallbackMeaning": "假髮",
+    "preferredMeaning": "假髮",
     "primaryDefinitions": [
       {
         "senseKey": "wig%1:06:00::",

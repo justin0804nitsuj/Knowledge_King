@@ -33,7 +33,8 @@
     "word": "able",
     "partOfSpeech": "adj.",
     "level": 1,
-    "fallbackMeaning": "能幹的",
+    "fallbackMeaning": "能乾的",
+    "preferredMeaning": "能乾的",
     "primaryDefinitions": [
       {
         "senseKey": "able%3:00:00::",
@@ -2056,7 +2057,8 @@
     "word": "bread",
     "partOfSpeech": "n.",
     "level": 1,
-    "fallbackMeaning": "面包",
+    "fallbackMeaning": "麵包",
+    "preferredMeaning": "麵包",
     "primaryDefinitions": [
       {
         "senseKey": "bread%1:13:00::",
@@ -3106,7 +3108,8 @@
     "word": "clean",
     "partOfSpeech": "adj./v./adv./n.",
     "level": 1,
-    "fallbackMeaning": "幹淨的",
+    "fallbackMeaning": "乾淨的",
+    "preferredMeaning": "乾淨的",
     "primaryDefinitions": [
       {
         "senseKey": "clean%3:00:01::",
@@ -4654,7 +4657,8 @@
     "word": "dry",
     "partOfSpeech": "adj./v.",
     "level": 1,
-    "fallbackMeaning": "幹的",
+    "fallbackMeaning": "乾的",
+    "preferredMeaning": "乾的",
     "primaryDefinitions": [
       {
         "senseKey": "dry%3:00:01::",
@@ -7078,7 +7082,8 @@
     "word": "hair",
     "partOfSpeech": "n.",
     "level": 1,
-    "fallbackMeaning": "頭發",
+    "fallbackMeaning": "頭髮",
+    "preferredMeaning": "頭髮",
     "primaryDefinitions": [
       {
         "senseKey": "hair%1:08:00::",
@@ -13461,7 +13466,8 @@
     "word": "repeat",
     "partOfSpeech": "v.",
     "level": 1,
-    "fallbackMeaning": "重復",
+    "fallbackMeaning": "重複",
+    "preferredMeaning": "重複",
     "primaryDefinitions": [
       {
         "senseKey": "repeat%2:32:00::",

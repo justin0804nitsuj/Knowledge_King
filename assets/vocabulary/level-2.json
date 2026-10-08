@@ -1186,7 +1186,8 @@
     "word": "bakery",
     "partOfSpeech": "n.",
     "level": 2,
-    "fallbackMeaning": "面包店",
+    "fallbackMeaning": "麵包店",
+    "preferredMeaning": "麵包店",
     "primaryDefinitions": [
       {
         "senseKey": "bakery%1:06:00::",
@@ -1301,7 +1302,8 @@
     "word": "barber",
     "partOfSpeech": "n.",
     "level": 2,
-    "fallbackMeaning": "理發師",
+    "fallbackMeaning": "理髮師",
+    "preferredMeaning": "理髮師",
     "primaryDefinitions": [
       {
         "senseKey": "barber%1:18:00::",
@@ -2132,7 +2134,8 @@
     "word": "bun",
     "partOfSpeech": "n.",
     "level": 2,
-    "fallbackMeaning": "小面包",
+    "fallbackMeaning": "小麵包",
+    "preferredMeaning": "小麵包",
     "primaryDefinitions": [
       {
         "senseKey": "bun%1:13:00::",
@@ -5309,7 +5312,8 @@
     "word": "dryer",
     "partOfSpeech": "n.",
     "level": 2,
-    "fallbackMeaning": "幹衣機",
+    "fallbackMeaning": "乾衣機",
+    "preferredMeaning": "乾衣機",
     "primaryDefinitions": [
       {
         "senseKey": "dryer%1:06:00::",
@@ -7894,7 +7898,8 @@
     "word": "haircut",
     "partOfSpeech": "n.",
     "level": 2,
-    "fallbackMeaning": "理發",
+    "fallbackMeaning": "理髮",
+    "preferredMeaning": "理髮",
     "primaryDefinitions": [
       {
         "senseKey": "haircut%1:08:00::",
@@ -10713,7 +10718,8 @@
     "word": "noodle",
     "partOfSpeech": "n.",
     "level": 2,
-    "fallbackMeaning": "面條",
+    "fallbackMeaning": "麵條",
+    "preferredMeaning": "麵條",
     "primaryDefinitions": [
       {
         "senseKey": "noodle%1:13:00::",
@@ -11271,7 +11277,8 @@
     "word": "paste",
     "partOfSpeech": "n./v.",
     "level": 2,
-    "fallbackMeaning": "面團",
+    "fallbackMeaning": "麵團",
+    "preferredMeaning": "麵團",
     "primaryDefinitions": [
       {
         "senseKey": "paste%1:27:01::",
@@ -13084,7 +13091,8 @@
     "word": "relation",
     "partOfSpeech": "n.",
     "level": 2,
-    "fallbackMeaning": "關系",
+    "fallbackMeaning": "關係",
+    "preferredMeaning": "關係",
     "primaryDefinitions": [
       {
         "senseKey": "relation%1:03:00::",
@@ -13099,7 +13107,8 @@
     "word": "relationship",
     "partOfSpeech": "n.",
     "level": 2,
-    "fallbackMeaning": "關系",
+    "fallbackMeaning": "關係",
+    "preferredMeaning": "關係",
     "primaryDefinitions": [
       {
         "senseKey": "relationship%1:24:00::",
@@ -13214,7 +13223,8 @@
     "word": "reply",
     "partOfSpeech": "n./v.",
     "level": 2,
-    "fallbackMeaning": "答復",
+    "fallbackMeaning": "答覆",
+    "preferredMeaning": "答覆",
     "primaryDefinitions": [
       {
         "senseKey": "reply%1:10:01::",

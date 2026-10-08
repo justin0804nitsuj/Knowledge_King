@@ -1,0 +1,1312 @@
+[
+  {
+    "word": "able",
+    "id": "able-3",
+    "level": 1,
+    "partOfSpeech": "adj.",
+    "before": "能幹的",
+    "decision": "FIXED",
+    "after": "能乾的",
+    "reason": "Replaced 幹的 with 乾的 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "back",
+    "id": "back-55",
+    "level": 1,
+    "partOfSpeech": "adv./n./v./adj.",
+    "before": "後面的",
+    "decision": "CORRECT_AS_IS",
+    "after": "後面的",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "behind",
+    "id": "behind-81",
+    "level": 1,
+    "partOfSpeech": "prep./adv.",
+    "before": "在……後面",
+    "decision": "CORRECT_AS_IS",
+    "after": "在……後面",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "below",
+    "id": "below-85",
+    "level": 1,
+    "partOfSpeech": "adv./prep.",
+    "before": "在下面",
+    "decision": "CORRECT_AS_IS",
+    "after": "在下面",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "bread",
+    "id": "bread-116",
+    "level": 1,
+    "partOfSpeech": "n.",
+    "before": "面包",
+    "decision": "FIXED",
+    "after": "麵包",
+    "reason": "Replaced 面包 with 麵包 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "clean",
+    "id": "clean-170",
+    "level": 1,
+    "partOfSpeech": "adj./v./adv./n.",
+    "before": "幹淨的",
+    "decision": "FIXED",
+    "after": "乾淨的",
+    "reason": "Replaced 幹淨 with 乾淨 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "couch",
+    "id": "couch-196",
+    "level": 1,
+    "partOfSpeech": "n./v.",
+    "before": "長沙發",
+    "decision": "CORRECT_AS_IS",
+    "after": "長沙發",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "crazy",
+    "id": "crazy-203",
+    "level": 1,
+    "partOfSpeech": "adj.",
+    "before": "發狂的",
+    "decision": "CORRECT_AS_IS",
+    "after": "發狂的",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "dry",
+    "id": "dry-247",
+    "level": 1,
+    "partOfSpeech": "adj./v.",
+    "before": "幹的",
+    "decision": "FIXED",
+    "after": "乾的",
+    "reason": "Replaced 幹的 with 乾的 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "find",
+    "id": "find-309",
+    "level": 1,
+    "partOfSpeech": "v./n.",
+    "before": "發現",
+    "decision": "CORRECT_AS_IS",
+    "after": "發現",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "front",
+    "id": "front-334",
+    "level": 1,
+    "partOfSpeech": "adj./n.",
+    "before": "前面",
+    "decision": "CORRECT_AS_IS",
+    "after": "前面",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "hair",
+    "id": "hair-371",
+    "level": 1,
+    "partOfSpeech": "n.",
+    "before": "頭發",
+    "decision": "FIXED",
+    "after": "頭髮",
+    "reason": "Replaced 頭發 with 頭髮 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "happen",
+    "id": "happen-376",
+    "level": 1,
+    "partOfSpeech": "v.",
+    "before": "發生",
+    "decision": "CORRECT_AS_IS",
+    "after": "發生",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "hide",
+    "id": "hide-397",
+    "level": 1,
+    "partOfSpeech": "v.",
+    "before": "躲藏／隱藏",
+    "decision": "FIXED",
+    "after": "躲藏 / 隱藏",
+    "reason": "Wrong primary sense. Fixed to verb meaning."
+  },
+  {
+    "word": "interview",
+    "id": "interview-435",
+    "level": 1,
+    "partOfSpeech": "n./v.",
+    "before": "面談",
+    "decision": "CORRECT_AS_IS",
+    "after": "面談",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "out",
+    "id": "out-615",
+    "level": 1,
+    "partOfSpeech": "adv./prep./adj./n./v.",
+    "before": "外面的",
+    "decision": "CORRECT_AS_IS",
+    "after": "外面的",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "outside",
+    "id": "outside-616",
+    "level": 1,
+    "partOfSpeech": "prep./adv./adj./n.",
+    "before": "外面",
+    "decision": "CORRECT_AS_IS",
+    "after": "外面",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "queen",
+    "id": "queen-687",
+    "level": 1,
+    "partOfSpeech": "n.",
+    "before": "女王；王后",
+    "decision": "FIXED",
+    "after": "女王；王后",
+    "reason": "Ensured correct spelling of 王后."
+  },
+  {
+    "word": "repeat",
+    "id": "repeat-708",
+    "level": 1,
+    "partOfSpeech": "v.",
+    "before": "重復",
+    "decision": "FIXED",
+    "after": "重複",
+    "reason": "Replaced 重復 with 重複 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "send",
+    "id": "send-751",
+    "level": 1,
+    "partOfSpeech": "v.",
+    "before": "發送",
+    "decision": "CORRECT_AS_IS",
+    "after": "發送",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "sofa",
+    "id": "sofa-799",
+    "level": 1,
+    "partOfSpeech": "n.",
+    "before": "沙發",
+    "decision": "CORRECT_AS_IS",
+    "after": "沙發",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "bakery",
+    "id": "bakery-1066",
+    "level": 2,
+    "partOfSpeech": "n.",
+    "before": "面包店",
+    "decision": "FIXED",
+    "after": "麵包店",
+    "reason": "Replaced 面包 with 麵包 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "barber",
+    "id": "barber-1072",
+    "level": 2,
+    "partOfSpeech": "n.",
+    "before": "理發師",
+    "decision": "FIXED",
+    "after": "理髮師",
+    "reason": "Replaced 理發 with 理髮 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "bun",
+    "id": "bun-1116",
+    "level": 2,
+    "partOfSpeech": "n.",
+    "before": "小面包",
+    "decision": "FIXED",
+    "after": "小麵包",
+    "reason": "Replaced 面包 with 麵包 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "develop(ment)",
+    "id": "develop(ment)-1248",
+    "level": 2,
+    "partOfSpeech": "v./(n.)",
+    "before": "發展",
+    "decision": "CORRECT_AS_IS",
+    "after": "發展",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "discover",
+    "id": "discover-1261",
+    "level": 2,
+    "partOfSpeech": "v.",
+    "before": "發現",
+    "decision": "CORRECT_AS_IS",
+    "after": "發現",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "discovery",
+    "id": "discovery-1262",
+    "level": 2,
+    "partOfSpeech": "n.",
+    "before": "發現",
+    "decision": "CORRECT_AS_IS",
+    "after": "發現",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "dryer",
+    "id": "dryer-1283",
+    "level": 2,
+    "partOfSpeech": "n.",
+    "before": "幹衣機",
+    "decision": "FIXED",
+    "after": "乾衣機",
+    "reason": "Replaced 幹衣 with 乾衣 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "feature",
+    "id": "feature-1348",
+    "level": 2,
+    "partOfSpeech": "n./v.",
+    "before": "面孔的一部分(如眼、口等)",
+    "decision": "CORRECT_AS_IS",
+    "after": "面孔的一部分(如眼、口等)",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "fever",
+    "id": "fever-1353",
+    "level": 2,
+    "partOfSpeech": "n.",
+    "before": "發燒",
+    "decision": "CORRECT_AS_IS",
+    "after": "發燒",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "haircut",
+    "id": "haircut-1422",
+    "level": 2,
+    "partOfSpeech": "n.",
+    "before": "理發",
+    "decision": "FIXED",
+    "after": "理髮",
+    "reason": "Replaced 理發 with 理髮 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "mask",
+    "id": "mask-1529",
+    "level": 2,
+    "partOfSpeech": "n./v.",
+    "before": "面具",
+    "decision": "CORRECT_AS_IS",
+    "after": "面具",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "noodle",
+    "id": "noodle-1585",
+    "level": 2,
+    "partOfSpeech": "n.",
+    "before": "面條",
+    "decision": "FIXED",
+    "after": "麵條",
+    "reason": "Replaced 面條 with 麵條 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "occur",
+    "id": "occur-1594",
+    "level": 2,
+    "partOfSpeech": "v.",
+    "before": "發生",
+    "decision": "CORRECT_AS_IS",
+    "after": "發生",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "paste",
+    "id": "paste-1619",
+    "level": 2,
+    "partOfSpeech": "n./v.",
+    "before": "面團",
+    "decision": "FIXED",
+    "after": "麵團",
+    "reason": "Replaced 面團 with 麵團 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "relation",
+    "id": "relation-1720",
+    "level": 2,
+    "partOfSpeech": "n.",
+    "before": "關系",
+    "decision": "FIXED",
+    "after": "關係",
+    "reason": "Replaced 關系 with 關係 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "relationship",
+    "id": "relationship-1721",
+    "level": 2,
+    "partOfSpeech": "n.",
+    "before": "關系",
+    "decision": "FIXED",
+    "after": "關係",
+    "reason": "Replaced 關系 with 關係 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "reply",
+    "id": "reply-1726",
+    "level": 2,
+    "partOfSpeech": "n./v.",
+    "before": "答復",
+    "decision": "FIXED",
+    "after": "答覆",
+    "reason": "Replaced 答復 with 答覆 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "shot",
+    "id": "shot-1792",
+    "level": 2,
+    "partOfSpeech": "n.",
+    "before": "發射",
+    "decision": "CORRECT_AS_IS",
+    "after": "發射",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "surface",
+    "id": "surface-1875",
+    "level": 2,
+    "partOfSpeech": "n./v.",
+    "before": "面",
+    "decision": "CORRECT_AS_IS",
+    "after": "面",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "system",
+    "id": "system-1886",
+    "level": 2,
+    "partOfSpeech": "n.",
+    "before": "系統",
+    "decision": "CORRECT_AS_IS",
+    "after": "系統",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "upper",
+    "id": "upper-1947",
+    "level": 2,
+    "partOfSpeech": "adj.",
+    "before": "上面的",
+    "decision": "CORRECT_AS_IS",
+    "after": "上面的",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "blouse",
+    "id": "blouse-2088",
+    "level": 3,
+    "partOfSpeech": "n.",
+    "before": "寬松的上衣",
+    "decision": "FIXED",
+    "after": "寬鬆的上衣",
+    "reason": "Replaced 寬松 with 寬鬆 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "detect",
+    "id": "detect-2239",
+    "level": 3,
+    "partOfSpeech": "v.",
+    "before": "發現",
+    "decision": "CORRECT_AS_IS",
+    "after": "發現",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "dumpling",
+    "id": "dumpling-2272",
+    "level": 3,
+    "partOfSpeech": "n.",
+    "before": "面團布丁",
+    "decision": "FIXED",
+    "after": "麵團布丁",
+    "reason": "Replaced 面團 with 麵團 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "flour",
+    "id": "flour-2335",
+    "level": 3,
+    "partOfSpeech": "n.",
+    "before": "面粉",
+    "decision": "FIXED",
+    "after": "麵粉",
+    "reason": "Replaced 面粉 with 麵粉 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "frequent",
+    "id": "frequent-2347",
+    "level": 3,
+    "partOfSpeech": "adj./v.",
+    "before": "時常發生的",
+    "decision": "CORRECT_AS_IS",
+    "after": "時常發生的",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "hairdresser",
+    "id": "hairdresser-2379",
+    "level": 3,
+    "partOfSpeech": "n.",
+    "before": "美發師",
+    "decision": "FIXED",
+    "after": "美髮師",
+    "reason": "Replaced 美發 with 美髮 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "hay",
+    "id": "hay-2393",
+    "level": 3,
+    "partOfSpeech": "n.",
+    "before": "幹草",
+    "decision": "FIXED",
+    "after": "乾草",
+    "reason": "Replaced 幹草 with 乾草 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "invent",
+    "id": "invent-2446",
+    "level": 3,
+    "partOfSpeech": "v.",
+    "before": "發明",
+    "decision": "CORRECT_AS_IS",
+    "after": "發明",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "inventor",
+    "id": "inventor-2447",
+    "level": 3,
+    "partOfSpeech": "n.",
+    "before": "發明家",
+    "decision": "CORRECT_AS_IS",
+    "after": "發明家",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "loaf",
+    "id": "loaf-2502",
+    "level": 3,
+    "partOfSpeech": "n.",
+    "before": "一條面包",
+    "decision": "FIXED",
+    "after": "一條麵包",
+    "reason": "Replaced 面包 with 麵包 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "missile",
+    "id": "missile-2545",
+    "level": 3,
+    "partOfSpeech": "n.",
+    "before": "發射物",
+    "decision": "CORRECT_AS_IS",
+    "after": "發射物",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "opposite",
+    "id": "opposite-2591",
+    "level": 3,
+    "partOfSpeech": "adj./n./prep./adv.",
+    "before": "相反的；對面",
+    "decision": "CORRECT_AS_IS",
+    "after": "相反的；對面",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "pine",
+    "id": "pine-2643",
+    "level": 3,
+    "partOfSpeech": "n.",
+    "before": "松樹",
+    "decision": "CORRECT_AS_IS",
+    "after": "松樹",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "pint",
+    "id": "pint-2645",
+    "level": 3,
+    "partOfSpeech": "n.",
+    "before": "品脫(幹量或液量的單位)",
+    "decision": "FIXED",
+    "after": "品脫(乾量或液量的單位)",
+    "reason": "Replaced 品脫(幹量 with 品脫(乾量 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "pronounce",
+    "id": "pronounce-2683",
+    "level": 3,
+    "partOfSpeech": "v.",
+    "before": "發音",
+    "decision": "CORRECT_AS_IS",
+    "after": "發音",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "relax",
+    "id": "relax-2714",
+    "level": 3,
+    "partOfSpeech": "v.",
+    "before": "放松",
+    "decision": "FIXED",
+    "after": "放鬆",
+    "reason": "Replaced 放松 with 放鬆 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "robe",
+    "id": "robe-2743",
+    "level": 3,
+    "partOfSpeech": "n.",
+    "before": "寬松長袍",
+    "decision": "FIXED",
+    "after": "寬鬆長袍",
+    "reason": "Replaced 寬松 with 寬鬆 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "spaghetti",
+    "id": "spaghetti-2822",
+    "level": 3,
+    "partOfSpeech": "n.",
+    "before": "意大利面條",
+    "decision": "FIXED",
+    "after": "意大利麵條",
+    "reason": "Replaced 面條 with 麵條 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "squirrel",
+    "id": "squirrel-2835",
+    "level": 3,
+    "partOfSpeech": "n.",
+    "before": "松鼠",
+    "decision": "CORRECT_AS_IS",
+    "after": "松鼠",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "swear",
+    "id": "swear-2881",
+    "level": 3,
+    "partOfSpeech": "v.",
+    "before": "發誓",
+    "decision": "CORRECT_AS_IS",
+    "after": "發誓",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "trunk",
+    "id": "trunk-2938",
+    "level": 3,
+    "partOfSpeech": "n.",
+    "before": "樹幹",
+    "decision": "CORRECT_AS_IS",
+    "after": "樹幹",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "underlying",
+    "id": "underlying-2947",
+    "level": 3,
+    "partOfSpeech": "v.",
+    "before": "在下面的",
+    "decision": "CORRECT_AS_IS",
+    "after": "在下面的",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "complicate",
+    "id": "complicate-3174",
+    "level": 4,
+    "partOfSpeech": "v.",
+    "before": "弄復雜",
+    "decision": "FIXED",
+    "after": "弄複雜",
+    "reason": "Replaced 弄復雜 with 弄複雜 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "consequent",
+    "id": "consequent-3193",
+    "level": 4,
+    "partOfSpeech": "adj.",
+    "before": "隨後發生的事情",
+    "decision": "CORRECT_AS_IS",
+    "after": "隨後發生的事情",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "crunchy",
+    "id": "crunchy-3247",
+    "level": 4,
+    "partOfSpeech": "adj.",
+    "before": "發嘎吱嘎吱聲的",
+    "decision": "CORRECT_AS_IS",
+    "after": "發嘎吱嘎吱聲的",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "disguise",
+    "id": "disguise-3303",
+    "level": 4,
+    "partOfSpeech": "v./n.",
+    "before": "假面目",
+    "decision": "CORRECT_AS_IS",
+    "after": "假面目",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "elastic",
+    "id": "elastic-3340",
+    "level": 4,
+    "partOfSpeech": "adj./n.",
+    "before": "松緊帶",
+    "decision": "FIXED",
+    "after": "鬆緊帶",
+    "reason": "Replaced 松緊 with 鬆緊 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "explosion",
+    "id": "explosion-3382",
+    "level": 4,
+    "partOfSpeech": "n.",
+    "before": "爆發",
+    "decision": "CORRECT_AS_IS",
+    "after": "爆發",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "invention",
+    "id": "invention-3568",
+    "level": 4,
+    "partOfSpeech": "n.",
+    "before": "發明",
+    "decision": "CORRECT_AS_IS",
+    "after": "發明",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "issue",
+    "id": "issue-3574",
+    "level": 4,
+    "partOfSpeech": "n./v.",
+    "before": "發行",
+    "decision": "CORRECT_AS_IS",
+    "after": "發行",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "loosen",
+    "id": "loosen-3609",
+    "level": 4,
+    "partOfSpeech": "v.",
+    "before": "放松",
+    "decision": "FIXED",
+    "after": "放鬆",
+    "reason": "Replaced 放松 with 放鬆 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "marathon",
+    "id": "marathon-3622",
+    "level": 4,
+    "partOfSpeech": "n.",
+    "before": "馬拉松",
+    "decision": "CORRECT_AS_IS",
+    "after": "馬拉松",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "pasta",
+    "id": "pasta-3721",
+    "level": 4,
+    "partOfSpeech": "n.",
+    "before": "意大利面食",
+    "decision": "FIXED",
+    "after": "義大利麵食",
+    "reason": "Replaced 意大利面 with 義大利麵 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "pronunciation",
+    "id": "pronunciation-3784",
+    "level": 4,
+    "partOfSpeech": "n.",
+    "before": "發音",
+    "decision": "CORRECT_AS_IS",
+    "after": "發音",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "raisin",
+    "id": "raisin-3806",
+    "level": 4,
+    "partOfSpeech": "n.",
+    "before": "葡萄幹",
+    "decision": "FIXED",
+    "after": "葡萄乾",
+    "reason": "Replaced 葡萄幹 with 葡萄乾 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "recovery",
+    "id": "recovery-3813",
+    "level": 4,
+    "partOfSpeech": "n.",
+    "before": "恢復",
+    "decision": "CORRECT_AS_IS",
+    "after": "恢復",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "relaxation",
+    "id": "relaxation-3831",
+    "level": 4,
+    "partOfSpeech": "n.",
+    "before": "松弛",
+    "decision": "FIXED",
+    "after": "鬆弛",
+    "reason": "Replaced 松弛 with 鬆弛 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "repetition",
+    "id": "repetition-3839",
+    "level": 4,
+    "partOfSpeech": "n.",
+    "before": "重復",
+    "decision": "FIXED",
+    "after": "重複",
+    "reason": "Replaced 重復 with 重複 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "restore",
+    "id": "restore-3854",
+    "level": 4,
+    "partOfSpeech": "v.",
+    "before": "回復",
+    "decision": "CORRECT_AS_IS",
+    "after": "回復",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "shave",
+    "id": "shave-3892",
+    "level": 4,
+    "partOfSpeech": "v./n.",
+    "before": "修面",
+    "decision": "CORRECT_AS_IS",
+    "after": "修面",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "systematic",
+    "id": "systematic-3941",
+    "level": 4,
+    "partOfSpeech": "adj.",
+    "before": "有系統的",
+    "decision": "CORRECT_AS_IS",
+    "after": "有系統的",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "articulate",
+    "id": "articulate-4065",
+    "level": 5,
+    "partOfSpeech": "v./adj.",
+    "before": "發音清晰的",
+    "decision": "CORRECT_AS_IS",
+    "after": "發音清晰的",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "batch",
+    "id": "batch-4087",
+    "level": 5,
+    "partOfSpeech": "n.",
+    "before": "一次所烘的面包",
+    "decision": "FIXED",
+    "after": "一次所烘的麵包",
+    "reason": "Replaced 面包 with 麵包 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "competent",
+    "id": "competent-4186",
+    "level": 5,
+    "partOfSpeech": "adj.",
+    "before": "能幹的",
+    "decision": "FIXED",
+    "after": "能乾的",
+    "reason": "Replaced 幹的 with 乾的 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "complexity",
+    "id": "complexity-4187",
+    "level": 5,
+    "partOfSpeech": "n.",
+    "before": "復雜",
+    "decision": "FIXED",
+    "after": "複雜",
+    "reason": "Replaced 復雜 with 複雜 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "complication",
+    "id": "complication-4189",
+    "level": 5,
+    "partOfSpeech": "n.",
+    "before": "復雜化",
+    "decision": "FIXED",
+    "after": "複雜化",
+    "reason": "Replaced 復雜 with 複雜 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "confront",
+    "id": "confront-4209",
+    "level": 5,
+    "partOfSpeech": "v.",
+    "before": "使面對",
+    "decision": "CORRECT_AS_IS",
+    "after": "使面對",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "correlation",
+    "id": "correlation-4240",
+    "level": 5,
+    "partOfSpeech": "n.",
+    "before": "相互關系",
+    "decision": "FIXED",
+    "after": "相互關係",
+    "reason": "Replaced 關系 with 關係 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "dough",
+    "id": "dough-4323",
+    "level": 5,
+    "partOfSpeech": "n.",
+    "before": "生面團",
+    "decision": "FIXED",
+    "after": "生麵團",
+    "reason": "Replaced 面團 with 麵團 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "drought",
+    "id": "drought-4326",
+    "level": 5,
+    "partOfSpeech": "n.",
+    "before": "幹旱",
+    "decision": "FIXED",
+    "after": "乾旱",
+    "reason": "Replaced 幹旱 with 乾旱 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "ecosystem",
+    "id": "ecosystem-4329",
+    "level": 5,
+    "partOfSpeech": "n.",
+    "before": "生態系統",
+    "decision": "CORRECT_AS_IS",
+    "after": "生態系統",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "emission",
+    "id": "emission-4335",
+    "level": 5,
+    "partOfSpeech": "n.",
+    "before": "發射",
+    "decision": "CORRECT_AS_IS",
+    "after": "發射",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "erupt",
+    "id": "erupt-4351",
+    "level": 5,
+    "partOfSpeech": "v.",
+    "before": "爆發",
+    "decision": "CORRECT_AS_IS",
+    "after": "爆發",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "ideology",
+    "id": "ideology-4451",
+    "level": 5,
+    "partOfSpeech": "n.",
+    "before": "思想體系",
+    "decision": "CORRECT_AS_IS",
+    "after": "思想體系",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "plural",
+    "id": "plural-4647",
+    "level": 5,
+    "partOfSpeech": "adj./n.",
+    "before": "復數",
+    "decision": "FIXED",
+    "after": "複數",
+    "reason": "Replaced 復數 with 複數 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "profile",
+    "id": "profile-4673",
+    "level": 5,
+    "partOfSpeech": "n./v.",
+    "before": "側面",
+    "decision": "CORRECT_AS_IS",
+    "after": "側面",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "projection",
+    "id": "projection-4677",
+    "level": 5,
+    "partOfSpeech": "n.",
+    "before": "發射",
+    "decision": "CORRECT_AS_IS",
+    "after": "發射",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "rear",
+    "id": "rear-4711",
+    "level": 5,
+    "partOfSpeech": "adj./n.",
+    "before": "後面",
+    "decision": "CORRECT_AS_IS",
+    "after": "後面",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "rifle",
+    "id": "rifle-4746",
+    "level": 5,
+    "partOfSpeech": "n./v.",
+    "before": "來復槍",
+    "decision": "FIXED",
+    "after": "來福槍",
+    "reason": "Replaced 來復槍 with 來福槍 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "sophisticated",
+    "id": "sophisticated-4816",
+    "level": 5,
+    "partOfSpeech": "adj.",
+    "before": "復雜的",
+    "decision": "FIXED",
+    "after": "複雜的",
+    "reason": "Replaced 復雜 with 複雜 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "sponsorship",
+    "id": "sponsorship-4837",
+    "level": 5,
+    "partOfSpeech": "n.",
+    "before": "發起",
+    "decision": "CORRECT_AS_IS",
+    "after": "發起",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "stock",
+    "id": "stock-4856",
+    "level": 5,
+    "partOfSpeech": "n.",
+    "before": "樹幹",
+    "decision": "CORRECT_AS_IS",
+    "after": "樹幹",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "syndrome",
+    "id": "syndrome-4892",
+    "level": 5,
+    "partOfSpeech": "n.",
+    "before": "並發症狀",
+    "decision": "CORRECT_AS_IS",
+    "after": "並發症狀",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "trigger",
+    "id": "trigger-4935",
+    "level": 5,
+    "partOfSpeech": "n./v.",
+    "before": "觸發器",
+    "decision": "CORRECT_AS_IS",
+    "after": "觸發器",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "underline",
+    "id": "underline-4947",
+    "level": 5,
+    "partOfSpeech": "v./n.",
+    "before": "在...下面劃線",
+    "decision": "CORRECT_AS_IS",
+    "after": "在...下面劃線",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "undermine",
+    "id": "undermine-4948",
+    "level": 5,
+    "partOfSpeech": "v.",
+    "before": "在...下面挖",
+    "decision": "CORRECT_AS_IS",
+    "after": "在...下面挖",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "wig",
+    "id": "wig-4999",
+    "level": 5,
+    "partOfSpeech": "n.",
+    "before": "假發",
+    "decision": "FIXED",
+    "after": "假髮",
+    "reason": "Replaced 假發 with 假髮 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "blond/blonde",
+    "id": "blond/blonde-5097",
+    "level": 6,
+    "partOfSpeech": "n./adj.",
+    "before": "(頭發)亞麻色的",
+    "decision": "FIXED",
+    "after": "(頭髮)亞麻色的",
+    "reason": "Replaced 頭發 with 頭髮 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "chili",
+    "id": "chili-5155",
+    "level": 6,
+    "partOfSpeech": "n.",
+    "before": "幹辣椒",
+    "decision": "FIXED",
+    "after": "乾辣椒",
+    "reason": "Replaced 幹辣椒 with 乾辣椒 for correct Taiwan orthography/meaning."
+  },
+  {
+    "word": "clone",
+    "id": "clone-5166",
+    "level": 6,
+    "partOfSpeech": "n./v.",
+    "before": "無性系",
+    "decision": "FIXED",
+    "after": "複製 / 無性繁殖",
+    "reason": "More natural Taiwan terminology."
+  },
+  {
+    "word": "disclosure",
+    "id": "disclosure-5268",
+    "level": 6,
+    "partOfSpeech": "n.",
+    "before": "揭發",
+    "decision": "CORRECT_AS_IS",
+    "after": "揭發",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "dispense",
+    "id": "dispense-5274",
+    "level": 6,
+    "partOfSpeech": "v.",
+    "before": "分發",
+    "decision": "CORRECT_AS_IS",
+    "after": "分發",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "enlighten(ment)",
+    "id": "enlighten(ment)-5316",
+    "level": 6,
+    "partOfSpeech": "v./(n.)",
+    "before": "啟發",
+    "decision": "CORRECT_AS_IS",
+    "after": "啟發",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "exert",
+    "id": "exert-5334",
+    "level": 6,
+    "partOfSpeech": "v.",
+    "before": "發揮",
+    "decision": "CORRECT_AS_IS",
+    "after": "發揮",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "faction",
+    "id": "faction-5344",
+    "level": 6,
+    "partOfSpeech": "n.",
+    "before": "小派系",
+    "decision": "CORRECT_AS_IS",
+    "after": "小派系",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "occurrence",
+    "id": "occurrence-5614",
+    "level": 6,
+    "partOfSpeech": "n.",
+    "before": "發生",
+    "decision": "CORRECT_AS_IS",
+    "after": "發生",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "offshore",
+    "id": "offshore-5617",
+    "level": 6,
+    "partOfSpeech": "adj.",
+    "before": "海面的",
+    "decision": "CORRECT_AS_IS",
+    "after": "海面的",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "outbreak",
+    "id": "outbreak-5632",
+    "level": 6,
+    "partOfSpeech": "n.",
+    "before": "爆發",
+    "decision": "CORRECT_AS_IS",
+    "after": "爆發",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "prosecute",
+    "id": "prosecute-5714",
+    "level": 6,
+    "partOfSpeech": "v.",
+    "before": "告發",
+    "decision": "CORRECT_AS_IS",
+    "after": "告發",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "radiant",
+    "id": "radiant-5730",
+    "level": 6,
+    "partOfSpeech": "adj./n.",
+    "before": "發光的",
+    "decision": "CORRECT_AS_IS",
+    "after": "發光的",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "rehabilitate",
+    "id": "rehabilitate-5753",
+    "level": 6,
+    "partOfSpeech": "v.",
+    "before": "恢復原狀",
+    "decision": "CORRECT_AS_IS",
+    "after": "恢復原狀",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "restoration",
+    "id": "restoration-5771",
+    "level": 6,
+    "partOfSpeech": "n.",
+    "before": "恢復",
+    "decision": "CORRECT_AS_IS",
+    "after": "恢復",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "revival",
+    "id": "revival-5777",
+    "level": 6,
+    "partOfSpeech": "n.",
+    "before": "復興",
+    "decision": "CORRECT_AS_IS",
+    "after": "復興",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "shaver",
+    "id": "shaver-5814",
+    "level": 6,
+    "partOfSpeech": "n.",
+    "before": "修面的人",
+    "decision": "CORRECT_AS_IS",
+    "after": "修面的人",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "spokesperson/ spokesman/ spokeswoman",
+    "id": "spokesperson/ spokesman/ spokeswoman-5858",
+    "level": 6,
+    "partOfSpeech": "n.",
+    "before": "女發言人",
+    "decision": "CORRECT_AS_IS",
+    "after": "女發言人",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "superficial",
+    "id": "superficial-5895",
+    "level": 6,
+    "partOfSpeech": "adj.",
+    "before": "表面",
+    "decision": "CORRECT_AS_IS",
+    "after": "表面",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "underneath",
+    "id": "underneath-5951",
+    "level": 6,
+    "partOfSpeech": "prep./adv./n./adj.",
+    "before": "在……下面",
+    "decision": "CORRECT_AS_IS",
+    "after": "在……下面",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "veil",
+    "id": "veil-5969",
+    "level": 6,
+    "partOfSpeech": "n./v.",
+    "before": "面紗",
+    "decision": "CORRECT_AS_IS",
+    "after": "面紗",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  },
+  {
+    "word": "wholesale",
+    "id": "wholesale-6000",
+    "level": 6,
+    "partOfSpeech": "adj./adv./n./v.",
+    "before": "批發",
+    "decision": "CORRECT_AS_IS",
+    "after": "批發",
+    "reason": "Contextually correct character usage in Taiwan zh-TW."
+  }
+]
