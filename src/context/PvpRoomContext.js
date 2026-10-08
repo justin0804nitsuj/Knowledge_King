@@ -36,16 +36,13 @@ export function PvpRoomProvider({ children }) {
       return;
     }
 
-    console.log(`[PVP-TRACE] CONTEXT subscribe start for ${roomId}`);
     setIsLoadingRoom(true);
     let isFirst = true;
 
     const unsubscribeRoom = subscribeToRoom(roomId, (roomData) => {
       if (isFirst) {
-        console.log(`[PVP-TRACE] CONTEXT first snapshot exists=${!!roomData}`);
         isFirst = false;
       } else {
-        console.log(`[PVP-TRACE] CONTEXT subsequent snapshot exists=${!!roomData}`);
       }
       setIsLoadingRoom(false);
       
@@ -64,7 +61,6 @@ export function PvpRoomProvider({ children }) {
     });
 
     return () => {
-      console.log(`[PVP-TRACE] CONTEXT unsubscribe for ${roomId}`);
       unsubscribeRoom();
     };
   }, [roomId, userUid]);
@@ -83,16 +79,13 @@ export function PvpRoomProvider({ children }) {
 
   const createRoom = useCallback(async () => {
     if (!user) return null;
-    console.log('[PVP-TRACE] CREATE begin');
     setDepartureIntent(DepartureIntent.NONE);
     setIsLoadingRoom(true);
     try {
       const code = await serviceCreateRoom(user);
-      console.log(`[PVP-TRACE] CREATE Firebase success roomCode=${code}`);
       
       // diagnostic
       const exists = await verifyRoomExists(code);
-      console.log(`[PVP-TRACE] CREATE VERIFY: room exists = ${exists}`);
       
       departureSessionRef.current = createDepartureSession(code);
       setRoomId(code);
@@ -105,12 +98,10 @@ export function PvpRoomProvider({ children }) {
 
   const joinRoom = useCallback(async (code) => {
     if (!user) return null;
-    console.log('[PVP-TRACE] JOIN begin');
     setDepartureIntent(DepartureIntent.NONE);
     setIsLoadingRoom(true);
     try {
       const joinedCode = await serviceJoinRoom(code, user);
-      console.log(`[PVP-TRACE] JOIN Firebase success roomCode=${joinedCode}`);
       departureSessionRef.current = createDepartureSession(joinedCode);
       setRoomId(joinedCode);
       return joinedCode;

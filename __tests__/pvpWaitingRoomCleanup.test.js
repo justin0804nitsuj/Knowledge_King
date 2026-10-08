@@ -4,7 +4,7 @@ import WaitingRoomScreen from '../src/screens/WaitingRoomScreen';
 import { PvpRoomProvider, usePvpRoom } from '../src/context/PvpRoomContext';
 import { BackHandler, Alert } from 'react-native';
 import * as roomService from '../src/services/pvp/roomService';
-import { RoomStatus } from '../domain/pvp/roomConstants';
+import { RoomStatus } from '../src/domain/pvp/roomConstants';
 
 jest.mock('../src/services/pvp/roomService', () => {
   const actual = jest.requireActual('../src/services/pvp/roomService');
@@ -102,6 +102,7 @@ describe('WaitingRoomScreen Cleanup Lifecycle', () => {
     usePvpRoom.mockReturnValue({
       roomId: 'testRoom',
       room: { meta: { status: RoomStatus.IN_BATTLE, hostUid: 'host' }, match: { matchId: 'm1' }, players: {} },
+      status: RoomStatus.IN_BATTLE,
       isHost: true,
       isLoadingRoom: false,
       leaveRoom: mockLeaveRoom,

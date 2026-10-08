@@ -34,29 +34,22 @@ export default function WaitingRoomScreen({ navigation }) {
   }, [status, room?.match, navigation]);
 
   useEffect(() => {
-    console.log('[PVP-TRACE] WAITING mount');
+
   }, []);
 
   useEffect(() => {
-    console.log(`[PVP-TRACE] WAITING isLoadingRoom=${isLoadingRoom}`);
+
     // Wait until room loading finishes before checking deleted status
     if (isLoadingRoom) return;
 
-    // Log diagnostic snapshot
-    console.log('[PVP-TRACE] snapshot:\n' + JSON.stringify({
-      exists: !!room,
-      hostUid: room?.meta?.hostUid || null,
-      status: room?.meta?.status || null,
-      players: Object.keys(room?.players || {}),
-      hostPlayerExists: !!(room?.meta?.hostUid && room?.players?.[room.meta.hostUid])
-    }, null, 2));
+
 
     // If room is cancelled or deleted, kick guest back to Arena.
     // processRoomGone claims a per-session one-shot guard synchronously, so
     // repeated null/CANCELLED snapshots or effect reruns alert/navigate once.
     if (!room || status === RoomStatus.CANCELLED) {
       const departureIntent = getDepartureIntent();
-      console.log(`[PVP-TRACE] WAITING reason for redirect: room=${!!room}, status=${status}, intent=${departureIntent}`);
+
       processRoomGone({
         session: getDepartureSession(),
         getCurrentSession: getDepartureSession,

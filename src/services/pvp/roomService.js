@@ -181,7 +181,7 @@ export async function joinRoom(roomCode, user) {
 export async function leaveRoom(roomCode, user) {
   if (!roomCode || !user || !user.uid) return;
   
-  console.log('[PVP-TRACE] leaveRoom called');
+
   const roomRef = ref(db, `rooms/${roomCode}`);
   
   try {
@@ -196,12 +196,12 @@ export async function leaveRoom(roomCode, user) {
       // Host leaves: cancel and remove room
       await set(ref(db, `rooms/${roomCode}/meta/status`), RoomStatus.CANCELLED);
       await remove(roomRef);
-      console.log('[PVP-TRACE] REMOVE room called');
+
     } else {
       // Guest leaves: just remove self
       const playerRef = ref(db, `rooms/${roomCode}/players/${user.uid}`);
       await remove(playerRef);
-      console.log('[PVP-TRACE] REMOVE player called');
+
     }
   } catch (e) {
     if (__DEV__) console.error("Leave room failed", e);
@@ -365,10 +365,10 @@ export function setupWaitingRoomPresence(roomCode, user, isHost) {
   
   const onDisconnectRef = onDisconnect(targetRef);
   onDisconnectRef.remove();
-  console.log(`[PVP-TRACE] onDisconnect registered (isHost=${isHost})`);
+
   
   return () => {
     onDisconnectRef.cancel();
-    console.log(`[PVP-TRACE] onDisconnect cancelled (isHost=${isHost})`);
+
   };
 }
