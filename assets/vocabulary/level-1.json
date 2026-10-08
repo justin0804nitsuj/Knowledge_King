@@ -13044,12 +13044,22 @@
     "word": "queen",
     "partOfSpeech": "n.",
     "level": 1,
-    "fallbackMeaning": "王後",
+    "fallbackMeaning": "女王；王后",
     "primaryDefinitions": [
       {
         "senseKey": "queen%1:05:01::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "王後"
+        "meaningZhTW": "女王"
+      },
+      {
+        "senseKey": "queen%1:18:00::",
+        "partOfSpeech": "noun",
+        "meaningZhTW": "王后"
+      },
+      {
+        "senseKey": "queen%1:18:01::",
+        "partOfSpeech": "noun",
+        "meaningZhTW": "蜂后"
       }
     ],
     "secondaryDefinitions": []

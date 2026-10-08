@@ -61,7 +61,10 @@ export default function PvpResultScreen({ navigation }) {
     } catch (e) {
       console.error('Failed to leave room:', e);
     } finally {
-      navigation.replace('Arena');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs', params: { screen: 'Arena' } }]
+      });
     }
   };
 
