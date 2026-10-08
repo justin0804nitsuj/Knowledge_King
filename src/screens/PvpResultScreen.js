@@ -12,7 +12,7 @@ export default function PvpResultScreen({ navigation }) {
   const { t } = useTranslation();
   const [matchState, setMatchState] = useState(null);
   const animValue = useRef(new Animated.Value(0)).current;
-  const playedResultRef = useRef(false);
+  const playedResultRef = useRef(null);
 
   useEffect(() => {
     gameFeedback.init();
@@ -28,6 +28,42 @@ export default function PvpResultScreen({ navigation }) {
     }
   }, [roomId]);
 
+  const result = matchState?.result;
+  const myUid = user?.uid;
+  const hostUid = room?.meta?.hostUid;
+  const guestUid = Object.keys(room?.players || {}).find(uid => uid !== hostUid);
+  const opponentUid = myUid === hostUid ? guestUid : hostUid;
+  const matchId = room?.match?.matchId;
+
+  useEffect(() => {
+    if (!result || !matchId || !myUid || !opponentUid) return;
+
+    const eventKey = `${matchId}:${result.winnerUid ?? 'DRAW'}`;
+
+    if (playedResultRef.current === eventKey) return;
+
+    playedResultRef.current = eventKey;
+
+    if (result.winnerUid === myUid) {
+      gameFeedback.playVictory();
+    } else if (result.winnerUid === opponentUid) {
+      gameFeedback.playDefeat();
+    } else {
+      gameFeedback.playDraw();
+    }
+  }, [result, matchId, myUid, opponentUid]);
+  
+  useEffect(() => {
+    if (!result) return;
+    const anim = Animated.timing(animValue, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [result, animValue]);
+
   if (!matchState || !matchState.result) {
     return (
       <View style={styles.container}>
@@ -36,12 +72,7 @@ export default function PvpResultScreen({ navigation }) {
     );
   }
 
-  const { result, players } = matchState;
-  const myUid = user.uid;
-  const hostUid = room?.meta?.hostUid;
-  const guestUid = Object.keys(room?.players || {}).find(uid => uid !== hostUid);
-  const opponentUid = myUid === hostUid ? guestUid : hostUid;
-
+  const { players } = matchState;
   const myState = players?.[myUid];
   const oppState = players?.[opponentUid];
 
@@ -54,29 +85,6 @@ export default function PvpResultScreen({ navigation }) {
     outcomeText = t('pvp.defeat');
     outcomeStyle = styles.defeatText;
   }
-  
-  useEffect(() => {
-    if (!playedResultRef.current && result) {
-      if (result.winnerUid === myUid) {
-        gameFeedback.playVictory();
-      } else if (result.winnerUid === opponentUid) {
-        gameFeedback.playDefeat();
-      } else {
-        gameFeedback.playDraw();
-      }
-      playedResultRef.current = true;
-    }
-  }, [result, myUid, opponentUid]);
-  
-  useEffect(() => {
-    const anim = Animated.timing(animValue, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
-    });
-    anim.start();
-    return () => anim.stop();
-  }, [animValue]);
   
   const myFinalHp = result.finalHp?.[myUid] || 0;
   const oppFinalHp = result.finalHp?.[opponentUid] || 0;
