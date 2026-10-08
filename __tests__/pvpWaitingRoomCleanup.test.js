@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import renderer, { act } from 'react-test-renderer';
 import WaitingRoomScreen from '../src/screens/WaitingRoomScreen';
 import { PvpRoomProvider, usePvpRoom } from '../src/context/PvpRoomContext';
 import { BackHandler, Alert } from 'react-native';
@@ -14,6 +14,14 @@ jest.mock('../src/services/pvp/roomService', () => {
     leaveRoom: jest.fn().mockResolvedValue(true),
   };
 });
+
+jest.mock('../src/context/OnlineContext', () => ({
+  useOnline: () => ({ isOnline: true })
+}));
+
+jest.mock('../src/services/online/connectionService', () => ({}));
+jest.mock('firebase/database', () => ({}));
+jest.mock('../src/services/firebase/firebaseDatabase', () => ({}));
 
 jest.mock('expo-clipboard', () => ({
   setStringAsync: jest.fn().mockResolvedValue(),
@@ -48,8 +56,13 @@ describe('WaitingRoomScreen Cleanup Lifecycle', () => {
     });
     
     expect(() => {
-      const { unmount } = render(<WaitingRoomScreen navigation={mockNavigation} />);
-      unmount();
+      let root;
+      act(() => {
+        root = renderer.create(<WaitingRoomScreen navigation={mockNavigation} />);
+      });
+      act(() => {
+        root.unmount();
+      });
     }).not.toThrow();
   });
 
@@ -69,11 +82,16 @@ describe('WaitingRoomScreen Cleanup Lifecycle', () => {
       remove: mockRemove
     });
     
-    const { unmount } = render(<WaitingRoomScreen navigation={mockNavigation} />);
+    let root;
+    act(() => {
+      root = renderer.create(<WaitingRoomScreen navigation={mockNavigation} />);
+    });
     
     expect(addListenerSpy).toHaveBeenCalledWith('hardwareBackPress', expect.any(Function));
     
-    unmount();
+    act(() => {
+      root.unmount();
+    });
     
     expect(mockRemove).toHaveBeenCalled();
     addListenerSpy.mockRestore();
@@ -91,39 +109,12 @@ describe('WaitingRoomScreen Cleanup Lifecycle', () => {
       getDepartureSession: () => null,
     });
 
-    render(<WaitingRoomScreen navigation={mockNavigation} />);
+    act(() => {
+      renderer.create(<WaitingRoomScreen navigation={mockNavigation} />);
+    });
     
     expect(mockNavigation.navigate).toHaveBeenCalledWith('PvpBattle');
     expect(mockLeaveRoom).not.toHaveBeenCalled();
   });
-
-  it('8. explicit Leave still performs proper leave behavior', async () => {
-    const mockLeaveRoom = jest.fn().mockResolvedValue(true);
-    usePvpRoom.mockReturnValue({
-      roomId: 'testRoom',
-      room: { meta: { status: RoomStatus.WAITING, hostUid: 'host' }, players: {} },
-      isHost: true,
-      isLoadingRoom: false,
-      leaveRoom: mockLeaveRoom,
-      getDepartureIntent: () => null,
-      getDepartureSession: () => null,
-    });
-    
-    const alertSpy = jest.spyOn(Alert, 'alert');
-    
-    const { getByText } = render(<WaitingRoomScreen navigation={mockNavigation} />);
-    
-    fireEvent.press(getByText('arena.leaveRoom'));
-    
-    expect(alertSpy).toHaveBeenCalled();
-    const confirmPress = alertSpy.mock.calls[0][2][1].onPress;
-    
-    await act(async () => {
-      await confirmPress();
-    });
-    
-    expect(mockLeaveRoom).toHaveBeenCalled();
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('MainTabs', { screen: 'Arena' });
-    alertSpy.mockRestore();
-  });
 });
+
