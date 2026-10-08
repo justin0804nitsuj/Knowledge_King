@@ -3,6 +3,18 @@ import * as Haptics from 'expo-haptics';
 import { loadSettings } from '../../storage/settingsStorage';
 import { Platform } from 'react-native';
 
+async function debugStep(label, fn) {
+  try {
+    if (__DEV__) console.log(`[Feedback] ${label}: start`);
+    const result = await fn();
+    if (__DEV__) console.log(`[Feedback] ${label}: ok`);
+    return result;
+  } catch (error) {
+    console.error(`[Feedback] ${label}: FAILED`, error);
+    return undefined;
+  }
+}
+
 class GameFeedback {
   constructor() {
     this.sounds = {};
@@ -12,7 +24,7 @@ class GameFeedback {
 
   async init() {
     if (this.initialized) return;
-    try {
+    await debugStep('audio:init', async () => {
       this.settings = await loadSettings();
       await setAudioModeAsync({
         playsInSilentMode: true,
@@ -20,9 +32,7 @@ class GameFeedback {
         interruptionMode: 'duckOthers',
       });
       this.initialized = true;
-    } catch (e) {
-      console.warn('GameFeedback init failed:', e);
-    }
+    });
   }
 
   updateSettings(newSettings) {
@@ -31,17 +41,13 @@ class GameFeedback {
 
   async _playSound(assetMapKey) {
     if (!this.settings.soundEffects) return;
-    try {
+    
+    await debugStep(`audio:play:${assetMapKey}`, async () => {
       let player = this.sounds[assetMapKey];
 
       if (player) {
-        try {
-          if (typeof player.seekTo === 'function') {
-            const seekP = player.seekTo(0);
-            if (seekP instanceof Promise) await seekP;
-          }
-        } catch (e) {
-          console.warn(`seekTo error for ${assetMapKey}:`, e);
+        if (typeof player.seekTo === 'function') {
+          await player.seekTo(0);
         }
       } else {
         let source;
@@ -65,108 +71,89 @@ class GameFeedback {
       }
 
       if (player && typeof player.play === 'function') {
-        const playResult = player.play();
-        if (playResult instanceof Promise) {
-          playResult.catch(e => console.warn(`play error for ${assetMapKey}:`, e));
-        }
+        player.play();
       }
-    } catch (e) {
-      console.warn(`Failed to play sound ${assetMapKey}:`, e);
-    }
+    });
   }
 
   _playHaptic(style) {
-    if (!this.settings.haptics) return;
-    try {
-      if (Platform.OS === 'web') return;
-      const p = Haptics.impactAsync(style);
-      if (p instanceof Promise) p.catch(e => console.warn('Haptic error:', e));
-    } catch (e) {
-      console.warn('Failed to play haptic:', e);
-    }
+    if (!this.settings.haptics || Platform.OS === 'web') return;
+    void debugStep(`haptic:impact:${style}`, async () => {
+      await Haptics.impactAsync(style);
+    });
   }
 
   _playNotificationHaptic(type) {
-    if (!this.settings.haptics) return;
-    try {
-      if (Platform.OS === 'web') return;
-      const p = Haptics.notificationAsync(type);
-      if (p instanceof Promise) p.catch(e => console.warn('Haptic notif error:', e));
-    } catch (e) {
-      console.warn('Failed to play notification haptic:', e);
-    }
+    if (!this.settings.haptics || Platform.OS === 'web') return;
+    void debugStep(`haptic:notification:${type}`, async () => {
+      await Haptics.notificationAsync(type);
+    });
   }
 
   playAnswerCorrect() {
-    this._playSound('correct');
+    void this._playSound('correct');
     this._playHaptic(Haptics.ImpactFeedbackStyle.Medium);
   }
 
   playAnswerWrong() {
-    this._playSound('wrong');
+    void this._playSound('wrong');
     this._playNotificationHaptic(Haptics.NotificationFeedbackType.Warning);
   }
 
   playDamage() {
-    this._playSound('damage');
+    void this._playSound('damage');
     this._playHaptic(Haptics.ImpactFeedbackStyle.Heavy);
   }
 
   playOpponentHit() {
-    this._playSound('hit');
+    void this._playSound('hit');
     this._playHaptic(Haptics.ImpactFeedbackStyle.Light);
   }
 
   playHeal() {
-    this._playSound('heal');
+    void this._playSound('heal');
     this._playNotificationHaptic(Haptics.NotificationFeedbackType.Success);
   }
 
   playCountdownTick() {
-    this._playSound('tick');
+    void this._playSound('tick');
   }
 
   playCountdownGo() {
-    this._playSound('go');
+    void this._playSound('go');
     this._playHaptic(Haptics.ImpactFeedbackStyle.Medium);
   }
 
   playVictory() {
-    this._playSound('victory');
+    void this._playSound('victory');
     this._playNotificationHaptic(Haptics.NotificationFeedbackType.Success);
   }
 
   playDefeat() {
-    this._playSound('defeat');
+    void this._playSound('defeat');
     this._playNotificationHaptic(Haptics.NotificationFeedbackType.Error);
   }
 
   playDraw() {
-    this._playSound('draw');
+    void this._playSound('draw');
     this._playHaptic(Haptics.ImpactFeedbackStyle.Light);
   }
 
   async cleanup() {
-    for (const key in this.sounds) {
-      try {
+    await debugStep('audio:cleanup', async () => {
+      for (const key in this.sounds) {
         const player = this.sounds[key];
         if (player) {
-          let cleanupResult;
-          if (typeof player.release === 'function') {
-            cleanupResult = player.release();
-          } else if (typeof player.remove === 'function') {
-            cleanupResult = player.remove();
-          }
-          if (cleanupResult instanceof Promise) {
-            cleanupResult.catch(e => console.warn(`Cleanup error for ${key}:`, e));
+          if (typeof player.remove === 'function') {
+            player.remove();
+          } else if (typeof player.release === 'function') {
+            player.release();
           }
         }
-      } catch (e) {
-        console.warn(`Sync cleanup error for ${key}:`, e);
       }
-    }
-    this.sounds = {};
-    this.initialized = false;
+      this.sounds = {};
+      this.initialized = false;
+    });
   }
 }
 
