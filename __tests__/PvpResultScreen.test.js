@@ -6,22 +6,7 @@ import * as PvpBattleService from '../src/services/pvp/pvpBattleService';
 import { gameFeedback } from '../src/services/feedback/gameFeedback';
 import { Animated } from 'react-native';
 
-jest.mock('react-native', () => {
-  const actualReactNative = jest.requireActual('react-native');
-  return {
-    ...actualReactNative,
-    Animated: {
-      ...actualReactNative.Animated,
-      timing: () => ({
-        start: jest.fn(),
-        stop: jest.fn(),
-      }),
-      Value: jest.fn().mockImplementation(() => ({
-        interpolate: jest.fn(),
-      })),
-    },
-  };
-});
+// Removed react-native mock
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key) => key }),
@@ -38,10 +23,20 @@ jest.mock('../src/services/feedback/gameFeedback', () => ({
     playDraw: jest.fn(),
   }
 }));
+jest.mock('../src/context/PvpRoomContext', () => ({
+  usePvpRoom: jest.fn(),
+}));
+jest.mock('../src/services/pvp/pvpBattleService', () => ({
+  subscribeToMatchState: jest.fn(),
+}));
+jest.mock('../src/services/pvp/roomService', () => ({
+  leaveRoom: jest.fn(),
+}));
 
 describe('PvpResultScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(Animated, 'timing').mockReturnValue({ start: jest.fn(), stop: jest.fn() });
   });
 
   it('renders initial null result then transitions to WIN without hook errors, and plays feedback once', () => {
