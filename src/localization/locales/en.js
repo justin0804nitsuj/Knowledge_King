@@ -153,7 +153,19 @@ export default {
     waitingChallenger: 'Waiting for challenger…',
     startFailed: 'Unable to start the match. Please try again.',
     readyFailed: 'Unable to get ready. Please try again.',
-    startMatch: 'Start Match'
+    startMatch: 'Start Match',
+    subtitle: 'Battle against players online',
+    createDesc: 'Host a new match and invite a friend',
+    joinDesc: 'Enter a 5-digit code to join a match',
+    createRoomAction: 'CREATE ROOM',
+    joinRoomAction: 'JOIN ROOM',
+    host: 'HOST',
+    guest: 'GUEST',
+    waitingForOpponent: 'Waiting for opponent...',
+    bothReady: 'Both players ready',
+    waitingForReady: 'Waiting for both players to ready',
+    hostCanStart: 'Host can start the match',
+    battleStarting: 'Battle Starting...'
   },
   auth: {
     signingIn: 'Signing In...',

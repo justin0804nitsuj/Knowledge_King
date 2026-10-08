@@ -98,6 +98,7 @@ describe('WaitingRoomScreen Cleanup Lifecycle', () => {
   });
 
   it('6. WaitingRoom -> PvpBattle does not call leaveRoom', () => {
+    jest.useFakeTimers();
     const mockLeaveRoom = jest.fn();
     usePvpRoom.mockReturnValue({
       roomId: 'testRoom',
@@ -114,8 +115,13 @@ describe('WaitingRoomScreen Cleanup Lifecycle', () => {
       renderer.create(<WaitingRoomScreen navigation={mockNavigation} />);
     });
     
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    
     expect(mockNavigation.navigate).toHaveBeenCalledWith('PvpBattle');
     expect(mockLeaveRoom).not.toHaveBeenCalled();
+    jest.useRealTimers();
   });
 });
 

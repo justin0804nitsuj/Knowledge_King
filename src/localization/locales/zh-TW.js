@@ -153,7 +153,19 @@ export default {
     waitingChallenger: '等待挑戰者加入…',
     startFailed: '無法開始對戰，請稍後再試。',
     readyFailed: '無法準備，請稍後再試。',
-    startMatch: '開始對戰'
+    startMatch: '開始對戰',
+    subtitle: '與線上玩家對戰',
+    createDesc: '建立新房間並邀請好友',
+    joinDesc: '輸入五位數房間代碼',
+    createRoomAction: '建立房間',
+    joinRoomAction: '加入房間',
+    host: '房主',
+    guest: '挑戰者',
+    waitingForOpponent: '等待對手加入...',
+    bothReady: '雙方已準備就緒',
+    waitingForReady: '等待雙方準備...',
+    hostCanStart: '房主可以開始對戰了',
+    battleStarting: '對戰即將開始...'
   },
   auth: {
     signingIn: '登入中...',
