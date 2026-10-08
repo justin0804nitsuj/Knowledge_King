@@ -60,17 +60,17 @@
         
         "matchState": {
           ".write": "auth != null && auth.uid === data.parent().child('meta').child('hostUid').val()",
-          "roundIndex": { ".validate": "newData.isNumber()" },
-          "phase": { ".validate": "newData.isString()" },
+          "roundIndex": { ".validate": "newData.isNumber() && (!data.exists() || newData.val() === data.val() || newData.val() === data.val() + 1)" },
+          "phase": { ".validate": "newData.isString() && (newData.val() === 'ANSWERING' || newData.val() === 'RESOLVING' || newData.val() === 'ROUND_RESULT' || newData.val() === 'FINISHED')" },
           "players": {
             "$uid": {
               ".write": "auth != null && auth.uid === $uid",
               ".validate": "newData.hasChildren(['hp', 'score', 'correct', 'wrong', 'potionsRemaining'])",
               "hp": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100 && ( (!data.exists() && newData.val() === 100) || (auth.uid === $uid && (newData.val() === data.val() || (newData.val() <= data.val() + 25 && newData.parent().child('potionsRemaining').val() === data.parent().child('potionsRemaining').val() - 1))) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && (newData.val() === data.val() || newData.val() === data.val() - 20 || newData.val() === 0)) )" },
               "potionsRemaining": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2 && ( (!data.exists() && newData.val() === 2) || (auth.uid === $uid && (newData.val() === data.val() || newData.val() === data.val() - 1)) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && newData.val() === data.val()) )" },
-              "score": { ".validate": "newData.isNumber() && ( (!data.exists() && newData.val() === 0) || (auth.uid === $uid && newData.val() === data.val()) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && newData.val() >= data.val()) )" },
-              "correct": { ".validate": "newData.isNumber() && ( (!data.exists() && newData.val() === 0) || (auth.uid === $uid && newData.val() === data.val()) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && newData.val() >= data.val()) )" },
-              "wrong": { ".validate": "newData.isNumber() && ( (!data.exists() && newData.val() === 0) || (auth.uid === $uid && newData.val() === data.val()) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && newData.val() >= data.val()) )" },
+              "score": { ".validate": "newData.isNumber() && ( (!data.exists() && newData.val() === 0) || (newData.val() === data.val()) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && newData.val() === data.val() + 10) )" },
+              "correct": { ".validate": "newData.isNumber() && ( (!data.exists() && newData.val() === 0) || (newData.val() === data.val()) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && newData.val() === data.val() + 1) )" },
+              "wrong": { ".validate": "newData.isNumber() && ( (!data.exists() && newData.val() === 0) || (newData.val() === data.val()) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && newData.val() === data.val() + 1) )" },
               "processedActions": {
                 ".validate": "true",
                 "$actionId": {
@@ -85,7 +85,7 @@
               "answers": {
                 "$uid": {
                   ".write": "auth != null && auth.uid === $uid",
-                  ".validate": "newData.hasChildren(['selectedChoiceId', 'isCorrect', 'submittedAt']) && ( (auth.uid === $uid && (!data.exists() || newData.val() === data.val())) || (auth.uid === data.parent().parent().parent().parent().parent().child('meta').child('hostUid').val() && data.exists() && newData.val() === data.val()) )"
+                  ".validate": "newData.hasChildren(['selectedChoiceId', 'isCorrect', 'submittedAt']) && ( (!data.exists() && auth.uid === $uid) || (data.exists() && newData.child('selectedChoiceId').val() === data.child('selectedChoiceId').val() && newData.child('isCorrect').val() === data.child('isCorrect').val() && newData.child('submittedAt').val() === data.child('submittedAt').val()) )"
                 }
               },
               "resolution": {
