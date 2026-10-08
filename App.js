@@ -16,6 +16,7 @@ import { AuthProvider } from './src/context/AuthContext';
 import { OnlineProvider } from './src/context/OnlineContext';
 import { PvpRoomProvider } from './src/context/PvpRoomContext';
 import { initI18n } from './src/localization/i18n';
+import { StatusBar } from 'expo-status-bar';
 
 const Stack = createNativeStackNavigator();
 
@@ -30,14 +31,16 @@ export default function App() {
 
   if (!i18nLoaded) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1E3A8A' }}>
+        <StatusBar style="light" />
+        <ActivityIndicator size="large" color="#fff" />
       </View>
     );
   }
 
   return (
     <SafeAreaProvider>
+      <StatusBar style="light" />
       <AuthProvider>
           <OnlineProvider>
             <PvpRoomProvider>

@@ -1,10 +1,11 @@
 {
   "expo": {
-    "name": "Knowledge_King",
+    "name": "Knowledge King",
     "slug": "Knowledge_King",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "backgroundColor": "#1E3A8A",
     "locales": {
       "zh-TW": "./locales/zh-TW.json",
       "en": "./locales/en.json"
@@ -20,7 +21,8 @@
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1E3A8A"
+        "backgroundColor": "#1E3A8A",
+        "monochromeImage": "./assets/monochrome-icon.png"
       }
     },
     "web": {},
@@ -29,7 +31,19 @@
       "expo-localization",
       "expo-font",
       "expo-audio",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1E3A8A",
+          "image": "./assets/splash-icon.png",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#0F172A"
+          },
+          "imageWidth": 200
+        }
+      ]
     ],
     "extra": {
       "eas": {
