@@ -1741,7 +1741,8 @@
     "word": "biscuit",
     "partOfSpeech": "n.",
     "level": 2,
-    "fallbackMeaning": "餅幹",
+    "fallbackMeaning": "餅乾",
+    "preferredMeaning": "餅乾",
     "primaryDefinitions": [
       {
         "senseKey": "biscuit%1:13:00::",
@@ -10631,7 +10632,8 @@
     "word": "network",
     "partOfSpeech": "n./v.",
     "level": 2,
-    "fallbackMeaning": "網絡",
+    "fallbackMeaning": "網路",
+    "preferredMeaning": "網路",
     "primaryDefinitions": [
       {
         "senseKey": "network%1:14:00::",

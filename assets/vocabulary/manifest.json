@@ -9,12 +9,12 @@
     "1": {
       "file": "level-1.json",
       "wordCount": 1002,
-      "hash": "eba77b86"
+      "hash": "5bacfe55"
     },
     "2": {
       "file": "level-2.json",
       "wordCount": 1002,
-      "hash": "31cf3559"
+      "hash": "b3036a23"
     },
     "3": {
       "file": "level-3.json",
@@ -34,7 +34,7 @@
     "6": {
       "file": "level-6.json",
       "wordCount": 1002,
-      "hash": "d6ae415f"
+      "hash": "03c72a3d"
     }
   }
 }

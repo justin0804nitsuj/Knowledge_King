@@ -3517,7 +3517,8 @@
     "word": "cookie",
     "partOfSpeech": "n.",
     "level": 1,
-    "fallbackMeaning": "餅幹",
+    "fallbackMeaning": "餅乾",
+    "preferredMeaning": "餅乾",
     "primaryDefinitions": [
       {
         "senseKey": "cookie%1:13:00::",
@@ -7597,8 +7598,8 @@
     "word": "hide",
     "partOfSpeech": "v.",
     "level": 1,
-    "fallbackMeaning": "躲藏／隱藏",
-    "preferredMeaning": "躲藏／隱藏",
+    "fallbackMeaning": "躲藏 / 隱藏",
+    "preferredMeaning": "躲藏 / 隱藏",
     "primaryDefinitions": [
       {
         "senseKey": "hide%2:39:00::",
@@ -13045,6 +13046,7 @@
     "partOfSpeech": "n.",
     "level": 1,
     "fallbackMeaning": "女王；王后",
+    "preferredMeaning": "女王；王后",
     "primaryDefinitions": [
       {
         "senseKey": "queen%1:05:01::",
@@ -16180,7 +16182,8 @@
     "word": "taxicab/taxi/cab",
     "partOfSpeech": "n.",
     "level": 1,
-    "fallbackMeaning": "出租車",
+    "fallbackMeaning": "計程車",
+    "preferredMeaning": "計程車",
     "primaryDefinitions": [
       {
         "senseKey": "taxicab%1:06:00::",

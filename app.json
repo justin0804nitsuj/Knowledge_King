@@ -12,8 +12,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.justin.knowledgeking",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "bundleIdentifier": "com.justin.knowledgeking"
     },
     "icon": "./assets/icon.png",
     "android": {

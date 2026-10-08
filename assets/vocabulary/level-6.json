@@ -3306,7 +3306,8 @@
     "word": "cracker",
     "partOfSpeech": "n.",
     "level": 6,
-    "fallbackMeaning": "餅幹",
+    "fallbackMeaning": "餅乾",
+    "preferredMeaning": "餅乾",
     "primaryDefinitions": [
       {
         "senseKey": "cracker%1:13:00::",
