@@ -1350,7 +1350,7 @@
       {
         "senseKey": "batch%1:14:01::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "一次所烘的面包"
+        "meaningZhTW": "一次所烘的麵包"
       }
     ],
     "secondaryDefinitions": []
@@ -3030,8 +3030,7 @@
     "word": "competent",
     "partOfSpeech": "adj.",
     "level": 5,
-    "fallbackMeaning": "能乾的",
-    "preferredMeaning": "能乾的",
+    "fallbackMeaning": "能幹的",
     "primaryDefinitions": [
       {
         "senseKey": "competent%3:00:00::",
@@ -3052,7 +3051,7 @@
       {
         "senseKey": "complexity%1:07:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "復雜"
+        "meaningZhTW": "複雜"
       }
     ],
     "secondaryDefinitions": []
@@ -3083,7 +3082,7 @@
       {
         "senseKey": "complication%1:04:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "復雜化"
+        "meaningZhTW": "複雜化"
       }
     ],
     "secondaryDefinitions": []
@@ -3969,7 +3968,7 @@
       {
         "senseKey": "correlation%1:24:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "相互關系"
+        "meaningZhTW": "相互關係"
       }
     ],
     "secondaryDefinitions": []
@@ -5345,7 +5344,7 @@
       {
         "senseKey": "dough%1:13:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "生面團"
+        "meaningZhTW": "生麵團"
       }
     ],
     "secondaryDefinitions": []
@@ -5391,7 +5390,7 @@
       {
         "senseKey": "drought%1:26:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "幹旱"
+        "meaningZhTW": "乾旱"
       }
     ],
     "secondaryDefinitions": []
@@ -10911,12 +10910,12 @@
       {
         "senseKey": "plural%3:00:01::",
         "partOfSpeech": "adjective",
-        "meaningZhTW": "復數"
+        "meaningZhTW": "複數"
       },
       {
         "senseKey": "plural%1:10:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "復數"
+        "meaningZhTW": "複數"
       }
     ],
     "secondaryDefinitions": []
@@ -12752,12 +12751,12 @@
       {
         "senseKey": "rifle%1:06:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "來復槍"
+        "meaningZhTW": "來福槍"
       },
       {
         "senseKey": "rifle%2:40:00::",
         "partOfSpeech": "verb",
-        "meaningZhTW": "來復槍"
+        "meaningZhTW": "來福槍"
       }
     ],
     "secondaryDefinitions": []
@@ -14068,7 +14067,7 @@
       {
         "senseKey": "sophisticated%3:00:00::",
         "partOfSpeech": "adjective",
-        "meaningZhTW": "復雜的"
+        "meaningZhTW": "複雜的"
       }
     ],
     "secondaryDefinitions": []
@@ -17241,7 +17240,7 @@
       {
         "senseKey": "wig%1:06:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "假發"
+        "meaningZhTW": "假髮"
       }
     ],
     "secondaryDefinitions": []

@@ -9,32 +9,32 @@
     "1": {
       "file": "level-1.json",
       "wordCount": 1002,
-      "hash": "488f3a5e"
+      "hash": "17c25aed"
     },
     "2": {
       "file": "level-2.json",
       "wordCount": 1002,
-      "hash": "4e91777f"
+      "hash": "d0612c31"
     },
     "3": {
       "file": "level-3.json",
       "wordCount": 1002,
-      "hash": "e543980e"
+      "hash": "a1d847ca"
     },
     "4": {
       "file": "level-4.json",
       "wordCount": 1002,
-      "hash": "6ae2eade"
+      "hash": "840a5e30"
     },
     "5": {
       "file": "level-5.json",
       "wordCount": 1002,
-      "hash": "0ba7ef54"
+      "hash": "41f8c173"
     },
     "6": {
       "file": "level-6.json",
       "wordCount": 1002,
-      "hash": "d231994e"
+      "hash": "e8481e77"
     }
   }
 }

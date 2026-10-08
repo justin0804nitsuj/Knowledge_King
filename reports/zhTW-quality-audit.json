@@ -4,9 +4,9 @@
     "word": "able",
     "level": 1,
     "partOfSpeech": "adj.",
-    "currentMeaning": "能乾的",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 乾",
+    "currentMeaning": "能幹的",
+    "problemType": "DISPLAY_MEANING_ISSUE",
+    "reason": "Contains suspicious char: 幹",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
   },
@@ -16,7 +16,7 @@
     "level": 1,
     "partOfSpeech": "adv./n./v./adj.",
     "currentMeaning": "後面的",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -27,7 +27,7 @@
     "level": 1,
     "partOfSpeech": "prep./adv.",
     "currentMeaning": "在……後面",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -38,7 +38,7 @@
     "level": 1,
     "partOfSpeech": "adv./prep.",
     "currentMeaning": "在下面",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -49,7 +49,7 @@
     "level": 1,
     "partOfSpeech": "adj./v./adv./n.",
     "currentMeaning": "乾淨的",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -60,7 +60,7 @@
     "level": 1,
     "partOfSpeech": "n.",
     "currentMeaning": "餅乾",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -71,7 +71,7 @@
     "level": 1,
     "partOfSpeech": "n./v.",
     "currentMeaning": "長沙發",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -82,7 +82,7 @@
     "level": 1,
     "partOfSpeech": "adj.",
     "currentMeaning": "發狂的",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -93,7 +93,7 @@
     "level": 1,
     "partOfSpeech": "adj./v.",
     "currentMeaning": "乾的",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -104,7 +104,7 @@
     "level": 1,
     "partOfSpeech": "v./n.",
     "currentMeaning": "發現",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -115,7 +115,7 @@
     "level": 1,
     "partOfSpeech": "adj./n.",
     "currentMeaning": "前面",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -126,7 +126,7 @@
     "level": 1,
     "partOfSpeech": "v.",
     "currentMeaning": "發生",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -137,7 +137,7 @@
     "level": 1,
     "partOfSpeech": "v.",
     "currentMeaning": "躲藏 / 隱藏",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious word: hide",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -148,7 +148,7 @@
     "level": 1,
     "partOfSpeech": "n./v.",
     "currentMeaning": "面談",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -159,7 +159,7 @@
     "level": 1,
     "partOfSpeech": "adv./prep./adj./n./v.",
     "currentMeaning": "外面的",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -170,7 +170,7 @@
     "level": 1,
     "partOfSpeech": "prep./adv./adj./n.",
     "currentMeaning": "外面",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -181,7 +181,7 @@
     "level": 1,
     "partOfSpeech": "n.",
     "currentMeaning": "女王；王后",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 后",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -192,7 +192,7 @@
     "level": 1,
     "partOfSpeech": "v.",
     "currentMeaning": "發送",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -203,7 +203,7 @@
     "level": 1,
     "partOfSpeech": "n.",
     "currentMeaning": "沙發",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-1.json"
@@ -214,7 +214,7 @@
     "level": 2,
     "partOfSpeech": "n.",
     "currentMeaning": "餅乾",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-2.json"
@@ -225,7 +225,7 @@
     "level": 2,
     "partOfSpeech": "v./(n.)",
     "currentMeaning": "發展",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-2.json"
@@ -236,7 +236,7 @@
     "level": 2,
     "partOfSpeech": "v.",
     "currentMeaning": "發現",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-2.json"
@@ -247,7 +247,7 @@
     "level": 2,
     "partOfSpeech": "n.",
     "currentMeaning": "發現",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-2.json"
@@ -258,7 +258,7 @@
     "level": 2,
     "partOfSpeech": "n.",
     "currentMeaning": "乾衣機",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-2.json"
@@ -269,7 +269,7 @@
     "level": 2,
     "partOfSpeech": "n./v.",
     "currentMeaning": "面孔的一部分(如眼、口等)",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-2.json"
@@ -280,7 +280,7 @@
     "level": 2,
     "partOfSpeech": "n.",
     "currentMeaning": "發燒",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-2.json"
@@ -291,7 +291,7 @@
     "level": 2,
     "partOfSpeech": "n./v.",
     "currentMeaning": "面具",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-2.json"
@@ -302,7 +302,7 @@
     "level": 2,
     "partOfSpeech": "v.",
     "currentMeaning": "發生",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-2.json"
@@ -313,7 +313,7 @@
     "level": 2,
     "partOfSpeech": "n.",
     "currentMeaning": "發射",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-2.json"
@@ -324,7 +324,7 @@
     "level": 2,
     "partOfSpeech": "n./v.",
     "currentMeaning": "面",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-2.json"
@@ -335,7 +335,7 @@
     "level": 2,
     "partOfSpeech": "n.",
     "currentMeaning": "系統",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 系",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-2.json"
@@ -346,7 +346,7 @@
     "level": 2,
     "partOfSpeech": "adj.",
     "currentMeaning": "上面的",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-2.json"
@@ -357,7 +357,7 @@
     "level": 3,
     "partOfSpeech": "v.",
     "currentMeaning": "發現",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
@@ -368,7 +368,7 @@
     "level": 3,
     "partOfSpeech": "adj./v.",
     "currentMeaning": "時常發生的",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
@@ -379,7 +379,7 @@
     "level": 3,
     "partOfSpeech": "n.",
     "currentMeaning": "乾草",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
@@ -390,7 +390,7 @@
     "level": 3,
     "partOfSpeech": "v.",
     "currentMeaning": "發明",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
@@ -401,7 +401,7 @@
     "level": 3,
     "partOfSpeech": "n.",
     "currentMeaning": "發明家",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
@@ -412,7 +412,7 @@
     "level": 3,
     "partOfSpeech": "n.",
     "currentMeaning": "發射物",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
@@ -423,7 +423,7 @@
     "level": 3,
     "partOfSpeech": "adj./n./prep./adv.",
     "currentMeaning": "相反的；對面",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
@@ -434,7 +434,7 @@
     "level": 3,
     "partOfSpeech": "n.",
     "currentMeaning": "松樹",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 松",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
@@ -445,7 +445,7 @@
     "level": 3,
     "partOfSpeech": "n.",
     "currentMeaning": "品脫(乾量或液量的單位)",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
@@ -456,7 +456,7 @@
     "level": 3,
     "partOfSpeech": "v.",
     "currentMeaning": "發音",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
@@ -467,7 +467,7 @@
     "level": 3,
     "partOfSpeech": "n.",
     "currentMeaning": "松鼠",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 松",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
@@ -478,7 +478,7 @@
     "level": 3,
     "partOfSpeech": "v.",
     "currentMeaning": "發誓",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
@@ -489,7 +489,7 @@
     "level": 3,
     "partOfSpeech": "n.",
     "currentMeaning": "樹幹",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 幹",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
@@ -500,7 +500,7 @@
     "level": 3,
     "partOfSpeech": "v.",
     "currentMeaning": "在下面的",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-3.json"
@@ -511,7 +511,7 @@
     "level": 4,
     "partOfSpeech": "adj.",
     "currentMeaning": "隨後發生的事情",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-4.json"
@@ -522,7 +522,7 @@
     "level": 4,
     "partOfSpeech": "adj.",
     "currentMeaning": "發嘎吱嘎吱聲的",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-4.json"
@@ -533,7 +533,7 @@
     "level": 4,
     "partOfSpeech": "v./n.",
     "currentMeaning": "假面目",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-4.json"
@@ -544,7 +544,7 @@
     "level": 4,
     "partOfSpeech": "n.",
     "currentMeaning": "爆發",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-4.json"
@@ -555,7 +555,7 @@
     "level": 4,
     "partOfSpeech": "n.",
     "currentMeaning": "發明",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-4.json"
@@ -566,7 +566,7 @@
     "level": 4,
     "partOfSpeech": "n./v.",
     "currentMeaning": "發行",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-4.json"
@@ -577,7 +577,7 @@
     "level": 4,
     "partOfSpeech": "n.",
     "currentMeaning": "馬拉松",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 松",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-4.json"
@@ -588,7 +588,7 @@
     "level": 4,
     "partOfSpeech": "n.",
     "currentMeaning": "發音",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-4.json"
@@ -599,7 +599,7 @@
     "level": 4,
     "partOfSpeech": "n.",
     "currentMeaning": "葡萄乾",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-4.json"
@@ -610,7 +610,7 @@
     "level": 4,
     "partOfSpeech": "n.",
     "currentMeaning": "恢復",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 復",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-4.json"
@@ -621,7 +621,7 @@
     "level": 4,
     "partOfSpeech": "v.",
     "currentMeaning": "回復",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 復",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-4.json"
@@ -632,7 +632,7 @@
     "level": 4,
     "partOfSpeech": "v./n.",
     "currentMeaning": "修面",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-4.json"
@@ -643,7 +643,7 @@
     "level": 4,
     "partOfSpeech": "adj.",
     "currentMeaning": "有系統的",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 系",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-4.json"
@@ -654,7 +654,7 @@
     "level": 5,
     "partOfSpeech": "v./adj.",
     "currentMeaning": "發音清晰的",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
@@ -664,9 +664,9 @@
     "word": "competent",
     "level": 5,
     "partOfSpeech": "adj.",
-    "currentMeaning": "能乾的",
-    "problemType": "NEEDS_HUMAN_REVIEW",
-    "reason": "Contains suspicious char: 乾",
+    "currentMeaning": "能幹的",
+    "problemType": "DISPLAY_MEANING_ISSUE",
+    "reason": "Contains suspicious char: 幹",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
   },
@@ -676,7 +676,7 @@
     "level": 5,
     "partOfSpeech": "v.",
     "currentMeaning": "使面對",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
@@ -687,7 +687,7 @@
     "level": 5,
     "partOfSpeech": "n.",
     "currentMeaning": "乾旱",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
@@ -698,7 +698,7 @@
     "level": 5,
     "partOfSpeech": "n.",
     "currentMeaning": "生態系統",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 系",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
@@ -709,7 +709,7 @@
     "level": 5,
     "partOfSpeech": "n.",
     "currentMeaning": "發射",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
@@ -720,7 +720,7 @@
     "level": 5,
     "partOfSpeech": "v.",
     "currentMeaning": "爆發",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
@@ -731,7 +731,7 @@
     "level": 5,
     "partOfSpeech": "n.",
     "currentMeaning": "思想體系",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 系",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
@@ -742,7 +742,7 @@
     "level": 5,
     "partOfSpeech": "n./v.",
     "currentMeaning": "側面",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
@@ -753,7 +753,7 @@
     "level": 5,
     "partOfSpeech": "n.",
     "currentMeaning": "發射",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
@@ -764,7 +764,7 @@
     "level": 5,
     "partOfSpeech": "adj./n.",
     "currentMeaning": "後面",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
@@ -775,7 +775,7 @@
     "level": 5,
     "partOfSpeech": "n.",
     "currentMeaning": "發起",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
@@ -786,7 +786,7 @@
     "level": 5,
     "partOfSpeech": "n.",
     "currentMeaning": "樹幹",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 幹",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
@@ -797,7 +797,7 @@
     "level": 5,
     "partOfSpeech": "n.",
     "currentMeaning": "並發症狀",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
@@ -808,7 +808,7 @@
     "level": 5,
     "partOfSpeech": "n./v.",
     "currentMeaning": "觸發器",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
@@ -819,7 +819,7 @@
     "level": 5,
     "partOfSpeech": "v./n.",
     "currentMeaning": "在...下面劃線",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
@@ -830,7 +830,7 @@
     "level": 5,
     "partOfSpeech": "v.",
     "currentMeaning": "在...下面挖",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-5.json"
@@ -841,7 +841,7 @@
     "level": 6,
     "partOfSpeech": "n.",
     "currentMeaning": "乾辣椒",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -852,7 +852,7 @@
     "level": 6,
     "partOfSpeech": "n.",
     "currentMeaning": "餅乾",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 乾",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -863,7 +863,7 @@
     "level": 6,
     "partOfSpeech": "n.",
     "currentMeaning": "揭發",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -874,7 +874,7 @@
     "level": 6,
     "partOfSpeech": "v.",
     "currentMeaning": "分發",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -885,7 +885,7 @@
     "level": 6,
     "partOfSpeech": "v./(n.)",
     "currentMeaning": "啟發",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -896,7 +896,7 @@
     "level": 6,
     "partOfSpeech": "v.",
     "currentMeaning": "發揮",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -907,7 +907,7 @@
     "level": 6,
     "partOfSpeech": "n.",
     "currentMeaning": "小派系",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 系",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -918,7 +918,7 @@
     "level": 6,
     "partOfSpeech": "n.",
     "currentMeaning": "發生",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -929,7 +929,7 @@
     "level": 6,
     "partOfSpeech": "adj.",
     "currentMeaning": "海面的",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -940,7 +940,7 @@
     "level": 6,
     "partOfSpeech": "n.",
     "currentMeaning": "爆發",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -951,7 +951,7 @@
     "level": 6,
     "partOfSpeech": "v.",
     "currentMeaning": "告發",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -962,7 +962,7 @@
     "level": 6,
     "partOfSpeech": "adj./n.",
     "currentMeaning": "發光的",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -973,7 +973,7 @@
     "level": 6,
     "partOfSpeech": "v.",
     "currentMeaning": "恢復原狀",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 復",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -984,7 +984,7 @@
     "level": 6,
     "partOfSpeech": "n.",
     "currentMeaning": "恢復",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 復",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -995,7 +995,7 @@
     "level": 6,
     "partOfSpeech": "n.",
     "currentMeaning": "復興",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 復",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -1006,7 +1006,7 @@
     "level": 6,
     "partOfSpeech": "n.",
     "currentMeaning": "修面的人",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -1017,7 +1017,7 @@
     "level": 6,
     "partOfSpeech": "n.",
     "currentMeaning": "女發言人",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -1028,7 +1028,7 @@
     "level": 6,
     "partOfSpeech": "adj.",
     "currentMeaning": "表面",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -1039,7 +1039,7 @@
     "level": 6,
     "partOfSpeech": "prep./adv./n./adj.",
     "currentMeaning": "在……下面",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -1050,7 +1050,7 @@
     "level": 6,
     "partOfSpeech": "n./v.",
     "currentMeaning": "面紗",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 面",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"
@@ -1061,7 +1061,7 @@
     "level": 6,
     "partOfSpeech": "adj./adv./n./v.",
     "currentMeaning": "批發",
-    "problemType": "NEEDS_HUMAN_REVIEW",
+    "problemType": "DISPLAY_MEANING_ISSUE",
     "reason": "Contains suspicious char: 發",
     "confidence": "HUMAN_REVIEW_REQUIRED",
     "sourceFile": "level-6.json"

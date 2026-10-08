@@ -2899,7 +2899,7 @@
       {
         "senseKey": "complicate%2:30:00::",
         "partOfSpeech": "verb",
-        "meaningZhTW": "弄復雜"
+        "meaningZhTW": "弄複雜"
       }
     ],
     "secondaryDefinitions": []
@@ -5717,12 +5717,12 @@
       {
         "senseKey": "elastic%3:00:00::",
         "partOfSpeech": "adjective",
-        "meaningZhTW": "松緊帶"
+        "meaningZhTW": "鬆緊帶"
       },
       {
         "senseKey": "elastic%1:06:01::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "松緊帶"
+        "meaningZhTW": "鬆緊帶"
       }
     ],
     "secondaryDefinitions": []
@@ -10296,7 +10296,7 @@
       {
         "senseKey": "loosen%2:30:01::",
         "partOfSpeech": "verb",
-        "meaningZhTW": "放松"
+        "meaningZhTW": "放鬆"
       }
     ],
     "secondaryDefinitions": []
@@ -12187,7 +12187,7 @@
       {
         "senseKey": "pasta%1:13:01::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "意大利面食"
+        "meaningZhTW": "義大利麵食"
       }
     ],
     "secondaryDefinitions": []
@@ -13588,7 +13588,7 @@
       {
         "senseKey": "raisin%1:13:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "葡萄幹"
+        "meaningZhTW": "葡萄乾"
       }
     ],
     "secondaryDefinitions": []
@@ -14003,7 +14003,7 @@
       {
         "senseKey": "relaxation%1:22:01::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "松弛"
+        "meaningZhTW": "鬆弛"
       }
     ],
     "secondaryDefinitions": []
@@ -14134,7 +14134,7 @@
       {
         "senseKey": "repetition%1:11:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "重復"
+        "meaningZhTW": "重複"
       }
     ],
     "secondaryDefinitions": []

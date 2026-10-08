@@ -142,11 +142,31 @@ for (let i = 1; i <= 6; i++) {
         level: w.level,
         partOfSpeech: w.partOfSpeech,
         currentMeaning: meaning,
-        problemType: 'NEEDS_HUMAN_REVIEW',
+        problemType: 'DISPLAY_MEANING_ISSUE',
         reason: reason.join(', '),
         confidence: 'HUMAN_REVIEW_REQUIRED',
         sourceFile: `level-${i}.json`
       });
+    }
+
+    if (w.primaryDefinitions) {
+      for (const def of w.primaryDefinitions) {
+        for (const rule of SIMPLIFIED_OR_REGIONAL) {
+          if (def.meaningZhTW && def.meaningZhTW.includes(rule.bad)) {
+            highConfidence.push({
+              id: w.id,
+              word: w.word,
+              level: w.level,
+              partOfSpeech: w.partOfSpeech,
+              currentMeaning: def.meaningZhTW,
+              problemType: 'PRIMARY_DEFINITION_ISSUE',
+              suggestedMeaning: def.meaningZhTW.replace(new RegExp(rule.bad, 'g'), rule.good),
+              confidence: 'AUTO_FIX_HIGH_CONFIDENCE',
+              sourceFile: `level-${i}.json`
+            });
+          }
+        }
+      }
     }
   }
 }

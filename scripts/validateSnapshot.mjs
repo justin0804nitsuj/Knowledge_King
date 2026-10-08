@@ -54,7 +54,34 @@ for (const [level, info] of Object.entries(manifest.levels)) {
         errors++;
       }
     }
+
+    // Regressions for high-confidence normalizations
+    if (['cookie', 'biscuit', 'cracker'].includes(w.word)) {
+      if (w.fallbackMeaning !== '餅乾') {
+        console.error(`Regression: ${w.word} fallbackMeaning is ${w.fallbackMeaning}, expected 餅乾`);
+        errors++;
+      }
+      for (const d of w.primaryDefinitions) {
+        if (d.meaningZhTW.includes('餅幹')) {
+          console.error(`Regression: ${w.word} primaryDefinitions contains 餅幹`);
+          errors++;
+        }
+      }
+    }
     
+    // Regressions for semantic/regional overrides
+    if (w.word === 'network' && w.fallbackMeaning !== '網路') {
+      console.error(`Regression: network is ${w.fallbackMeaning}, expected 網路`);
+      errors++;
+    }
+    if (w.word === 'hide' && w.fallbackMeaning !== '躲藏 / 隱藏') {
+      console.error(`Regression: hide is ${w.fallbackMeaning}, expected 躲藏 / 隱藏`);
+      errors++;
+    }
+    if (w.word === 'queen' && w.fallbackMeaning !== '女王；王后') {
+      console.error(`Regression: queen is ${w.fallbackMeaning}, expected 女王；王后`);
+      errors++;
+    }
     totalWordsChecked++;
   }
 }

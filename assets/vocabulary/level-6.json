@@ -1409,12 +1409,12 @@
       {
         "senseKey": "blond%1:07:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "(頭發)亞麻色的"
+        "meaningZhTW": "(頭髮)亞麻色的"
       },
       {
         "senseKey": "blond%3:00:00::",
         "partOfSpeech": "adjective",
-        "meaningZhTW": "(頭發)亞麻色的"
+        "meaningZhTW": "(頭髮)亞麻色的"
       }
     ],
     "secondaryDefinitions": []
@@ -2374,7 +2374,7 @@
       {
         "senseKey": "chili%1:13:01::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "幹辣椒"
+        "meaningZhTW": "乾辣椒"
       }
     ],
     "secondaryDefinitions": []
@@ -2565,12 +2565,12 @@
       {
         "senseKey": "clone%1:14:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "無性系"
+        "meaningZhTW": "複製 / 無性繁殖"
       },
       {
         "senseKey": "clone%2:36:00::",
         "partOfSpeech": "verb",
-        "meaningZhTW": "無性系"
+        "meaningZhTW": "複製 / 無性繁殖"
       }
     ],
     "secondaryDefinitions": []
@@ -3315,7 +3315,7 @@
       {
         "senseKey": "cracker%1:13:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "餅幹"
+        "meaningZhTW": "餅乾"
       }
     ],
     "secondaryDefinitions": []

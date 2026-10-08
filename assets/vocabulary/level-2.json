@@ -1192,7 +1192,7 @@
       {
         "senseKey": "bakery%1:06:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "面包店"
+        "meaningZhTW": "麵包店"
       }
     ],
     "secondaryDefinitions": []
@@ -1308,7 +1308,7 @@
       {
         "senseKey": "barber%1:18:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "理發師"
+        "meaningZhTW": "理髮師"
       }
     ],
     "secondaryDefinitions": []
@@ -1749,7 +1749,7 @@
       {
         "senseKey": "biscuit%1:13:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "餅幹"
+        "meaningZhTW": "餅乾"
       }
     ],
     "secondaryDefinitions": []
@@ -2140,7 +2140,7 @@
       {
         "senseKey": "bun%1:13:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "小面包"
+        "meaningZhTW": "小麵包"
       }
     ],
     "secondaryDefinitions": []
@@ -5318,7 +5318,7 @@
       {
         "senseKey": "dryer%1:06:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "幹衣機"
+        "meaningZhTW": "乾衣機"
       }
     ],
     "secondaryDefinitions": []
@@ -7904,7 +7904,7 @@
       {
         "senseKey": "haircut%1:08:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "理發"
+        "meaningZhTW": "理髮"
       }
     ],
     "secondaryDefinitions": []
@@ -10724,7 +10724,7 @@
       {
         "senseKey": "noodle%1:13:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "面條"
+        "meaningZhTW": "麵條"
       }
     ],
     "secondaryDefinitions": []
@@ -11283,12 +11283,12 @@
       {
         "senseKey": "paste%1:27:01::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "面團"
+        "meaningZhTW": "麵團"
       },
       {
         "senseKey": "paste%2:35:01::",
         "partOfSpeech": "verb",
-        "meaningZhTW": "面團"
+        "meaningZhTW": "麵團"
       }
     ],
     "secondaryDefinitions": []
@@ -13097,7 +13097,7 @@
       {
         "senseKey": "relation%1:03:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "關系"
+        "meaningZhTW": "關係"
       }
     ],
     "secondaryDefinitions": []
@@ -13113,7 +13113,7 @@
       {
         "senseKey": "relationship%1:24:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "關系"
+        "meaningZhTW": "關係"
       }
     ],
     "secondaryDefinitions": []
@@ -13229,12 +13229,12 @@
       {
         "senseKey": "reply%1:10:01::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "答復"
+        "meaningZhTW": "答覆"
       },
       {
         "senseKey": "reply%2:32:00::",
         "partOfSpeech": "verb",
-        "meaningZhTW": "答復"
+        "meaningZhTW": "答覆"
       }
     ],
     "secondaryDefinitions": []

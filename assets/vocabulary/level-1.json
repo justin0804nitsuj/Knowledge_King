@@ -33,8 +33,7 @@
     "word": "able",
     "partOfSpeech": "adj.",
     "level": 1,
-    "fallbackMeaning": "能乾的",
-    "preferredMeaning": "能乾的",
+    "fallbackMeaning": "能幹的",
     "primaryDefinitions": [
       {
         "senseKey": "able%3:00:00::",
@@ -3114,12 +3113,12 @@
       {
         "senseKey": "clean%3:00:01::",
         "partOfSpeech": "adjective",
-        "meaningZhTW": "幹淨的"
+        "meaningZhTW": "乾淨的"
       },
       {
         "senseKey": "clean%2:35:00::",
         "partOfSpeech": "verb",
-        "meaningZhTW": "幹淨的"
+        "meaningZhTW": "乾淨的"
       }
     ],
     "secondaryDefinitions": []
@@ -3526,7 +3525,7 @@
       {
         "senseKey": "cookie%1:13:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "餅幹"
+        "meaningZhTW": "餅乾"
       }
     ],
     "secondaryDefinitions": []
@@ -4663,12 +4662,12 @@
       {
         "senseKey": "dry%3:00:01::",
         "partOfSpeech": "adjective",
-        "meaningZhTW": "幹的"
+        "meaningZhTW": "乾的"
       },
       {
         "senseKey": "dry%2:30:01::",
         "partOfSpeech": "verb",
-        "meaningZhTW": "幹的"
+        "meaningZhTW": "乾的"
       }
     ],
     "secondaryDefinitions": []
@@ -7088,7 +7087,7 @@
       {
         "senseKey": "hair%1:08:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "頭發"
+        "meaningZhTW": "頭髮"
       }
     ],
     "secondaryDefinitions": []
@@ -13472,7 +13471,7 @@
       {
         "senseKey": "repeat%2:32:00::",
         "partOfSpeech": "verb",
-        "meaningZhTW": "重復"
+        "meaningZhTW": "重複"
       }
     ],
     "secondaryDefinitions": []
