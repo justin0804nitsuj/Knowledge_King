@@ -14,15 +14,21 @@
       "bundleIdentifier": "com.justin.knowledgeking",
       "googleServicesFile": "./GoogleService-Info.plist"
     },
+    "icon": "./assets/icon.png",
     "android": {
       "package": "com.justin.knowledgeking",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1E3A8A"
+      }
     },
     "web": {},
     "plugins": [
       "react-native-nitro-google-signin",
       "expo-localization",
-      "expo-font"
+      "expo-font",
+      "expo-audio"
     ],
     "extra": {
       "eas": {
