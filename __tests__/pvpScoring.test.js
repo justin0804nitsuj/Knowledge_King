@@ -4,6 +4,8 @@ import PvpBattleScreen from '../src/screens/PvpBattleScreen';
 import * as PvpRoomContext from '../src/context/PvpRoomContext';
 import * as PvpBattleService from '../src/services/pvp/pvpBattleService';
 
+jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
+
 jest.mock('../src/context/PvpRoomContext');
 jest.mock('../src/services/pvp/pvpBattleService', () => ({
   submitAnswer: jest.fn(),

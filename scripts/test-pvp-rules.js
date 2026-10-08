@@ -3,7 +3,7 @@ const fs = require('fs');
 
 async function run() {
   const testEnv = await initializeTestEnvironment({
-    projectId: 'test-project',
+    projectId: 'gsat-battle-992b8',
     database: {
       rules: fs.readFileSync('firebase/database.rules.json', 'utf8')
     }

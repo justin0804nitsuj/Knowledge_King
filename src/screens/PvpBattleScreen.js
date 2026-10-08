@@ -7,6 +7,8 @@ import { getWordsByLevel } from '../domain/vocabulary/vocabularyRepository';
 import { submitAnswer, subscribeToMatchState, finalizeMatch, usePotion, resolveRound, advanceRound } from '../services/pvp/pvpBattleService';
 import { useTranslation } from 'react-i18next';
 import { RoomStatus } from '../domain/pvp/roomConstants';
+import PvpHealthBar from '../components/pvp/PvpHealthBar';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function PvpBattleScreen({ navigation }) {
   const { roomId, room, isHost, user } = usePvpRoom();
@@ -18,6 +20,7 @@ export default function PvpBattleScreen({ navigation }) {
   const [matchState, setMatchState] = useState({});
   const [isPotionPending, setIsPotionPending] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [countdown, setCountdown] = useState(null); // 3, 2, 1, 'GO!', null
   
   useEffect(() => {
     if (!room || !room.match) {
@@ -55,13 +58,37 @@ export default function PvpBattleScreen({ navigation }) {
       }
 
       setGameState(state);
-      setPhase('READY');
+      setPhase('COUNTDOWN');
+      setCountdown(3);
     } catch (e) {
       console.error('[PVP-BATTLE] Initialization failed:', e.message);
       setInitError(e.message);
       setPhase('ERROR');
     }
   }, [room?.match?.matchId]);
+
+  // Countdown effect
+  useEffect(() => {
+    if (phase === 'COUNTDOWN') {
+      if (countdown === null) return;
+      if (countdown === 'GO!') {
+        const timer = setTimeout(() => {
+          setCountdown(null);
+          setPhase('READY');
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+      
+      const timer = setTimeout(() => {
+        if (countdown > 1) {
+          setCountdown(countdown - 1);
+        } else {
+          setCountdown('GO!');
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [phase, countdown]);
 
   // Subscribe to realtime matchState
   useEffect(() => {
@@ -152,9 +179,10 @@ export default function PvpBattleScreen({ navigation }) {
   const currentRound = matchState?.rounds?.[roundIndex];
   const myAnswer = currentRound?.answers?.[myUid];
   const hasAnswered = !!myAnswer;
-  const isLocked = hasAnswered || matchPhase !== 'ANSWERING' || isSubmitting;
+  // Lock answering if we answered, if it's not ANSWERING phase, if countdown is active, or submitting
+  const isLocked = hasAnswered || matchPhase !== 'ANSWERING' || isSubmitting || phase === 'COUNTDOWN';
   
-  const canUsePotion = safeMyState.hp > 0 && safeMyState.hp < 100 && safeMyState.potionsRemaining > 0 && room?.meta?.status === RoomStatus.IN_BATTLE && matchPhase === 'ANSWERING' && !hasAnswered && !isPotionPending;
+  const canUsePotion = safeMyState.hp > 0 && safeMyState.hp < 100 && safeMyState.potionsRemaining > 0 && room?.meta?.status === RoomStatus.IN_BATTLE && matchPhase === 'ANSWERING' && !hasAnswered && !isPotionPending && phase !== 'COUNTDOWN';
 
   const handleChoice = async (choiceId) => {
     if (isLocked || !gameState || !gameState.currentQuestion) return;
@@ -210,7 +238,7 @@ export default function PvpBattleScreen({ navigation }) {
     );
   }
 
-  if (phase !== 'READY' || !gameState) {
+  if (phase === 'LOADING_MATCH' || phase === 'LOADING_VOCABULARY' || phase === 'GENERATING_QUESTIONS' || !gameState) {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>
@@ -230,12 +258,16 @@ export default function PvpBattleScreen({ navigation }) {
        const isCorrect = choiceId === gameState.currentQuestion.correctChoiceId;
        if (isCorrect) return styles.choiceCorrect;
        if (isSelected && !isCorrect) return styles.choiceWrong;
-       return {};
+       return { opacity: 0.5 };
     }
     
     // While answering
     if (isSelected) {
       return styles.choiceSelected; // Just selected, not revealed
+    }
+    
+    if (hasAnswered && !isSelected) {
+      return { opacity: 0.5 };
     }
     
     return {};
@@ -258,24 +290,21 @@ export default function PvpBattleScreen({ navigation }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.playerStats}>
-          <Text style={styles.playerName}>YOU</Text>
-          <Text style={styles.playerHpText}>HP {safeMyState.hp} / 100</Text>
-          <View style={styles.hpBarContainer}>
-            <View style={[styles.hpBarFill, { width: `${Math.max(0, safeMyState.hp)}%` }]} />
-          </View>
-          <Text style={styles.playerProgress}>Score: {safeMyState.score}</Text>
+          <PvpHealthBar 
+            name={`${t('pvp.you')} (${safeMyState.score})`} 
+            hp={safeMyState.hp} 
+          />
         </View>
         <View style={styles.vsContainer}>
           <Text style={styles.vsText}>VS</Text>
-          <Text style={styles.roundText}>Round {roundIndex + 1}/{totalQuestions}</Text>
+          <Text style={styles.roundText}>{t('pvp.round', { current: roundIndex + 1, total: totalQuestions })}</Text>
         </View>
         <View style={styles.playerStats}>
-          <Text style={styles.playerName}>OPPONENT</Text>
-          <Text style={styles.playerHpText}>HP {oppState.hp} / 100</Text>
-          <View style={styles.hpBarContainer}>
-            <View style={[styles.hpBarFill, { width: `${Math.max(0, oppState.hp)}%`, backgroundColor: theme.colors.danger }]} />
-          </View>
-          <Text style={styles.playerProgress}>Score: {oppState.score}</Text>
+          <PvpHealthBar 
+            name={`${t('pvp.opponent')} (${oppState.score})`} 
+            hp={oppState.hp} 
+            isOpponent={true}
+          />
         </View>
       </View>
 
@@ -285,28 +314,36 @@ export default function PvpBattleScreen({ navigation }) {
           onPress={handlePotion}
           disabled={!canUsePotion}
         >
-          <Text style={styles.potionIcon}>🧪</Text>
+          <Ionicons name="medkit" style={styles.potionIcon} />
           <View>
-            <Text style={styles.potionTitle}>Heal +25</Text>
-            <Text style={styles.potionCount}>{safeMyState.potionsRemaining} left</Text>
+            <Text style={styles.potionTitle}>{t('pvp.heal')} +25</Text>
+            <Text style={styles.potionCount}>{t('pvp.potionsLeft', { count: safeMyState.potionsRemaining })}</Text>
           </View>
         </TouchableOpacity>
       </View>
       
+      {phase === 'COUNTDOWN' && countdown && (
+        <View style={styles.countdownContainer}>
+          <Text style={styles.countdownText}>{countdown === 'GO!' ? t('pvp.go') : countdown}</Text>
+        </View>
+      )}
+
       {matchPhase === 'ROUND_RESULT' && currentRound?.resolution ? (
         <View style={styles.resultContainer}>
-          <Text style={styles.resultTitle}>Round {roundIndex + 1} Result</Text>
-          <Text style={styles.resultText}>
-            You were {currentRound.resolution[myUid === hostUid ? 'hostCorrect' : 'guestCorrect'] ? 'Correct' : 'Wrong'}
+          <Text style={styles.resultTitle}>{t('pvp.roundResult')}</Text>
+          
+          <Text style={[styles.resultText, currentRound.resolution[myUid === hostUid ? 'hostCorrect' : 'guestCorrect'] ? styles.textSuccess : styles.textDanger]}>
+            {currentRound.resolution[myUid === hostUid ? 'hostCorrect' : 'guestCorrect'] ? t('pvp.youCorrect') : t('pvp.youWrong')}
           </Text>
-          <Text style={styles.resultText}>
-            Opponent was {currentRound.resolution[myUid === hostUid ? 'guestCorrect' : 'hostCorrect'] ? 'Correct' : 'Wrong'}
+          <Text style={[styles.resultText, currentRound.resolution[myUid === hostUid ? 'guestCorrect' : 'hostCorrect'] ? styles.textSuccess : styles.textDanger]}>
+            {currentRound.resolution[myUid === hostUid ? 'guestCorrect' : 'hostCorrect'] ? t('pvp.opponentCorrect') : t('pvp.opponentWrong')}
+          </Text>
+          
+          <Text style={styles.damageText}>
+            {t('pvp.youDealt', { amount: currentRound.resolution[myUid === hostUid ? 'damageToGuest' : 'damageToHost'] })}
           </Text>
           <Text style={styles.damageText}>
-            You dealt {currentRound.resolution[myUid === hostUid ? 'damageToGuest' : 'damageToHost']} damage!
-          </Text>
-          <Text style={styles.damageText}>
-            You received {currentRound.resolution[myUid === hostUid ? 'damageToHost' : 'damageToGuest']} damage!
+            {t('pvp.youReceived', { amount: currentRound.resolution[myUid === hostUid ? 'damageToHost' : 'damageToGuest'] })}
           </Text>
         </View>
       ) : (
@@ -331,15 +368,16 @@ export default function PvpBattleScreen({ navigation }) {
         )
       )}
       
-      {matchPhase === 'ANSWERING' && hasAnswered && (
+      {matchPhase === 'ANSWERING' && hasAnswered && phase !== 'COUNTDOWN' && (
         <View style={styles.waitingContainer}>
-          <Text style={styles.waitingText}>等待對手作答…</Text>
+          <Text style={styles.waitingTextHeader}>{t('pvp.answerLocked')}</Text>
+          <Text style={styles.waitingText}>{t('pvp.waitingForOpponent')}</Text>
         </View>
       )}
       
       {matchPhase === 'RESOLVING' && (
         <View style={styles.waitingContainer}>
-          <Text style={styles.waitingText}>結算中…</Text>
+          <Text style={styles.waitingText}>...</Text>
         </View>
       )}
     </View>
@@ -353,16 +391,11 @@ const styles = StyleSheet.create({
     padding: theme.spacing.medium, backgroundColor: theme.colors.card,
     borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingTop: 50,
   },
-  playerStats: { alignItems: 'center', flex: 1 },
-  playerName: { fontSize: 16, fontWeight: 'bold', color: theme.colors.textMain, marginBottom: 4, textTransform: 'uppercase' },
-  playerHpText: { fontSize: 14, fontWeight: 'bold', color: theme.colors.textMain, marginBottom: 4 },
-  hpBarContainer: { width: 100, height: 12, backgroundColor: theme.colors.surface, borderRadius: 6, overflow: 'hidden', marginBottom: 6 },
-  hpBarFill: { height: '100%', backgroundColor: theme.colors.success },
-  playerProgress: { fontSize: 12, color: theme.colors.textMuted },
+  playerStats: { flex: 1 },
   potionContainer: { padding: theme.spacing.medium, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   potionButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.primary, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 24 },
   potionButtonDisabled: { backgroundColor: theme.colors.surface, opacity: 0.5 },
-  potionIcon: { fontSize: 24, marginRight: 8 },
+  potionIcon: { fontSize: 24, marginRight: 8, color: 'white' },
   potionTitle: { color: 'white', fontWeight: 'bold', fontSize: 14 },
   potionCount: { color: 'white', fontSize: 12 },
   vsContainer: { paddingHorizontal: theme.spacing.medium, alignItems: 'center' },
@@ -380,11 +413,16 @@ const styles = StyleSheet.create({
   choiceTextCorrect: { color: theme.colors.success, fontWeight: 'bold' },
   choiceTextWrong: { color: theme.colors.danger, fontWeight: 'bold' },
   waitingContainer: { padding: theme.spacing.large, alignItems: 'center', backgroundColor: theme.colors.surface },
-  waitingText: { fontSize: 16, color: theme.colors.textMain, fontWeight: 'bold' },
+  waitingTextHeader: { fontSize: 18, color: theme.colors.primary, fontWeight: 'bold', marginBottom: 4 },
+  waitingText: { fontSize: 16, color: theme.colors.textMuted, fontWeight: 'bold' },
   title: { fontSize: 24, fontWeight: 'bold', color: theme.colors.textMain, textAlign: 'center', marginTop: 40, marginBottom: 20 },
   value: { fontSize: 16, color: theme.colors.textMain, textAlign: 'center' },
-  resultContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: theme.spacing.large },
-  resultTitle: { fontSize: 24, fontWeight: 'bold', color: theme.colors.textMain, marginBottom: 20 },
-  resultText: { fontSize: 18, color: theme.colors.textMain, marginBottom: 10 },
-  damageText: { fontSize: 16, color: theme.colors.secondary, marginTop: 10, fontWeight: 'bold' }
+  resultContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: theme.spacing.large, backgroundColor: theme.colors.card, margin: theme.spacing.large, borderRadius: 12, elevation: 4 },
+  resultTitle: { fontSize: 24, fontWeight: 'bold', color: theme.colors.textMain, marginBottom: 24 },
+  resultText: { fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
+  textSuccess: { color: theme.colors.success },
+  textDanger: { color: theme.colors.danger },
+  damageText: { fontSize: 16, color: theme.colors.secondary, marginTop: 12, fontWeight: '600' },
+  countdownContainer: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
+  countdownText: { fontSize: 120, fontWeight: 'bold', color: 'white', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 10 }
 });

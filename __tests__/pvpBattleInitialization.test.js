@@ -7,6 +7,8 @@ import { createInitialState, nextQuestion } from '../src/domain/game/battleEngin
 import { generateQuestion } from '../src/domain/vocabulary/questionGenerator';
 import { createSeededRandom } from '../src/domain/game/seededRandom';
 
+jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
+
 jest.mock('firebase/database', () => ({
   getDatabase: jest.fn(),
   ref: jest.fn(),
@@ -39,7 +41,12 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 );
 
 jest.mock('react-native-nitro-google-signin', () => ({
-  GoogleOneTapSignIn: jest.fn(),
+  GoogleOneTapSignIn: {
+    configure: jest.fn(),
+    hasPlayServices: jest.fn().mockResolvedValue(true),
+    signIn: jest.fn(),
+    signOut: jest.fn()
+  },
   isSuccessResponse: jest.fn()
 }));
 

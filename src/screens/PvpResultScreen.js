@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { usePvpRoom } from '../context/PvpRoomContext';
 import { theme } from '../theme';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ export default function PvpResultScreen({ navigation }) {
   const { roomId, room, user, isHost } = usePvpRoom();
   const { t } = useTranslation();
   const [matchState, setMatchState] = useState(null);
+  const animValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (roomId) {
@@ -37,15 +38,25 @@ export default function PvpResultScreen({ navigation }) {
   const myState = players?.[myUid];
   const oppState = players?.[opponentUid];
 
-  let outcomeText = 'DRAW';
+  let outcomeText = t('pvp.draw');
   let outcomeStyle = styles.drawText;
   if (result.winnerUid === myUid) {
-    outcomeText = 'VICTORY';
+    outcomeText = t('pvp.victory');
     outcomeStyle = styles.victoryText;
   } else if (result.winnerUid === opponentUid) {
-    outcomeText = 'DEFEAT';
+    outcomeText = t('pvp.defeat');
     outcomeStyle = styles.defeatText;
   }
+  
+  useEffect(() => {
+    const anim = Animated.timing(animValue, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [animValue]);
   
   const myFinalHp = result.finalHp?.[myUid] || 0;
   const oppFinalHp = result.finalHp?.[opponentUid] || 0;
@@ -68,21 +79,26 @@ export default function PvpResultScreen({ navigation }) {
     }
   };
 
+  const scaleAnim = animValue.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.5, 1.2, 1]
+  });
+
   return (
     <View style={styles.container}>
-      <Text style={[styles.outcomeTitle, outcomeStyle]}>{outcomeText}</Text>
+      <Animated.Text style={[styles.outcomeTitle, outcomeStyle, { opacity: animValue, transform: [{ scale: scaleAnim }] }]}>
+        {outcomeText}
+      </Animated.Text>
       
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Match Result</Text>
-        
+      <Animated.View style={[styles.card, { opacity: animValue }]}>
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
-            <Text style={styles.statLabel}>YOU</Text>
-            <Text style={styles.statHp}>HP: {myFinalHp}</Text>
-            <Text style={styles.statSub}>Score: {myState?.score || 0}</Text>
-            <Text style={styles.statSub}>Correct: {myState?.correct || 0}</Text>
-            <Text style={styles.statSub}>Wrong: {myState?.wrong || 0}</Text>
-            <Text style={styles.statSub}>Potions Used: {myPotionsUsed}</Text>
+            <Text style={styles.statLabel}>{t('pvp.you')}</Text>
+            <Text style={styles.statHp}>{t('pvp.finalHp')}: {myFinalHp}</Text>
+            <Text style={styles.statSub}>{t('battle.score')}: {myState?.score || 0}</Text>
+            <Text style={styles.statSub}>{t('pvp.correct')}: {myState?.correct || 0}</Text>
+            <Text style={styles.statSub}>{t('pvp.wrong')}: {myState?.wrong || 0}</Text>
+            <Text style={styles.statSub}>{t('pvp.potionsUsed')}: {myPotionsUsed}</Text>
           </View>
           
           <View style={styles.vsBox}>
@@ -90,20 +106,20 @@ export default function PvpResultScreen({ navigation }) {
           </View>
           
           <View style={styles.statBox}>
-            <Text style={styles.statLabel}>OPPONENT</Text>
-            <Text style={styles.statHp}>HP: {oppFinalHp}</Text>
-            <Text style={styles.statSub}>Score: {oppState?.score || 0}</Text>
-            <Text style={styles.statSub}>Correct: {oppState?.correct || 0}</Text>
-            <Text style={styles.statSub}>Wrong: {oppState?.wrong || 0}</Text>
-            <Text style={styles.statSub}>Potions Used: {oppPotionsUsed}</Text>
+            <Text style={styles.statLabel}>{t('pvp.opponent')}</Text>
+            <Text style={styles.statHp}>{t('pvp.finalHp')}: {oppFinalHp}</Text>
+            <Text style={styles.statSub}>{t('battle.score')}: {oppState?.score || 0}</Text>
+            <Text style={styles.statSub}>{t('pvp.correct')}: {oppState?.correct || 0}</Text>
+            <Text style={styles.statSub}>{t('pvp.wrong')}: {oppState?.wrong || 0}</Text>
+            <Text style={styles.statSub}>{t('pvp.potionsUsed')}: {oppPotionsUsed}</Text>
           </View>
         </View>
-      </View>
+      </Animated.View>
 
       <Text style={styles.matchIdText}>Match ID: {room?.match?.matchId}</Text>
 
       <TouchableOpacity style={styles.leaveButton} onPress={handleLeave}>
-        <Text style={styles.leaveButtonText}>Back to Arena</Text>
+        <Text style={styles.leaveButtonText}>{t('arena.leaveRoom')}</Text>
       </TouchableOpacity>
     </View>
   );
