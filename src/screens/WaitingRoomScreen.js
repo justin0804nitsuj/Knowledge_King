@@ -96,8 +96,8 @@ export default function WaitingRoomScreen({ navigation }) {
       confirmLeaveRef.current();
       return true; // Prevent default back
     };
-    BackHandler.addEventListener('hardwareBackPress', onBackPress);
-    return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
   }, []);
 
   const confirmLeave = () => {
