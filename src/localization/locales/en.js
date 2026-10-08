@@ -107,6 +107,10 @@ export default {
     languageSystem: 'System Default',
     languageZhTw: '繁體中文',
     languageEn: 'English',
+    soundEffects: 'Sound Effects',
+    haptics: 'Haptics',
+    on: 'ON',
+    off: 'OFF',
   },
   arena: {
     offlineMessage: 'Online Arena requires Internet.',

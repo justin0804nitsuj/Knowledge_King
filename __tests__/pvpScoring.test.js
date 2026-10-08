@@ -5,6 +5,9 @@ import * as PvpRoomContext from '../src/context/PvpRoomContext';
 import * as PvpBattleService from '../src/services/pvp/pvpBattleService';
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
+jest.mock('expo-audio', () => ({ setAudioModeAsync: jest.fn(), createAudioPlayer: jest.fn() }));
+jest.mock('expo-haptics', () => ({ impactAsync: jest.fn(), notificationAsync: jest.fn(), ImpactFeedbackStyle: {}, NotificationFeedbackType: {} }));
+jest.mock('../src/services/feedback/gameFeedback', () => ({ gameFeedback: { init: jest.fn(), cleanup: jest.fn(), playDamage: jest.fn(), playHeal: jest.fn(), playOpponentHit: jest.fn(), playCountdownGo: jest.fn(), playCountdownTick: jest.fn(), playDraw: jest.fn(), playAnswerCorrect: jest.fn(), playAnswerWrong: jest.fn(), playVictory: jest.fn(), playDefeat: jest.fn(), updateSettings: jest.fn() } }));
 
 jest.mock('../src/context/PvpRoomContext');
 jest.mock('../src/services/pvp/pvpBattleService', () => ({

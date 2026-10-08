@@ -9,12 +9,15 @@ import { getPlayerLevelInfo } from '../domain/player/levelSystem';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { changeLanguage } from '../localization/i18n';
-import { LANGUAGE_PREF, loadSettings } from '../storage/settingsStorage';
+import { LANGUAGE_PREF, loadSettings, saveSettings } from '../storage/settingsStorage';
+import { gameFeedback } from '../services/feedback/gameFeedback';
 
 export default function ProfileScreen({ navigation }) {
   const [playerInfo, setPlayerInfo] = useState(null);
   const [recentBattles, setRecentBattles] = useState([]);
   const [currentLang, setCurrentLang] = useState(LANGUAGE_PREF.SYSTEM);
+  const [soundEffects, setSoundEffects] = useState(true);
+  const [haptics, setHaptics] = useState(true);
   const { user, isSignedIn, signInWithGoogle, signOut, isInitializing } = useAuth();
   const { t } = useTranslation();
   
@@ -29,6 +32,8 @@ export default function ProfileScreen({ navigation }) {
 
         const settings = await loadSettings();
         setCurrentLang(settings.language);
+        setSoundEffects(settings.soundEffects !== false);
+        setHaptics(settings.haptics !== false);
       }
       loadData();
     }, [])
@@ -54,6 +59,21 @@ export default function ProfileScreen({ navigation }) {
   const handleLangChange = async (lang) => {
     await changeLanguage(lang);
     setCurrentLang(lang);
+    await saveSettings({ language: lang });
+  };
+
+  const handleToggleSound = async () => {
+    const nextVal = !soundEffects;
+    setSoundEffects(nextVal);
+    await saveSettings({ soundEffects: nextVal });
+    gameFeedback.updateSettings({ soundEffects: nextVal });
+  };
+
+  const handleToggleHaptics = async () => {
+    const nextVal = !haptics;
+    setHaptics(nextVal);
+    await saveSettings({ haptics: nextVal });
+    gameFeedback.updateSettings({ haptics: nextVal });
   };
 
   const handleLogin = async () => {
@@ -155,6 +175,28 @@ export default function ProfileScreen({ navigation }) {
             style={[styles.langBtn, currentLang === LANGUAGE_PREF.EN && styles.langBtnActive]}
             onPress={() => handleLangChange(LANGUAGE_PREF.EN)}>
             <Text style={[styles.langBtnText, currentLang === LANGUAGE_PREF.EN && styles.langBtnTextActive]}>{t('profile.languageEn')}</Text>
+          </TouchableOpacity>
+        </View>
+        
+        <View style={styles.toggleRow}>
+          <Text style={styles.statLabel}>{t('profile.soundEffects')}</Text>
+          <TouchableOpacity 
+            style={[styles.langBtn, soundEffects && styles.langBtnActive]}
+            onPress={handleToggleSound}>
+            <Text style={[styles.langBtnText, soundEffects && styles.langBtnTextActive]}>
+              {soundEffects ? t('profile.on') : t('profile.off')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.toggleRow}>
+          <Text style={styles.statLabel}>{t('profile.haptics')}</Text>
+          <TouchableOpacity 
+            style={[styles.langBtn, haptics && styles.langBtnActive]}
+            onPress={handleToggleHaptics}>
+            <Text style={[styles.langBtnText, haptics && styles.langBtnTextActive]}>
+              {haptics ? t('profile.on') : t('profile.off')}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -364,6 +406,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 8,
     borderRadius: 8,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
   },
   langBtnActive: {
     backgroundColor: theme.colors.primary,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { usePvpRoom } from '../context/PvpRoomContext';
 import { theme } from '../theme';
@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { RoomStatus } from '../domain/pvp/roomConstants';
 import PvpHealthBar from '../components/pvp/PvpHealthBar';
 import { Ionicons } from '@expo/vector-icons';
+import { gameFeedback } from '../services/feedback/gameFeedback';
 
 export default function PvpBattleScreen({ navigation }) {
   const { roomId, room, isHost, user } = usePvpRoom();
@@ -21,6 +22,15 @@ export default function PvpBattleScreen({ navigation }) {
   const [isPotionPending, setIsPotionPending] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [countdown, setCountdown] = useState(null); // 3, 2, 1, 'GO!', null
+  
+  const lastMyHpRef = useRef(100);
+  const lastOppHpRef = useRef(100);
+  const lastResultRoundRef = useRef(-1);
+
+  useEffect(() => {
+    gameFeedback.init();
+    return () => gameFeedback.cleanup();
+  }, []);
   
   useEffect(() => {
     if (!room || !room.match) {
@@ -72,6 +82,7 @@ export default function PvpBattleScreen({ navigation }) {
     if (phase === 'COUNTDOWN') {
       if (countdown === null) return;
       if (countdown === 'GO!') {
+        gameFeedback.playCountdownGo();
         const timer = setTimeout(() => {
           setCountdown(null);
           setPhase('READY');
@@ -79,6 +90,7 @@ export default function PvpBattleScreen({ navigation }) {
         return () => clearTimeout(timer);
       }
       
+      gameFeedback.playCountdownTick();
       const timer = setTimeout(() => {
         if (countdown > 1) {
           setCountdown(countdown - 1);
@@ -176,7 +188,37 @@ export default function PvpBattleScreen({ navigation }) {
   const oppState = matchState?.players?.[opponentUid] || { hp: 100, score: 0, potionsRemaining: 2 };
   const totalQuestions = room?.match?.questionCount || 10;
   
+  // Feedback listeners
+  useEffect(() => {
+    if (safeMyState.hp < lastMyHpRef.current) {
+      gameFeedback.playDamage();
+    } else if (safeMyState.hp > lastMyHpRef.current) {
+      gameFeedback.playHeal();
+    }
+    lastMyHpRef.current = safeMyState.hp;
+  }, [safeMyState.hp]);
+
+  useEffect(() => {
+    if (oppState.hp < lastOppHpRef.current) {
+      gameFeedback.playOpponentHit();
+    }
+    lastOppHpRef.current = oppState.hp;
+  }, [oppState.hp]);
+
   const currentRound = matchState?.rounds?.[roundIndex];
+  
+  useEffect(() => {
+    if (matchPhase === 'ROUND_RESULT' && currentRound?.resolution && lastResultRoundRef.current !== roundIndex) {
+      const hostDamaged = currentRound.resolution.damageToHost > 0;
+      const guestDamaged = currentRound.resolution.damageToGuest > 0;
+      
+      if (!hostDamaged && !guestDamaged) {
+         gameFeedback.playDraw();
+      }
+      lastResultRoundRef.current = roundIndex;
+    }
+  }, [matchPhase, currentRound, roundIndex]);
+
   const myAnswer = currentRound?.answers?.[myUid];
   const hasAnswered = !!myAnswer;
   // Lock answering if we answered, if it's not ANSWERING phase, if countdown is active, or submitting
@@ -195,6 +237,12 @@ export default function PvpBattleScreen({ navigation }) {
     setIsSubmitting(true);
     
     const isCorrect = choiceId === gameState.currentQuestion.correctChoiceId;
+    if (isCorrect) {
+      gameFeedback.playAnswerCorrect();
+    } else {
+      gameFeedback.playAnswerWrong();
+    }
+    
     const points = isCorrect ? 10 : 0;
     
     try {

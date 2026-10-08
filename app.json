@@ -28,7 +28,8 @@
       "react-native-nitro-google-signin",
       "expo-localization",
       "expo-font",
-      "expo-audio"
+      "expo-audio",
+      "expo-asset"
     ],
     "extra": {
       "eas": {

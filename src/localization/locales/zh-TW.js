@@ -107,6 +107,10 @@ export default {
     languageSystem: '系統預設',
     languageZhTw: '繁體中文',
     languageEn: 'English',
+    soundEffects: '音效',
+    haptics: '震動',
+    on: '開啟',
+    off: '關閉',
   },
   arena: {
     offlineMessage: '競技場需要網路連線。',

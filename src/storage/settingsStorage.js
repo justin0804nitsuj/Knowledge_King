@@ -10,6 +10,8 @@ export const LANGUAGE_PREF = {
 
 const defaultSettings = {
   language: LANGUAGE_PREF.SYSTEM,
+  soundEffects: true,
+  haptics: true,
 };
 
 export async function loadSettings() {

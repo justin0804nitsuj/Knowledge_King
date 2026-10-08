@@ -5,12 +5,19 @@ import { theme } from '../theme';
 import { useTranslation } from 'react-i18next';
 import { subscribeToMatchState } from '../services/pvp/pvpBattleService';
 import { leaveRoom } from '../services/pvp/roomService';
+import { gameFeedback } from '../services/feedback/gameFeedback';
 
 export default function PvpResultScreen({ navigation }) {
   const { roomId, room, user, isHost } = usePvpRoom();
   const { t } = useTranslation();
   const [matchState, setMatchState] = useState(null);
   const animValue = useRef(new Animated.Value(0)).current;
+  const playedResultRef = useRef(false);
+
+  useEffect(() => {
+    gameFeedback.init();
+    return () => gameFeedback.cleanup();
+  }, []);
 
   useEffect(() => {
     if (roomId) {
@@ -47,6 +54,19 @@ export default function PvpResultScreen({ navigation }) {
     outcomeText = t('pvp.defeat');
     outcomeStyle = styles.defeatText;
   }
+  
+  useEffect(() => {
+    if (!playedResultRef.current && result) {
+      if (result.winnerUid === myUid) {
+        gameFeedback.playVictory();
+      } else if (result.winnerUid === opponentUid) {
+        gameFeedback.playDefeat();
+      } else {
+        gameFeedback.playDraw();
+      }
+      playedResultRef.current = true;
+    }
+  }, [result, myUid, opponentUid]);
   
   useEffect(() => {
     const anim = Animated.timing(animValue, {
