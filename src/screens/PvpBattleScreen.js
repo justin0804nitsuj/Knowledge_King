@@ -19,10 +19,11 @@ export default function PvpBattleScreen({ navigation }) {
   const [phase, setPhase] = useState('LOADING_MATCH');
   const [gameState, setGameState] = useState(null);
   const [initError, setInitError] = useState(null);
-  const [matchState, setMatchState] = useState({});
+  const [matchState, setMatchState] = useState(room?.matchState || {});
   const [isItemPending, setIsItemPending] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [countdown, setCountdown] = useState(null); // 3, 2, 1, 'GO!', null
+  const [itemUsedThisRound, setItemUsedThisRound] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   
   const lastMyHpRef = useRef(100);
@@ -200,11 +201,14 @@ export default function PvpBattleScreen({ navigation }) {
   }, [roundIndex, gameState]);
 
   const myState = matchState?.players?.[myUid];
+  console.log("DEBUG myUid:", myUid, "DEBUG matchState:", matchState);
   const safeMyState = myState || { hp: 100, score: 0, items: {} };
+  console.log("SAFE MY STATE IN PVPBATTLE:", safeMyState);
   const oppState = matchState?.players?.[opponentUid] || { hp: 100, score: 0, items: {} };
   const totalQuestions = room?.match?.questionCount || 10;
   
   // Feedback listeners
+  // Feedback listeners for HP changes (damage/heal)
   useEffect(() => {
     if (safeMyState.hp < lastMyHpRef.current) {
       gameFeedback.playDamage();
@@ -213,6 +217,11 @@ export default function PvpBattleScreen({ navigation }) {
     }
     lastMyHpRef.current = safeMyState.hp;
   }, [safeMyState.hp]);
+
+  // Reset per-round item-used flag when round index advances
+  useEffect(() => {
+    setItemUsedThisRound(false);
+  }, [roundIndex]);
 
   useEffect(() => {
     if (oppState.hp < lastOppHpRef.current) {
@@ -240,18 +249,21 @@ export default function PvpBattleScreen({ navigation }) {
   // Lock answering if we answered, if it's not ANSWERING phase, if countdown is active, or submitting
   const isLocked = hasAnswered || matchPhase !== 'ANSWERING' || isSubmitting || phase === 'COUNTDOWN';
   
-  const myItemUse = currentRound?.itemUses?.[myUid];
+  const myItemUse = safeMyState?.itemUses?.[roundIndex];
   const hasUsedItem = !!myItemUse;
 
   let itemDisabledReason = null;
   let itemsDisabled = false;
 
-  if (isLocked) {
+  if (phase === 'COUNTDOWN') {
     itemsDisabled = true;
-    itemDisabledReason = t('pvpItems.disabledLocked', 'Answer already locked');
-  } else if (hasUsedItem) {
+    itemDisabledReason = null;
+  } else if (hasUsedItem || itemUsedThisRound) {
     itemsDisabled = true;
     itemDisabledReason = t('pvpItems.disabledUsed', 'Item already used this round');
+  } else if (isLocked) {
+    itemsDisabled = true;
+    itemDisabledReason = t('pvpItems.disabledLocked', 'Answer already locked');
   } else if (isItemPending) {
     itemsDisabled = true;
   }
@@ -300,6 +312,8 @@ export default function PvpBattleScreen({ navigation }) {
     const actionId = `item_${roundIndex}_${itemId}`;
     try {
       await useBattleItem({ roomCode: roomId, uid: myUid, roundIndex, itemId, actionId });
+      // Mark that an item was used this round for immediate UI feedback
+      setItemUsedThisRound(true);
     } catch (err) {
       console.error("Failed to use item:", err);
     } finally {
@@ -430,7 +444,10 @@ export default function PvpBattleScreen({ navigation }) {
         );
       })() : (
         gameState && gameState.currentQuestion && (
-          <ScrollView style={styles.questionContainer}>
+          <ScrollView 
+            style={[styles.questionContainer, phase === 'COUNTDOWN' ? { opacity: 0 } : {}]}
+            pointerEvents={phase === 'COUNTDOWN' ? 'none' : 'auto'}
+          >
             <Text style={styles.questionLabel}>Question {roundIndex + 1}</Text>
             <Text style={styles.questionText}>{gameState.currentQuestion.word}</Text>
             

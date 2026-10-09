@@ -92,9 +92,11 @@ export default function PvpItemBar({ items, onUseItem, disabled, disabledReason 
         )}
 
         <View style={styles.slotsContainer}>
+          {console.log("ITEMS IN PVPITEMBAR:", items)}
           {[ITEM_TYPES.HEAL, ITEM_TYPES.SHIELD, ITEM_TYPES.POWER].map(itemId => {
             const remaining = items?.[itemId]?.remaining || 0;
-            const slotDisabled = isItemDisabled(itemId);
+            // Slot is disabled if item count is zero OR the whole bar is disabled (e.g., after using an item this round)
+            const slotDisabled = isItemDisabled(itemId) || disabled;
             const isSelected = selectedItem === itemId;
 
             return (
@@ -119,7 +121,7 @@ export default function PvpItemBar({ items, onUseItem, disabled, disabledReason 
                   {getItemName(itemId).split(' ')[0]}
                 </Text>
                 <View style={[styles.badge, remaining <= 0 && styles.badgeEmpty]}>
-                  <Text style={styles.badgeText}>{remaining}</Text>
+                  <Text style={styles.badgeText}>×{remaining}</Text>
                 </View>
               </TouchableOpacity>
             );
