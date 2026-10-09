@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { subscribeToMatchState } from '../services/pvp/pvpBattleService';
 import { leaveRoom } from '../services/pvp/roomService';
 import { gameFeedback } from '../services/feedback/gameFeedback';
+import { PVP_ITEMS } from '../domain/pvp/pvpItems';
 
 export default function PvpResultScreen({ navigation }) {
   const { roomId, room, user, isHost } = usePvpRoom();
@@ -89,8 +90,17 @@ export default function PvpResultScreen({ navigation }) {
   const myFinalHp = result.finalHp?.[myUid] || 0;
   const oppFinalHp = result.finalHp?.[opponentUid] || 0;
   
-  const myPotionsUsed = 2 - (myState?.potionsRemaining ?? 2);
-  const oppPotionsUsed = 2 - (oppState?.potionsRemaining ?? 2);
+  const calculateItemsUsed = (state) => {
+    if (!state?.items) return 0;
+    return Object.keys(state.items).reduce((acc, itemId) => {
+      const starting = PVP_ITEMS[itemId]?.startingCount || 0;
+      const remaining = state.items[itemId]?.remaining || 0;
+      return acc + (starting - remaining);
+    }, 0);
+  };
+
+  const myItemsUsed = calculateItemsUsed(myState);
+  const oppItemsUsed = calculateItemsUsed(oppState);
 
   const handleLeave = async () => {
     try {
@@ -126,7 +136,7 @@ export default function PvpResultScreen({ navigation }) {
             <Text style={styles.statSub}>{t('battle.score')}: {myState?.score || 0}</Text>
             <Text style={styles.statSub}>{t('pvp.correct')}: {myState?.correct || 0}</Text>
             <Text style={styles.statSub}>{t('pvp.wrong')}: {myState?.wrong || 0}</Text>
-            <Text style={styles.statSub}>{t('pvp.potionsUsed')}: {myPotionsUsed}</Text>
+            <Text style={styles.statSub}>{t('pvp.itemsUsed')}: {myItemsUsed}</Text>
           </View>
           
           <View style={styles.vsBox}>
@@ -139,7 +149,7 @@ export default function PvpResultScreen({ navigation }) {
             <Text style={styles.statSub}>{t('battle.score')}: {oppState?.score || 0}</Text>
             <Text style={styles.statSub}>{t('pvp.correct')}: {oppState?.correct || 0}</Text>
             <Text style={styles.statSub}>{t('pvp.wrong')}: {oppState?.wrong || 0}</Text>
-            <Text style={styles.statSub}>{t('pvp.potionsUsed')}: {oppPotionsUsed}</Text>
+            <Text style={styles.statSub}>{t('pvp.itemsUsed')}: {oppItemsUsed}</Text>
           </View>
         </View>
       </Animated.View>

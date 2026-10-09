@@ -57,8 +57,22 @@ jest.mock('react-i18next', () => ({
 }));
 
 describe('PvP Scoring', () => {
+  let component;
+  
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    if (component) {
+      act(() => {
+        component.unmount();
+      });
+      component = null;
+    }
+    jest.clearAllTimers();
+    jest.useRealTimers();
   });
 
   const expectTextToExist = (root, text) => {
@@ -83,7 +97,6 @@ describe('PvP Scoring', () => {
       isHost: false
     });
 
-    let component;
     act(() => {
       component = renderer.create(<PvpBattleScreen />);
     });

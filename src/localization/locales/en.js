@@ -201,6 +201,23 @@ export default {
     youWrong: 'YOU: WRONG',
     opponentWrong: 'OPPONENT: WRONG',
     finalHp: 'Final HP',
-    potionsUsed: 'Potions used'
+    itemsUsed: 'Items used',
+    potionsUsed: 'Potions used',
+    correctLabel: 'Correct',
+    wrongLabel: 'Wrong',
+    powerBonus: 'Power +{{bonus}}',
+    shieldBlocked: 'Shield blocked {{blocked}}'
   },
+  pvpItems: {
+    healName: 'Healing Potion',
+    healDesc: 'Restores {{amount}} HP instantly.',
+    shieldName: 'Shield',
+    shieldDesc: 'Blocks up to {{amount}} incoming damage this round.',
+    powerName: 'Power Boost',
+    powerDesc: 'Adds {{amount}} damage to your attack if you answer correctly.',
+    cancel: 'Cancel',
+    use: 'USE',
+    disabledLocked: 'Answer already locked',
+    disabledUsed: 'Item already used this round'
+  }
 };

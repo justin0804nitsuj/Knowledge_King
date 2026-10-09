@@ -1,4 +1,4 @@
-import { submitAnswer, resolveRound, advanceRound, finalizeMatch, usePotion } from '../src/services/pvp/pvpBattleService';
+import { submitAnswer, resolveRound, advanceRound, finalizeMatch, useBattleItem } from '../src/services/pvp/pvpBattleService';
 import { runTransaction } from 'firebase/database';
 import { RoomStatus } from '../src/domain/pvp/roomConstants';
 
@@ -19,11 +19,15 @@ describe('pvpBattleService Lockstep Round logic', () => {
 
   const getInitialPlayerState = () => ({
     hp: 100,
-    potionsRemaining: 2,
+    items: {
+      HEAL: { remaining: 2 },
+      SHIELD: { remaining: 1 },
+      POWER: { remaining: 1 }
+    },
     score: 0,
     correct: 0,
     wrong: 0,
-    processedActions: {}
+    itemUses: {}
   });
 
   const getInitialMatchState = () => ({
@@ -176,35 +180,36 @@ describe('pvpBattleService Lockstep Round logic', () => {
     await advanceRound('room1', 0);
   });
 
-  // Coverage: 17. potion +25 capped at 100
-  // Coverage: 18. potion consumes exactly one
-  test('usePotion heals 25 capped at 100 and consumes 1 potion', async () => {
+  // Coverage: 17. HEAL potion +25 capped at 100
+  // Coverage: 18. HEAL consumes exactly one
+  test('useBattleItem (HEAL) heals 25 capped at 100 and consumes 1 potion', async () => {
     runTransaction.mockImplementationOnce((ref, fn) => {
       const state = getInitialPlayerState();
       state.hp = 80;
       const result = fn(state);
       expect(result.hp).toBe(100); // capped at 100, not 105
-      expect(result.potionsRemaining).toBe(1);
-      expect(result.processedActions['potion_1']).toBe(true);
+      expect(result.items.HEAL.remaining).toBe(1);
+      expect(result.itemUses['0']).toBeDefined();
+      expect(result.itemUses['0'].itemId).toBe('HEAL');
       return { committed: true };
     });
 
-    await usePotion('room1', 'host1', 'potion_1');
+    await useBattleItem({ roomCode: 'room1', uid: 'host1', itemId: 'HEAL', roundIndex: 0, actionId: 'action_1' });
   });
 
-  // Coverage: 19. duplicate potion action idempotent
-  test('usePotion idempotent with same actionId', async () => {
+  // Coverage: 19. duplicate item action in same round aborts
+  test('useBattleItem idempotent with same roundIndex', async () => {
     runTransaction.mockImplementationOnce((ref, fn) => {
       const state = getInitialPlayerState();
       state.hp = 100;
-      state.potionsRemaining = 1;
-      state.processedActions['potion_1'] = true;
+      state.items.HEAL.remaining = 1;
+      state.itemUses['0'] = { itemId: 'HEAL', actionId: 'action_1' };
       const result = fn(state);
       expect(result).toBeUndefined(); // Abort
       return { committed: false };
     });
 
-    await usePotion('room1', 'host1', 'potion_1');
+    await useBattleItem({ roomCode: 'room1', uid: 'host1', itemId: 'HEAL', roundIndex: 0, actionId: 'action_2' });
   });
 
   // Coverage: 21. simultaneous lethal both-correct at HP20/20 → DRAW

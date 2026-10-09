@@ -201,6 +201,23 @@ export default {
     youWrong: '你答錯了',
     opponentWrong: '對手答錯了',
     finalHp: '最終血量',
-    potionsUsed: '使用藥水數'
+    itemsUsed: '使用道具',
+    potionsUsed: '使用藥水數',
+    correctLabel: '正確',
+    wrongLabel: '錯誤',
+    powerBonus: '攻擊 +{{bonus}}',
+    shieldBlocked: '護盾格擋 {{blocked}}'
   },
+  pvpItems: {
+    healName: '治療藥水',
+    healDesc: '立即回復 {{amount}} 點生命值。',
+    shieldName: '護盾',
+    shieldDesc: '本回合最多抵擋 {{amount}} 點傷害。',
+    powerName: '力量增幅',
+    powerDesc: '若答對，本回合攻擊力增加 {{amount}} 點。',
+    cancel: '取消',
+    use: '使用',
+    disabledLocked: '已鎖定答案',
+    disabledUsed: '本回合已使用過道具'
+  }
 };

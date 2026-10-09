@@ -1,19 +1,18 @@
-import { ref, runTransaction, update, onValue, off, serverTimestamp } from 'firebase/database';
+import { ref, runTransaction, onValue, off, serverTimestamp } from 'firebase/database';
 import { db } from '../firebase/firebaseDatabase';
 import { RoomStatus } from '../../domain/pvp/roomConstants';
+import { PVP_ITEMS, ITEM_TYPES, getInitialItemsState } from '../../domain/pvp/pvpItems';
 
 const MAX_HP = 100;
-const DAMAGE = 20;
-const POTION_HEAL = 25;
+const BASE_DAMAGE = 20;
 
 function getInitialPlayerState() {
   return {
     hp: MAX_HP,
-    potionsRemaining: 2,
     score: 0,
     correct: 0,
     wrong: 0,
-    processedActions: {}
+    items: getInitialItemsState(),
   };
 }
 
@@ -56,8 +55,31 @@ export async function resolveRound(roomCode, hostUid, guestUid, roundIndex) {
     const hostHpBefore = matchState.players[hostUid].hp;
     const guestHpBefore = matchState.players[guestUid].hp;
 
-    let damageToHost = guestCorrect ? DAMAGE : 0;
-    let damageToGuest = hostCorrect ? DAMAGE : 0;
+    const hostItemUse = round.itemUses?.[hostUid];
+    const guestItemUse = round.itemUses?.[guestUid];
+
+    const hostPowerActive = hostItemUse?.itemId === ITEM_TYPES.POWER;
+    const guestPowerActive = guestItemUse?.itemId === ITEM_TYPES.POWER;
+    const hostShieldActive = hostItemUse?.itemId === ITEM_TYPES.SHIELD;
+    const guestShieldActive = guestItemUse?.itemId === ITEM_TYPES.SHIELD;
+
+    const hostPowerBonus = hostPowerActive ? PVP_ITEMS[ITEM_TYPES.POWER].bonusDamage : 0;
+    const guestPowerBonus = guestPowerActive ? PVP_ITEMS[ITEM_TYPES.POWER].bonusDamage : 0;
+
+    const hostBaseDamage = hostCorrect ? BASE_DAMAGE : 0;
+    const guestBaseDamage = guestCorrect ? BASE_DAMAGE : 0;
+
+    let rawHostOutgoingDamage = hostCorrect ? (BASE_DAMAGE + hostPowerBonus) : 0;
+    let rawGuestOutgoingDamage = guestCorrect ? (BASE_DAMAGE + guestPowerBonus) : 0;
+
+    const hostShieldBlock = hostShieldActive ? PVP_ITEMS[ITEM_TYPES.SHIELD].blockAmount : 0;
+    const guestShieldBlock = guestShieldActive ? PVP_ITEMS[ITEM_TYPES.SHIELD].blockAmount : 0;
+
+    const damageToHost = Math.max(0, rawGuestOutgoingDamage - hostShieldBlock);
+    const damageToGuest = Math.max(0, rawHostOutgoingDamage - guestShieldBlock);
+    
+    const hostShieldBlocked = Math.min(rawGuestOutgoingDamage, hostShieldBlock);
+    const guestShieldBlocked = Math.min(rawHostOutgoingDamage, guestShieldBlock);
 
     let hostHpAfter = Math.max(0, hostHpBefore - damageToHost);
     let guestHpAfter = Math.max(0, guestHpBefore - damageToGuest);
@@ -65,6 +87,12 @@ export async function resolveRound(roomCode, hostUid, guestUid, roundIndex) {
     round.resolution = {
       hostCorrect,
       guestCorrect,
+      hostBaseDamage,
+      guestBaseDamage,
+      hostPowerBonus,
+      guestPowerBonus,
+      hostShieldBlocked,
+      guestShieldBlocked,
       damageToHost,
       damageToGuest,
       hostHpBefore,
@@ -109,29 +137,37 @@ export async function advanceRound(roomCode, currentRoundIndex) {
   }, { applyLocally: false });
 }
 
-export async function usePotion(roomCode, uid, actionId) {
+export async function useBattleItem({ roomCode, uid, roundIndex, itemId, actionId }) {
   const playerStateRef = ref(db, `rooms/${roomCode}/matchState/players/${uid}`);
   
   return runTransaction(playerStateRef, (currentState) => {
-    if (!currentState) {
-      currentState = getInitialPlayerState();
+    if (!currentState) return;
+
+    if (currentState.hp <= 0) return;
+
+    if (currentState.itemUses && currentState.itemUses[roundIndex]) {
+      return; // Already used an item this round
+    }
+
+    const itemInv = currentState.items?.[itemId];
+    if (!itemInv || itemInv.remaining <= 0) return;
+
+    if (itemId === ITEM_TYPES.HEAL) {
+      if (currentState.hp >= MAX_HP) return;
+      currentState.hp = Math.min(MAX_HP, currentState.hp + PVP_ITEMS[ITEM_TYPES.HEAL].healAmount);
+    }
+
+    itemInv.remaining -= 1;
+
+    if (!currentState.itemUses) {
+      currentState.itemUses = {};
     }
     
-    if (!currentState.processedActions) {
-      currentState.processedActions = {};
-    }
-
-    if (currentState.processedActions[actionId]) {
-      return; // Already processed
-    }
-
-    if (currentState.hp <= 0 || currentState.hp >= MAX_HP || currentState.potionsRemaining <= 0) {
-      return; // Abort if cannot heal
-    }
-
-    currentState.hp = Math.min(MAX_HP, currentState.hp + POTION_HEAL);
-    currentState.potionsRemaining -= 1;
-    currentState.processedActions[actionId] = true;
+    currentState.itemUses[roundIndex] = {
+      itemId,
+      actionId,
+      usedAt: serverTimestamp()
+    };
 
     return currentState;
   }, { applyLocally: false });
@@ -143,9 +179,8 @@ export async function finalizeMatch(roomCode, hostUid, guestUid) {
   return runTransaction(roomRef, (roomData) => {
     if (!roomData) return;
     
-    // Validate we are currently in battle and have both players
     if (roomData.meta?.status !== RoomStatus.IN_BATTLE) {
-      return; // Abort if already finished or cancelled
+      return;
     }
     
     const hostState = roomData.matchState?.players?.[hostUid];
@@ -155,7 +190,6 @@ export async function finalizeMatch(roomCode, hostUid, guestUid) {
       return; 
     }
     
-    // Determine winner based on HP, tiebreaker Score
     let winnerUid = null;
     let loserUid = null;
     
@@ -166,7 +200,6 @@ export async function finalizeMatch(roomCode, hostUid, guestUid) {
       winnerUid = guestUid;
       loserUid = hostUid;
     } else {
-      // HP equal, fallback to score
       if (hostState.score > guestState.score) {
         winnerUid = hostUid;
         loserUid = guestUid;
@@ -174,9 +207,8 @@ export async function finalizeMatch(roomCode, hostUid, guestUid) {
         winnerUid = guestUid;
         loserUid = hostUid;
       }
-    } // else draw, winnerUid remains null
+    }
     
-    // Write result
     if (!roomData.matchState) roomData.matchState = {};
     roomData.matchState.result = {
       winnerUid,
@@ -193,8 +225,6 @@ export async function finalizeMatch(roomCode, hostUid, guestUid) {
     };
     
     roomData.matchState.phase = 'FINISHED';
-    
-    // Update room status
     roomData.meta.status = RoomStatus.FINISHED;
     
     return roomData;

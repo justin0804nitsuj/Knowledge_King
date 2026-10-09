@@ -61,8 +61,22 @@ jest.mock('react-i18next', () => ({
 }));
 
 describe('PvP Battle Initialization', () => {
+  let component;
+  
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    if (component) {
+      act(() => {
+        component.unmount();
+      });
+      component = null;
+    }
+    jest.clearAllTimers();
+    jest.useRealTimers();
   });
 
   const expectTextToExist = (root, text) => {
@@ -77,7 +91,6 @@ describe('PvP Battle Initialization', () => {
 
   test('1. PvpBattle initially renders loading state', () => {
     PvpRoomContext.usePvpRoom.mockReturnValue({ room: null });
-    let component;
     act(() => {
       component = renderer.create(<PvpBattleScreen />);
     });
@@ -90,7 +103,6 @@ describe('PvP Battle Initialization', () => {
         match: { level: 1, rulesetVersion: '1', vocabularyVersion: '1', matchId: 'abc', questionCount: 10 }
       }
     });
-    let component;
     act(() => {
       component = renderer.create(<PvpBattleScreen />);
     });
@@ -104,7 +116,6 @@ describe('PvP Battle Initialization', () => {
         match: { battleSeed: '123', level: 99, rulesetVersion: '1', vocabularyVersion: '1', matchId: 'abc', questionCount: 10 }
       }
     });
-    let component;
     act(() => {
       component = renderer.create(<PvpBattleScreen />);
     });
@@ -121,7 +132,6 @@ describe('PvP Battle Initialization', () => {
       },
       isHost: true
     });
-    let component;
     act(() => {
       component = renderer.create(<PvpBattleScreen />);
     });

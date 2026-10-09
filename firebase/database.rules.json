@@ -65,16 +65,20 @@
           "players": {
             "$uid": {
               ".write": "auth != null && auth.uid === $uid",
-              ".validate": "newData.hasChildren(['hp', 'score', 'correct', 'wrong', 'potionsRemaining'])",
-              "hp": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100 && ( (!data.exists() && newData.val() === 100) || (auth.uid === $uid && (newData.val() === data.val() || (newData.val() <= data.val() + 25 && newData.parent().child('potionsRemaining').val() === data.parent().child('potionsRemaining').val() - 1))) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && (newData.val() === data.val() || newData.val() === data.val() - 20 || newData.val() === 0)) )" },
-              "potionsRemaining": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2 && ( (!data.exists() && newData.val() === 2) || (auth.uid === $uid && (newData.val() === data.val() || newData.val() === data.val() - 1)) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && newData.val() === data.val()) )" },
+              ".validate": "newData.hasChildren(['hp', 'score', 'correct', 'wrong', 'items'])",
+              "hp": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100 && ( (!data.exists() && newData.val() === 100) || (auth.uid === $uid && (newData.val() === data.val() || (newData.val() <= data.val() + 25 && newData.parent().child('items/HEAL/remaining').val() === data.parent().child('items/HEAL/remaining').val() - 1))) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && (newData.val() === data.val() || newData.val() >= data.val() - 30 || newData.val() === 0)) )" },
+              "items": {
+                "HEAL": { "remaining": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 2" } },
+                "SHIELD": { "remaining": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" } },
+                "POWER": { "remaining": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" } }
+              },
               "score": { ".validate": "newData.isNumber() && ( (!data.exists() && newData.val() === 0) || (newData.val() === data.val()) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && newData.val() === data.val() + 10) )" },
               "correct": { ".validate": "newData.isNumber() && ( (!data.exists() && newData.val() === 0) || (newData.val() === data.val()) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && newData.val() === data.val() + 1) )" },
               "wrong": { ".validate": "newData.isNumber() && ( (!data.exists() && newData.val() === 0) || (newData.val() === data.val()) || (auth.uid === data.parent().parent().parent().parent().child('meta').child('hostUid').val() && newData.val() === data.val() + 1) )" },
-              "processedActions": {
+              "itemUses": {
                 ".validate": "true",
-                "$actionId": {
-                  ".validate": "newData.isBoolean()"
+                "$roundIndex": {
+                  ".validate": "newData.hasChildren(['itemId', 'actionId', 'usedAt']) && ( (!data.exists() && auth.uid === $uid) || (data.exists() && newData.child('actionId').val() === data.child('actionId').val()) )"
                 }
               },
               "$other": { ".validate": false }

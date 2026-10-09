@@ -4,10 +4,11 @@ import { usePvpRoom } from '../context/PvpRoomContext';
 import { theme } from '../theme';
 import { createInitialState, nextQuestion } from '../domain/game/battleEngine';
 import { getWordsByLevel } from '../domain/vocabulary/vocabularyRepository';
-import { submitAnswer, subscribeToMatchState, finalizeMatch, usePotion, resolveRound, advanceRound } from '../services/pvp/pvpBattleService';
+import { submitAnswer, subscribeToMatchState, finalizeMatch, useBattleItem, resolveRound, advanceRound } from '../services/pvp/pvpBattleService';
 import { useTranslation } from 'react-i18next';
 import { RoomStatus } from '../domain/pvp/roomConstants';
 import PvpHealthBar from '../components/pvp/PvpHealthBar';
+import PvpItemBar from '../components/pvp/PvpItemBar';
 import { Ionicons } from '@expo/vector-icons';
 import { gameFeedback } from '../services/feedback/gameFeedback';
 
@@ -19,7 +20,7 @@ export default function PvpBattleScreen({ navigation }) {
   const [gameState, setGameState] = useState(null);
   const [initError, setInitError] = useState(null);
   const [matchState, setMatchState] = useState({});
-  const [isPotionPending, setIsPotionPending] = useState(false);
+  const [isItemPending, setIsItemPending] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [countdown, setCountdown] = useState(null); // 3, 2, 1, 'GO!', null
   
@@ -184,8 +185,8 @@ export default function PvpBattleScreen({ navigation }) {
   }, [roundIndex, gameState]);
 
   const myState = matchState?.players?.[myUid];
-  const safeMyState = myState || { hp: 100, score: 0, potionsRemaining: 2 };
-  const oppState = matchState?.players?.[opponentUid] || { hp: 100, score: 0, potionsRemaining: 2 };
+  const safeMyState = myState || { hp: 100, score: 0, items: {} };
+  const oppState = matchState?.players?.[opponentUid] || { hp: 100, score: 0, items: {} };
   const totalQuestions = room?.match?.questionCount || 10;
   
   // Feedback listeners
@@ -224,7 +225,21 @@ export default function PvpBattleScreen({ navigation }) {
   // Lock answering if we answered, if it's not ANSWERING phase, if countdown is active, or submitting
   const isLocked = hasAnswered || matchPhase !== 'ANSWERING' || isSubmitting || phase === 'COUNTDOWN';
   
-  const canUsePotion = safeMyState.hp > 0 && safeMyState.hp < 100 && safeMyState.potionsRemaining > 0 && room?.meta?.status === RoomStatus.IN_BATTLE && matchPhase === 'ANSWERING' && !hasAnswered && !isPotionPending && phase !== 'COUNTDOWN';
+  const myItemUse = currentRound?.itemUses?.[myUid];
+  const hasUsedItem = !!myItemUse;
+
+  let itemDisabledReason = null;
+  let itemsDisabled = false;
+
+  if (isLocked) {
+    itemsDisabled = true;
+    itemDisabledReason = t('pvpItems.disabledLocked', 'Answer already locked');
+  } else if (hasUsedItem) {
+    itemsDisabled = true;
+    itemDisabledReason = t('pvpItems.disabledUsed', 'Item already used this round');
+  } else if (isItemPending) {
+    itemsDisabled = true;
+  }
 
   const handleChoice = async (choiceId) => {
     if (isLocked || !gameState || !gameState.currentQuestion) return;
@@ -263,17 +278,17 @@ export default function PvpBattleScreen({ navigation }) {
     }
   };
 
-  const handlePotion = async () => {
-    if (!canUsePotion) return;
-    setIsPotionPending(true);
+  const handleUseItem = async (itemId) => {
+    if (itemsDisabled) return;
+    setIsItemPending(true);
     
-    const actionId = `potion_${roundIndex}_${safeMyState.potionsRemaining}`;
+    const actionId = `item_${roundIndex}_${itemId}`;
     try {
-      await usePotion(roomId, myUid, actionId);
+      await useBattleItem({ roomCode: roomId, uid: myUid, roundIndex, itemId, actionId });
     } catch (err) {
-      console.error("Failed to use potion:", err);
+      console.error("Failed to use item:", err);
     } finally {
-      setIsPotionPending(false);
+      setIsItemPending(false);
     }
   };
 
@@ -356,19 +371,7 @@ export default function PvpBattleScreen({ navigation }) {
         </View>
       </View>
 
-      <View style={styles.potionContainer}>
-        <TouchableOpacity 
-          style={[styles.potionButton, !canUsePotion && styles.potionButtonDisabled]} 
-          onPress={handlePotion}
-          disabled={!canUsePotion}
-        >
-          <Ionicons name="medkit" style={styles.potionIcon} />
-          <View>
-            <Text style={styles.potionTitle}>{t('pvp.heal')} +25</Text>
-            <Text style={styles.potionCount}>{t('pvp.potionsLeft', { count: safeMyState.potionsRemaining })}</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
+
       
       {phase === 'COUNTDOWN' && countdown && (
         <View style={styles.countdownContainer}>
@@ -376,25 +379,46 @@ export default function PvpBattleScreen({ navigation }) {
         </View>
       )}
 
-      {matchPhase === 'ROUND_RESULT' && currentRound?.resolution ? (
-        <View style={styles.resultContainer}>
-          <Text style={styles.resultTitle}>{t('pvp.roundResult')}</Text>
-          
-          <Text style={[styles.resultText, currentRound.resolution[myUid === hostUid ? 'hostCorrect' : 'guestCorrect'] ? styles.textSuccess : styles.textDanger]}>
-            {currentRound.resolution[myUid === hostUid ? 'hostCorrect' : 'guestCorrect'] ? t('pvp.youCorrect') : t('pvp.youWrong')}
-          </Text>
-          <Text style={[styles.resultText, currentRound.resolution[myUid === hostUid ? 'guestCorrect' : 'hostCorrect'] ? styles.textSuccess : styles.textDanger]}>
-            {currentRound.resolution[myUid === hostUid ? 'guestCorrect' : 'hostCorrect'] ? t('pvp.opponentCorrect') : t('pvp.opponentWrong')}
-          </Text>
-          
-          <Text style={styles.damageText}>
-            {t('pvp.youDealt', { amount: currentRound.resolution[myUid === hostUid ? 'damageToGuest' : 'damageToHost'] })}
-          </Text>
-          <Text style={styles.damageText}>
-            {t('pvp.youReceived', { amount: currentRound.resolution[myUid === hostUid ? 'damageToHost' : 'damageToGuest'] })}
-          </Text>
-        </View>
-      ) : (
+      {matchPhase === 'ROUND_RESULT' && currentRound?.resolution ? (() => {
+        const res = currentRound.resolution;
+        const iAmHost = myUid === hostUid;
+        const myCorrect = res[iAmHost ? 'hostCorrect' : 'guestCorrect'];
+        const oppCorrect = res[iAmHost ? 'guestCorrect' : 'hostCorrect'];
+        const myPowerBonus = res[iAmHost ? 'hostPowerBonus' : 'guestPowerBonus'];
+        const oppPowerBonus = res[iAmHost ? 'guestPowerBonus' : 'hostPowerBonus'];
+        const myShieldBlocked = res[iAmHost ? 'hostShieldBlocked' : 'guestShieldBlocked'];
+        const oppShieldBlocked = res[iAmHost ? 'guestShieldBlocked' : 'hostShieldBlocked'];
+        const myDamageDealt = res[iAmHost ? 'damageToGuest' : 'damageToHost'];
+        const myDamageReceived = res[iAmHost ? 'damageToHost' : 'damageToGuest'];
+
+        return (
+          <View style={styles.resultContainer}>
+            <Text style={styles.resultTitle}>{t('pvp.roundResult')}</Text>
+            
+            <View style={styles.resultColumns}>
+              <View style={styles.resultCol}>
+                <Text style={styles.resultColTitle}>{t('pvp.you')}</Text>
+                <Text style={[styles.resultText, myCorrect ? styles.textSuccess : styles.textDanger]}>
+                  {myCorrect ? t('pvp.correctLabel', 'Correct') : t('pvp.wrongLabel', 'Wrong')}
+                </Text>
+                {myPowerBonus > 0 && <Text style={styles.itemEffectText}>{t('pvp.powerBonus', { bonus: myPowerBonus }, 'Power +{{bonus}}')}</Text>}
+                {myShieldBlocked > 0 && <Text style={styles.itemEffectText}>{t('pvp.shieldBlocked', { blocked: myShieldBlocked }, 'Shield blocked {{blocked}}')}</Text>}
+                <Text style={styles.damageText}>{t('pvp.youDealt', { amount: myDamageDealt })}</Text>
+              </View>
+
+              <View style={styles.resultCol}>
+                <Text style={styles.resultColTitle}>{t('pvp.opponent')}</Text>
+                <Text style={[styles.resultText, oppCorrect ? styles.textSuccess : styles.textDanger]}>
+                  {oppCorrect ? t('pvp.correctLabel', 'Correct') : t('pvp.wrongLabel', 'Wrong')}
+                </Text>
+                {oppPowerBonus > 0 && <Text style={styles.itemEffectText}>{t('pvp.powerBonus', { bonus: oppPowerBonus }, 'Power +{{bonus}}')}</Text>}
+                {oppShieldBlocked > 0 && <Text style={styles.itemEffectText}>{t('pvp.shieldBlocked', { blocked: oppShieldBlocked }, 'Shield blocked {{blocked}}')}</Text>}
+                <Text style={styles.damageText}>{t('pvp.youReceived', { amount: myDamageReceived })}</Text>
+              </View>
+            </View>
+          </View>
+        );
+      })() : (
         gameState && gameState.currentQuestion && (
           <ScrollView style={styles.questionContainer}>
             <Text style={styles.questionLabel}>Question {roundIndex + 1}</Text>
@@ -428,6 +452,15 @@ export default function PvpBattleScreen({ navigation }) {
           <Text style={styles.waitingText}>...</Text>
         </View>
       )}
+
+      {matchPhase === 'ANSWERING' && (
+        <PvpItemBar 
+          items={safeMyState.items} 
+          onUseItem={handleUseItem} 
+          disabled={itemsDisabled} 
+          disabledReason={itemDisabledReason} 
+        />
+      )}
     </View>
   );
 }
@@ -440,12 +473,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingTop: 50,
   },
   playerStats: { flex: 1 },
-  potionContainer: { padding: theme.spacing.medium, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-  potionButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.primary, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 24 },
-  potionButtonDisabled: { backgroundColor: theme.colors.surface, opacity: 0.5 },
-  potionIcon: { fontSize: 24, marginRight: 8, color: 'white' },
-  potionTitle: { color: 'white', fontWeight: 'bold', fontSize: 14 },
-  potionCount: { color: 'white', fontSize: 12 },
   vsContainer: { paddingHorizontal: theme.spacing.medium, alignItems: 'center' },
   vsText: { fontSize: 18, fontWeight: 'bold', color: theme.colors.secondary },
   roundText: { fontSize: 12, color: theme.colors.textMuted, marginTop: 4 },
@@ -465,12 +492,16 @@ const styles = StyleSheet.create({
   waitingText: { fontSize: 16, color: theme.colors.textMuted, fontWeight: 'bold' },
   title: { fontSize: 24, fontWeight: 'bold', color: theme.colors.textMain, textAlign: 'center', marginTop: 40, marginBottom: 20 },
   value: { fontSize: 16, color: theme.colors.textMain, textAlign: 'center' },
-  resultContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: theme.spacing.large, backgroundColor: theme.colors.card, margin: theme.spacing.large, borderRadius: 12, elevation: 4 },
-  resultTitle: { fontSize: 24, fontWeight: 'bold', color: theme.colors.textMain, marginBottom: 24 },
-  resultText: { fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
+  resultContainer: { flex: 1, justifyContent: 'center', alignItems: 'stretch', padding: theme.spacing.large, backgroundColor: theme.colors.card, margin: theme.spacing.large, borderRadius: 12, elevation: 4 },
+  resultTitle: { fontSize: 24, fontWeight: 'bold', color: theme.colors.textMain, marginBottom: 24, textAlign: 'center' },
+  resultColumns: { flexDirection: 'row', justifyContent: 'space-between' },
+  resultCol: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
+  resultColTitle: { fontSize: 16, color: theme.colors.textMuted, marginBottom: 8, fontWeight: 'bold' },
+  resultText: { fontSize: 20, fontWeight: 'bold', marginBottom: 8, textAlign: 'center' },
+  itemEffectText: { fontSize: 14, color: theme.colors.primary, fontStyle: 'italic', marginBottom: 4, textAlign: 'center' },
   textSuccess: { color: theme.colors.success },
   textDanger: { color: theme.colors.danger },
-  damageText: { fontSize: 16, color: theme.colors.secondary, marginTop: 12, fontWeight: '600' },
+  damageText: { fontSize: 16, color: theme.colors.secondary, marginTop: 12, fontWeight: '600', textAlign: 'center' },
   countdownContainer: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
   countdownText: { fontSize: 120, fontWeight: 'bold', color: 'white', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 10 }
 });
