@@ -6,6 +6,7 @@ import { getWordsByLevel } from '../src/domain/vocabulary/vocabularyRepository';
 import { createInitialState, nextQuestion } from '../src/domain/game/battleEngine';
 import { generateQuestion } from '../src/domain/vocabulary/questionGenerator';
 import { createSeededRandom } from '../src/domain/game/seededRandom';
+import { onValue } from 'firebase/database';
 
 jest.mock('@expo/vector-icons', () => ({ Ionicons: 'Ionicons' }));
 jest.mock('expo-audio', () => ({ setAudioModeAsync: jest.fn(), createAudioPlayer: jest.fn() }));
@@ -124,7 +125,14 @@ describe('PvP Battle Initialization', () => {
   });
 
   test('3. valid match config generates questions and renders first question', () => {
+    const player = { hp: 100, score: 0, items: { HEAL: { remaining: 2 }, SHIELD: { remaining: 1 }, POWER: { remaining: 1 } } };
+    onValue.mockImplementationOnce((ref, callback) => {
+      callback({ val: () => ({ roundIndex: 0, phase: 'ANSWERING', players: { host1: player, guest1: player } }) });
+      return jest.fn();
+    });
     PvpRoomContext.usePvpRoom.mockReturnValue({
+      roomId: 'room1',
+      user: { uid: 'host1' },
       room: {
         meta: { hostUid: 'host1' },
         players: { 'host1': { displayName: 'Host' }, 'guest1': { displayName: 'Guest' } },

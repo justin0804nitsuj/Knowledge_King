@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Animated } from 'react-native';
 import { usePvpRoom } from '../context/PvpRoomContext';
 import { theme } from '../theme';
-import { createInitialState, nextQuestion } from '../domain/game/battleEngine';
-import { getWordsByLevel } from '../domain/vocabulary/vocabularyRepository';
+import { createPvpQuestions } from '../domain/pvp/pvpQuestions';
 import { submitAnswer, subscribeToMatchState, finalizeMatch, useBattleItem, resolveRound, advanceRound } from '../services/pvp/pvpBattleService';
 import { useTranslation } from 'react-i18next';
 import { RoomStatus } from '../domain/pvp/roomConstants';
@@ -17,17 +16,17 @@ export default function PvpBattleScreen({ navigation }) {
   const { t } = useTranslation();
   
   const [phase, setPhase] = useState('LOADING_MATCH');
-  const [gameState, setGameState] = useState(null);
+  const [questions, setQuestions] = useState(null);
   const [initError, setInitError] = useState(null);
-  const [matchState, setMatchState] = useState(room?.matchState || {});
+  const [matchState, setMatchState] = useState(null);
   const [isItemPending, setIsItemPending] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [countdown, setCountdown] = useState(null); // 3, 2, 1, 'GO!', null
   const [itemUsedThisRound, setItemUsedThisRound] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   
-  const lastMyHpRef = useRef(100);
-  const lastOppHpRef = useRef(100);
+  const lastMyHpRef = useRef(null);
+  const lastOppHpRef = useRef(null);
   const lastResultRoundRef = useRef(-1);
 
   useEffect(() => {
@@ -48,31 +47,10 @@ export default function PvpBattleScreen({ navigation }) {
         throw new Error("Malformed or incomplete match config");
       }
       
-      setPhase('LOADING_VOCABULARY');
-      const seed = parseInt(battleSeed, 10) || Date.now();
-      const words = getWordsByLevel(level); 
-      
-      if (!words || words.length === 0) {
-        throw new Error(`Empty vocabulary pool for level ${level}`);
-      }
-      
-      setPhase('GENERATING_QUESTIONS');
-      const config = {
-        playerHp: 3,
-        enemyHp: 3,
-        timePerQuestionMs: 10000
-      };
-
-      let state = createInitialState(seed, level, words, config);
-      state = nextQuestion(state);
-      
-      if (!state.currentQuestion) {
-        throw new Error("Failed to generate first question");
-      }
-
-      setGameState(state);
-      setPhase('COUNTDOWN');
-      setCountdown(3);
+      setInitError(null);
+      setQuestions(createPvpQuestions(room.match));
+      setPhase('PREPARING_MATCH');
+      setCountdown(null);
     } catch (e) {
       console.error('[PVP-BATTLE] Initialization failed:', e.message);
       setInitError(e.message);
@@ -119,15 +97,12 @@ export default function PvpBattleScreen({ navigation }) {
     }
   }, [phase, countdown, fadeAnim]);
 
-  // Subscribe to realtime matchState
+  // Subscribe while preparing and counting down as well as during combat.
   useEffect(() => {
-    if (phase === 'READY' && roomId) {
-      const unsubscribe = subscribeToMatchState(roomId, (data) => {
-        setMatchState(data);
-      });
-      return unsubscribe;
-    }
-  }, [phase, roomId]);
+    setMatchState(null);
+    if (!roomId) return;
+    return subscribeToMatchState(roomId, setMatchState);
+  }, [roomId]);
   
   const hostUid = room?.meta?.hostUid;
   const playerUids = Object.keys(room?.players || {});
@@ -135,8 +110,22 @@ export default function PvpBattleScreen({ navigation }) {
   const guestUid = playerUids.find(uid => uid !== hostUid);
   const opponentUid = myUid === hostUid ? guestUid : hostUid;
 
-  const roundIndex = matchState?.roundIndex || 0;
-  const matchPhase = matchState?.phase || 'ANSWERING';
+  const roundIndex = matchState?.roundIndex ?? 0;
+  const matchPhase = matchState?.phase;
+  const myState = matchState?.players?.[myUid];
+  const oppState = matchState?.players?.[opponentUid];
+  const hasLiveState = Number.isInteger(matchState?.roundIndex) && !!matchPhase &&
+    typeof myState?.hp === 'number' && typeof oppState?.hp === 'number' &&
+    !!myState?.items && !!oppState?.items;
+  const currentQuestion = questions?.[roundIndex];
+  const isContentHidden = phase !== 'READY';
+
+  useEffect(() => {
+    if (phase === 'PREPARING_MATCH' && hasLiveState) {
+      setPhase('COUNTDOWN');
+      setCountdown(3);
+    }
+  }, [phase, hasLiveState]);
   
   // Host Settlement Logic
   useEffect(() => {
@@ -184,39 +173,19 @@ export default function PvpBattleScreen({ navigation }) {
     }
   }, [room?.meta?.status, matchState?.phase, navigation]);
 
-  // Sync Local Game Engine to roundIndex
-  useEffect(() => {
-    if (!gameState) return;
-    
-    let state = gameState;
-    // state.questionNumber is 1-indexed, roundIndex is 0-indexed
-    while (state.questionNumber <= roundIndex && state.status !== 'DEFEAT' && state.status !== 'VICTORY') {
-      state = { ...state, status: 'QUESTION_RESOLVED' };
-      state = nextQuestion(state);
-    }
-    
-    if (state !== gameState) {
-      setGameState(state);
-    }
-  }, [roundIndex, gameState]);
-
-  const myState = matchState?.players?.[myUid];
-  console.log("DEBUG myUid:", myUid, "DEBUG matchState:", matchState);
-  const safeMyState = myState || { hp: 100, score: 0, items: {} };
-  console.log("SAFE MY STATE IN PVPBATTLE:", safeMyState);
-  const oppState = matchState?.players?.[opponentUid] || { hp: 100, score: 0, items: {} };
   const totalQuestions = room?.match?.questionCount || 10;
   
   // Feedback listeners
   // Feedback listeners for HP changes (damage/heal)
   useEffect(() => {
-    if (safeMyState.hp < lastMyHpRef.current) {
+    if (!hasLiveState) return;
+    if (lastMyHpRef.current !== null && myState.hp < lastMyHpRef.current) {
       gameFeedback.playDamage();
-    } else if (safeMyState.hp > lastMyHpRef.current) {
+    } else if (lastMyHpRef.current !== null && myState.hp > lastMyHpRef.current) {
       gameFeedback.playHeal();
     }
-    lastMyHpRef.current = safeMyState.hp;
-  }, [safeMyState.hp]);
+    lastMyHpRef.current = myState.hp;
+  }, [hasLiveState, myState?.hp]);
 
   // Reset per-round item-used flag when round index advances
   useEffect(() => {
@@ -224,11 +193,12 @@ export default function PvpBattleScreen({ navigation }) {
   }, [roundIndex]);
 
   useEffect(() => {
-    if (oppState.hp < lastOppHpRef.current) {
+    if (!hasLiveState) return;
+    if (lastOppHpRef.current !== null && oppState.hp < lastOppHpRef.current) {
       gameFeedback.playOpponentHit();
     }
     lastOppHpRef.current = oppState.hp;
-  }, [oppState.hp]);
+  }, [hasLiveState, oppState?.hp]);
 
   const currentRound = matchState?.rounds?.[roundIndex];
   
@@ -247,15 +217,16 @@ export default function PvpBattleScreen({ navigation }) {
   const myAnswer = currentRound?.answers?.[myUid];
   const hasAnswered = !!myAnswer;
   // Lock answering if we answered, if it's not ANSWERING phase, if countdown is active, or submitting
-  const isLocked = hasAnswered || matchPhase !== 'ANSWERING' || isSubmitting || phase === 'COUNTDOWN';
+  const isLocked = !hasLiveState || !currentQuestion || hasAnswered ||
+    matchPhase !== 'ANSWERING' || isSubmitting || isItemPending || phase !== 'READY';
   
-  const myItemUse = safeMyState?.itemUses?.[roundIndex];
+  const myItemUse = myState?.itemUses?.[roundIndex];
   const hasUsedItem = !!myItemUse;
 
   let itemDisabledReason = null;
   let itemsDisabled = false;
 
-  if (phase === 'COUNTDOWN') {
+  if (phase !== 'READY') {
     itemsDisabled = true;
     itemDisabledReason = null;
   } else if (hasUsedItem || itemUsedThisRound) {
@@ -269,7 +240,7 @@ export default function PvpBattleScreen({ navigation }) {
   }
 
   const handleChoice = async (choiceId) => {
-    if (isLocked || !gameState || !gameState.currentQuestion) return;
+    if (isLocked || !currentQuestion) return;
     
     // Safety invariant checks
     if (!user || !myUid || !room || !room.players || !room.players[myUid]) return;
@@ -278,24 +249,19 @@ export default function PvpBattleScreen({ navigation }) {
     
     setIsSubmitting(true);
     
-    const isCorrect = choiceId === gameState.currentQuestion.correctChoiceId;
+    const isCorrect = choiceId === currentQuestion.correctChoiceId;
     if (isCorrect) {
       gameFeedback.playAnswerCorrect();
     } else {
       gameFeedback.playAnswerWrong();
     }
     
-    const points = isCorrect ? 10 : 0;
-    
     try {
       await submitAnswer(
         roomId, 
         myUid, 
-        opponentUid,
         roundIndex,
-        choiceId, 
-        isCorrect, 
-        points
+        choiceId
       );
     } catch (err) {
       console.error("Failed to submit answer:", err);
@@ -311,9 +277,9 @@ export default function PvpBattleScreen({ navigation }) {
     
     const actionId = `item_${roundIndex}_${itemId}`;
     try {
-      await useBattleItem({ roomCode: roomId, uid: myUid, roundIndex, itemId, actionId });
+      const result = await useBattleItem({ roomCode: roomId, uid: myUid, roundIndex, itemId, actionId });
       // Mark that an item was used this round for immediate UI feedback
-      setItemUsedThisRound(true);
+      if (result.committed) setItemUsedThisRound(true);
     } catch (err) {
       console.error("Failed to use item:", err);
     } finally {
@@ -330,13 +296,12 @@ export default function PvpBattleScreen({ navigation }) {
     );
   }
 
-  if (phase === 'LOADING_MATCH' || phase === 'LOADING_VOCABULARY' || phase === 'GENERATING_QUESTIONS' || !gameState) {
+  if (!questions || phase === 'LOADING_MATCH' || !hasLiveState) {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>
           {phase === 'LOADING_MATCH' ? 'Loading Match...' : 
-           phase === 'LOADING_VOCABULARY' ? 'Loading Vocabulary...' : 
-           'Generating Questions...'}
+           'Preparing Match...'}
         </Text>
       </View>
     );
@@ -347,7 +312,7 @@ export default function PvpBattleScreen({ navigation }) {
     
     // InROUND_RESULT we reveal correct answers
     if (matchPhase === 'ROUND_RESULT') {
-       const isCorrect = choiceId === gameState.currentQuestion.correctChoiceId;
+       const isCorrect = choiceId === currentQuestion.correctChoiceId;
        if (isCorrect) return styles.choiceCorrect;
        if (isSelected && !isCorrect) return styles.choiceWrong;
        return { opacity: 0.5 };
@@ -369,7 +334,7 @@ export default function PvpBattleScreen({ navigation }) {
     const isSelected = myAnswer?.selectedChoiceId === choiceId;
     
     if (matchPhase === 'ROUND_RESULT') {
-       const isCorrect = choiceId === gameState.currentQuestion.correctChoiceId;
+       const isCorrect = choiceId === currentQuestion.correctChoiceId;
        if (isCorrect) return styles.choiceTextCorrect;
        if (isSelected && !isCorrect) return styles.choiceTextWrong;
        return {};
@@ -383,8 +348,8 @@ export default function PvpBattleScreen({ navigation }) {
       <View style={styles.header}>
         <View style={styles.playerStats}>
           <PvpHealthBar 
-            name={`${t('pvp.you')} (${safeMyState.score})`} 
-            hp={safeMyState.hp} 
+            name={`${t('pvp.you')} (${myState.score})`}
+            hp={myState.hp}
           />
         </View>
         <View style={styles.vsContainer}>
@@ -443,16 +408,17 @@ export default function PvpBattleScreen({ navigation }) {
           </View>
         );
       })() : (
-        gameState && gameState.currentQuestion && (
+        currentQuestion && (
           <ScrollView 
-            style={[styles.questionContainer, phase === 'COUNTDOWN' ? { opacity: 0 } : {}]}
-            pointerEvents={phase === 'COUNTDOWN' ? 'none' : 'auto'}
+            style={[styles.questionContainer, isContentHidden ? { opacity: 0 } : {}]}
+            pointerEvents={isContentHidden ? 'none' : 'auto'}
+            importantForAccessibility={isContentHidden ? 'no-hide-descendants' : 'auto'}
           >
             <Text style={styles.questionLabel}>Question {roundIndex + 1}</Text>
-            <Text style={styles.questionText}>{gameState.currentQuestion.word}</Text>
+            <Text style={styles.questionText}>{currentQuestion.word}</Text>
             
             <View style={styles.choicesContainer}>
-              {gameState.currentQuestion.choices.map((choice) => (
+              {currentQuestion.choices.map((choice) => (
                 <TouchableOpacity 
                   key={choice.id} 
                   style={[styles.choiceButton, getButtonStateStyle(choice.id)]}
@@ -482,7 +448,8 @@ export default function PvpBattleScreen({ navigation }) {
 
       {matchPhase === 'ANSWERING' && (
         <PvpItemBar 
-          items={safeMyState.items} 
+          items={myState.items}
+          hp={myState.hp}
           onUseItem={handleUseItem} 
           disabled={itemsDisabled || phase === 'COUNTDOWN'} 
           disabledReason={itemDisabledReason} 

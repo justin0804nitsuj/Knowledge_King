@@ -1,275 +1,290 @@
-import { submitAnswer, resolveRound, advanceRound, finalizeMatch, useBattleItem } from '../src/services/pvp/pvpBattleService';
-import { runTransaction } from 'firebase/database';
-import { RoomStatus } from '../src/domain/pvp/roomConstants';
+import { submitAnswer, resolveRound, advanceRound, finalizeMatch, useBattleItem, subscribeToMatchState } from '../src/services/pvp/pvpBattleService';
+import { ref, runTransaction, onValue } from 'firebase/database';
+import { createPvpQuestions } from '../src/domain/pvp/pvpQuestions';
 
 jest.mock('firebase/database', () => ({
-  ref: jest.fn(),
+  ref: jest.fn((db, path) => path),
   runTransaction: jest.fn(),
-  serverTimestamp: jest.fn(() => 123456789)
+  onValue: jest.fn(),
+  serverTimestamp: jest.fn(() => 123456789),
 }));
+jest.mock('../src/services/firebase/firebaseDatabase', () => ({ db: {} }));
 
-jest.mock('../src/services/firebase/firebaseDatabase', () => ({
-  db: {}
-}));
+const player = () => ({
+  hp: 100, score: 0, correct: 0, wrong: 0,
+  items: { HEAL: { remaining: 2 }, SHIELD: { remaining: 1 }, POWER: { remaining: 1 } },
+  itemUses: {},
+});
+const makeRoom = () => ({
+  meta: { hostUid: 'host1', status: 'IN_BATTLE' },
+  players: { host1: {}, guest1: {} },
+  match: { battleSeed: '12345', level: 1, questionCount: 10 },
+  matchState: {
+    roundIndex: 0, phase: 'ANSWERING',
+    players: { host1: player(), guest1: player() },
+    rounds: {},
+  },
+});
+const [question] = createPvpQuestions(makeRoom().match);
+const correctChoice = question.correctChoiceId;
+const wrongChoice = question.choices.find(choice => choice.id !== correctChoice).id;
 
-describe('pvpBattleService Lockstep Round logic', () => {
+describe('PvP integrity and lockstep settlement', () => {
+  let room;
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  const getInitialPlayerState = () => ({
-    hp: 100,
-    items: {
-      HEAL: { remaining: 2 },
-      SHIELD: { remaining: 1 },
-      POWER: { remaining: 1 }
-    },
-    score: 0,
-    correct: 0,
-    wrong: 0,
-    itemUses: {}
-  });
-
-  const getInitialMatchState = () => ({
-    roundIndex: 0,
-    phase: 'ANSWERING',
-    players: {
-      host1: getInitialPlayerState(),
-      guest1: getInitialPlayerState()
-    },
-    rounds: {}
-  });
-
-  // Coverage: 2. A answering does NOT advance A
-  // Coverage: 3. A answering does NOT advance B
-  // Coverage: 4. A answering does NOT immediately deal damage
-  // Coverage: 26. submitAnswer can never directly mutate opponent HP
-  test('submitAnswer only records answer, does not deal damage or advance round', async () => {
-    runTransaction.mockImplementationOnce((ref, fn) => {
-      const current = null;
-      const result = fn(current);
-      expect(result.isCorrect).toBe(true);
-      expect(result.selectedChoiceId).toBe('choiceA');
-      return { committed: true };
+    room = makeRoom();
+    runTransaction.mockImplementation(async (path, update) => {
+      const current = path.endsWith('/matchState') ? room.matchState : room;
+      const next = update(JSON.parse(JSON.stringify(current)));
+      if (next !== undefined) {
+        if (path.endsWith('/matchState')) room.matchState = next;
+        else room = next;
+      }
+      return { committed: next !== undefined };
     });
-
-    await submitAnswer('room1', 'host1', 'guest1', 0, 'choiceA', true, 10);
   });
 
-  test('submitAnswer idempotent (cannot answer twice)', async () => {
-    runTransaction.mockImplementationOnce((ref, fn) => {
-      const current = { isCorrect: true };
-      const result = fn(current);
-      expect(result).toBeUndefined(); // abort
+  const answer = (uid, choice = correctChoice) => submitAnswer('room1', uid, 0, choice);
+  const item = (itemId = 'POWER', roundIndex = 0) => useBattleItem({
+    roomCode: 'room1', uid: 'guest1', roundIndex, itemId, actionId: 'action1',
+  });
+  const settle = () => resolveRound('room1', 'host1', 'guest1', 0);
+  const seedAnswers = (hostCorrect = true, guestCorrect = true) => {
+    room.matchState.rounds[0] = { answers: {
+      host1: { selectedChoiceId: hostCorrect ? correctChoice : wrongChoice },
+      guest1: { selectedChoiceId: guestCorrect ? correctChoice : wrongChoice },
+    } };
+  };
+
+  test('answer records only the action without dealing damage or advancing', async () => {
+    expect((await answer('guest1')).committed).toBe(true);
+    expect(room.matchState.rounds[0].answers.guest1).toEqual({
+      selectedChoiceId: correctChoice, submittedAt: 123456789,
+    });
+    expect(room.matchState.players.host1.hp).toBe(100);
+    expect(room.matchState.players.guest1.hp).toBe(100);
+    expect(room.matchState.roundIndex).toBe(0);
+    expect(room.matchState.phase).toBe('ANSWERING');
+    expect(ref).toHaveBeenCalledWith({}, 'rooms/room1');
+    expect(runTransaction.mock.calls[0][2]).toEqual({ applyLocally: false });
+  });
+
+  test.each(['RESOLVING', 'ROUND_RESULT', 'FINISHED'])('answer rejected during %s', async phase => {
+    room.matchState.phase = phase;
+    expect((await answer('guest1')).committed).toBe(false);
+  });
+  test.each([-1, 1])('answer rejected for wrong round %s', async roundIndex => {
+    expect((await submitAnswer('room1', 'guest1', roundIndex, correctChoice)).committed).toBe(false);
+  });
+  test('past nonnegative round rejected after shared advancement', async () => {
+    room.matchState.roundIndex = 1;
+    expect((await answer('guest1')).committed).toBe(false);
+  });
+  test.each(['WAITING', 'FINISHED', 'CANCELLED'])('answer rejected in %s room', async status => {
+    room.meta.status = status;
+    expect((await answer('guest1')).committed).toBe(false);
+  });
+  test('dead player cannot answer', async () => {
+    room.matchState.players.guest1.hp = 0;
+    expect((await answer('guest1')).committed).toBe(false);
+  });
+  test('nonmember cannot answer', async () => {
+    delete room.players.guest1;
+    expect((await answer('guest1')).committed).toBe(false);
+  });
+  test('duplicate answer aborts without replacing the first choice', async () => {
+    await answer('guest1');
+    expect((await answer('guest1', wrongChoice)).committed).toBe(false);
+    expect(room.matchState.rounds[0].answers.guest1.selectedChoiceId).toBe(correctChoice);
+  });
+  test('retry rechecks phase after a concurrent settlement', async () => {
+    runTransaction.mockImplementationOnce(async (path, update) => {
+      expect(update(JSON.parse(JSON.stringify(room)))).toBeDefined();
+      room.matchState.phase = 'ROUND_RESULT';
+      expect(update(JSON.parse(JSON.stringify(room)))).toBeUndefined();
       return { committed: false };
     });
-
-    await submitAnswer('room1', 'host1', 'guest1', 0, 'choiceA', true, 10);
+    expect((await answer('guest1')).committed).toBe(false);
   });
 
-  // Coverage: 25. host cannot resolve before both answers exist
-  test('resolveRound fails if both have not answered', async () => {
-    runTransaction.mockImplementationOnce((ref, fn) => {
-      const state = getInitialMatchState();
-      state.rounds[0] = { answers: { host1: { isCorrect: true } } }; // missing guest
-      const result = fn(state);
-      expect(result).toBeUndefined(); // abort
+  test.each([
+    ['HEAL', 60, 85],
+    ['HEAL', 80, 100],
+    ['SHIELD', 100, 100],
+    ['POWER', 100, 100],
+  ])('%s before answer is accepted at HP %s -> %s', async (itemId, hp, expectedHp) => {
+    room.matchState.players.guest1.hp = hp;
+    const before = room.matchState.players.guest1.items[itemId].remaining;
+    expect((await item(itemId)).committed).toBe(true);
+    const state = room.matchState.players.guest1;
+    expect(state.hp).toBe(expectedHp);
+    expect(state.items[itemId].remaining).toBe(before - 1);
+    expect(state.itemUses[0]).toEqual({ itemId, actionId: 'action1', usedAt: 123456789 });
+    expect(ref).toHaveBeenCalledWith({}, 'rooms/room1');
+  });
+  test.each(['HEAL', 'SHIELD', 'POWER'])('%s after own answer rejected', async itemId => {
+    room.matchState.players.guest1.hp = 60;
+    await answer('guest1');
+    expect((await item(itemId)).committed).toBe(false);
+  });
+  test.each(['RESOLVING', 'ROUND_RESULT', 'FINISHED'])('item rejected during %s', async phase => {
+    room.matchState.phase = phase;
+    expect((await item()).committed).toBe(false);
+  });
+  test.each([-1, 1])('item rejected for wrong round %s', async roundIndex => {
+    expect((await item('POWER', roundIndex)).committed).toBe(false);
+  });
+  test('past nonnegative item round rejected', async () => {
+    room.matchState.roundIndex = 1;
+    expect((await item()).committed).toBe(false);
+  });
+  test.each(['WAITING', 'FINISHED', 'CANCELLED'])('item rejected in %s room', async status => {
+    room.meta.status = status;
+    expect((await item()).committed).toBe(false);
+  });
+  test('HEAL at full HP rejected without consumption', async () => {
+    expect((await item('HEAL')).committed).toBe(false);
+    expect(room.matchState.players.guest1.items.HEAL.remaining).toBe(2);
+  });
+  test('second item in the same round rejected', async () => {
+    await item('SHIELD');
+    expect((await item('POWER')).committed).toBe(false);
+    expect(room.matchState.players.guest1.items.POWER.remaining).toBe(1);
+  });
+  test('exhausted inventory rejected', async () => {
+    room.matchState.players.guest1.items.POWER.remaining = 0;
+    expect((await item()).committed).toBe(false);
+  });
+  test('dead player cannot use an item', async () => {
+    room.matchState.players.guest1.hp = 0;
+    expect((await item()).committed).toBe(false);
+  });
+  test('nonmember cannot use an item', async () => {
+    delete room.players.guest1;
+    expect((await item()).committed).toBe(false);
+  });
+  test.each(['INVALID', '__proto__'])('invalid item %s rejected', async itemId => {
+    expect((await item(itemId)).committed).toBe(false);
+  });
+  test('item retry rechecks a concurrently submitted answer', async () => {
+    runTransaction.mockImplementationOnce(async (path, update) => {
+      expect(update(JSON.parse(JSON.stringify(room)))).toBeDefined();
+      seedAnswers();
+      expect(update(JSON.parse(JSON.stringify(room)))).toBeUndefined();
       return { committed: false };
     });
-
-    await resolveRound('room1', 'host1', 'guest1', 0);
+    expect((await item()).committed).toBe(false);
   });
-
-  // Coverage: 12. round resolves exactly once
-  test('resolveRound fails if already resolved', async () => {
-    runTransaction.mockImplementationOnce((ref, fn) => {
-      const state = getInitialMatchState();
-      state.rounds[0] = {
-        answers: { host1: { isCorrect: true }, guest1: { isCorrect: true } },
-        resolution: { hostCorrect: true }
-      };
-      const result = fn(state);
-      expect(result.phase).toBe('ANSWERING'); // no change
-      return { committed: false };
-    });
-
-    await resolveRound('room1', 'host1', 'guest1', 0);
-  });
-
-  // Coverage: 7. both answers trigger one settlement
-  // Coverage: 8. A correct/B wrong → B -20 only
-  test('resolveRound: Host correct, Guest wrong -> Guest -20 HP', async () => {
-    runTransaction.mockImplementationOnce((ref, fn) => {
-      const state = getInitialMatchState();
-      state.rounds[0] = {
-        answers: { host1: { isCorrect: true }, guest1: { isCorrect: false } }
-      };
-      const result = fn(state);
-      expect(result.phase).toBe('ROUND_RESULT');
-      expect(result.players.host1.hp).toBe(100);
-      expect(result.players.guest1.hp).toBe(80);
-      expect(result.players.host1.score).toBe(10);
-      expect(result.players.guest1.score).toBe(0);
-      expect(result.rounds[0].resolution).toBeDefined();
-      return { committed: true };
-    });
-
-    await resolveRound('room1', 'host1', 'guest1', 0);
-  });
-
-  // Coverage: 9. A wrong/B correct → A -20 only
-  test('resolveRound: Host wrong, Guest correct -> Host -20 HP', async () => {
-    runTransaction.mockImplementationOnce((ref, fn) => {
-      const state = getInitialMatchState();
-      state.rounds[0] = {
-        answers: { host1: { isCorrect: false }, guest1: { isCorrect: true } }
-      };
-      const result = fn(state);
-      expect(result.players.host1.hp).toBe(80);
-      expect(result.players.guest1.hp).toBe(100);
-      return { committed: true };
-    });
-
-    await resolveRound('room1', 'host1', 'guest1', 0);
-  });
-
-  // Coverage: 10. both correct → both -20
-  test('resolveRound: both correct -> both -20 HP', async () => {
-    runTransaction.mockImplementationOnce((ref, fn) => {
-      const state = getInitialMatchState();
-      state.rounds[0] = {
-        answers: { host1: { isCorrect: true }, guest1: { isCorrect: true } }
-      };
-      const result = fn(state);
-      expect(result.players.host1.hp).toBe(80);
-      expect(result.players.guest1.hp).toBe(80);
-      return { committed: true };
-    });
-
-    await resolveRound('room1', 'host1', 'guest1', 0);
-  });
-
-  // Coverage: 11. both wrong → no damage
-  test('resolveRound: both wrong -> no damage', async () => {
-    runTransaction.mockImplementationOnce((ref, fn) => {
-      const state = getInitialMatchState();
-      state.rounds[0] = {
-        answers: { host1: { isCorrect: false }, guest1: { isCorrect: false } }
-      };
-      const result = fn(state);
-      expect(result.players.host1.hp).toBe(100);
-      expect(result.players.guest1.hp).toBe(100);
-      return { committed: true };
-    });
-
-    await resolveRound('room1', 'host1', 'guest1', 0);
-  });
-
-  // Coverage: 13. shared roundIndex advances exactly once
-  // Coverage: 14. both clients move to Q2 together
-  test('advanceRound increments roundIndex and resets phase', async () => {
-    runTransaction.mockImplementationOnce((ref, fn) => {
-      const state = getInitialMatchState();
-      state.phase = 'ROUND_RESULT';
-      const result = fn(state);
-      expect(result.roundIndex).toBe(1);
-      expect(result.phase).toBe('ANSWERING');
-      return { committed: true };
-    });
-
+  test('next round permits another item with reduced inventory', async () => {
+    await item('SHIELD');
+    room.matchState.phase = 'ROUND_RESULT';
     await advanceRound('room1', 0);
+    expect((await item('POWER', 1)).committed).toBe(true);
+    expect(room.matchState.players.guest1.items.SHIELD.remaining).toBe(0);
+    expect(room.matchState.players.guest1.itemUses[0].itemId).toBe('SHIELD');
   });
 
-  // Coverage: 17. HEAL potion +25 capped at 100
-  // Coverage: 18. HEAL consumes exactly one
-  test('useBattleItem (HEAL) heals 25 capped at 100 and consumes 1 potion', async () => {
-    runTransaction.mockImplementationOnce((ref, fn) => {
-      const state = getInitialPlayerState();
-      state.hp = 80;
-      const result = fn(state);
-      expect(result.hp).toBe(100); // capped at 100, not 105
-      expect(result.items.HEAL.remaining).toBe(1);
-      expect(result.itemUses['0']).toBeDefined();
-      expect(result.itemUses['0'].itemId).toBe('HEAL');
-      return { committed: true };
-    });
-
-    await useBattleItem({ roomCode: 'room1', uid: 'host1', itemId: 'HEAL', roundIndex: 0, actionId: 'action_1' });
+  test('Host waits for both answers', async () => {
+    await answer('host1');
+    expect((await settle()).committed).toBe(false);
+    expect(room.matchState.players.guest1.hp).toBe(100);
   });
-
-  // Coverage: 19. duplicate item action in same round aborts
-  test('useBattleItem idempotent with same roundIndex', async () => {
-    runTransaction.mockImplementationOnce((ref, fn) => {
-      const state = getInitialPlayerState();
-      state.hp = 100;
-      state.items.HEAL.remaining = 1;
-      state.itemUses['0'] = { itemId: 'HEAL', actionId: 'action_1' };
-      const result = fn(state);
-      expect(result).toBeUndefined(); // Abort
-      return { committed: false };
-    });
-
-    await useBattleItem({ roomCode: 'room1', uid: 'host1', itemId: 'HEAL', roundIndex: 0, actionId: 'action_2' });
+  test('forged true on a wrong choice cannot deal damage', async () => {
+    seedAnswers(false, false);
+    room.matchState.rounds[0].answers.guest1.isCorrect = true;
+    await settle();
+    expect(room.matchState.rounds[0].resolution.guestCorrect).toBe(false);
+    expect(room.matchState.players.host1.hp).toBe(100);
+    expect(room.matchState.players.guest1.score).toBe(0);
   });
-
-  // Coverage: 21. simultaneous lethal both-correct at HP20/20 → DRAW
-  test('finalizeMatch: simultaneous lethal (20/20) both correct -> DRAW', async () => {
-    runTransaction.mockImplementationOnce((ref, fn) => {
-      const state = {
-        meta: { status: RoomStatus.IN_BATTLE },
-        matchState: {
-          players: {
-            host1: { hp: 0, score: 50 },
-            guest1: { hp: 0, score: 50 }
-          }
-        }
-      };
-      const result = fn(state);
-      expect(result.matchState.result.winnerUid).toBeNull(); // DRAW
-      expect(result.meta.status).toBe(RoomStatus.FINISHED);
-      return { committed: true };
+  test('forged false on a correct choice cannot prevent correct damage', async () => {
+    seedAnswers(false, true);
+    room.matchState.rounds[0].answers.guest1.isCorrect = false;
+    await settle();
+    expect(room.matchState.rounds[0].resolution.guestCorrect).toBe(true);
+    expect(room.matchState.players.host1.hp).toBe(80);
+    expect(room.matchState.players.guest1.score).toBe(10);
+  });
+  test.each([
+    ['normal correct', true, false, null, null, 0, 20],
+    ['guest correct', false, true, null, null, 20, 0],
+    ['both correct', true, true, null, null, 20, 20],
+    ['both wrong', false, false, null, null, 0, 0],
+    ['POWER correct', true, false, 'POWER', null, 0, 30],
+    ['SHIELD vs normal', true, false, null, 'SHIELD', 0, 0],
+    ['POWER vs SHIELD', true, false, 'POWER', 'SHIELD', 0, 10],
+    ['both POWER', true, true, 'POWER', 'POWER', 30, 30],
+    ['both SHIELD', true, true, 'SHIELD', 'SHIELD', 0, 0],
+    ['POWER wrong', false, true, 'POWER', null, 20, 0],
+  ])('%s settlement', async (name, hostCorrect, guestCorrect, hostItem, guestItem, toHost, toGuest) => {
+    seedAnswers(hostCorrect, guestCorrect);
+    if (hostItem) room.matchState.players.host1.itemUses[0] = { itemId: hostItem };
+    if (guestItem) room.matchState.players.guest1.itemUses[0] = { itemId: guestItem };
+    await settle();
+    expect(room.matchState.phase).toBe('ROUND_RESULT');
+    expect(room.matchState.players.host1.hp).toBe(100 - toHost);
+    expect(room.matchState.players.guest1.hp).toBe(100 - toGuest);
+    expect(room.matchState.rounds[0].resolution).toMatchObject({
+      hostHpBefore: 100, guestHpBefore: 100, damageToHost: toHost, damageToGuest: toGuest,
     });
-
+  });
+  test('round settles only once and advances only once', async () => {
+    seedAnswers();
+    await settle();
+    expect((await settle()).committed).toBe(false);
+    expect(room.matchState.players.host1.score).toBe(10);
+    expect((await advanceRound('room1', 0)).committed).toBe(true);
+    expect((await advanceRound('room1', 0)).committed).toBe(false);
+    expect(room.matchState.roundIndex).toBe(1);
+  });
+  test('10/10 simultaneous lethal damage is DRAW even with unequal scores', async () => {
+    seedAnswers();
+    room.matchState.players.host1.hp = 10;
+    room.matchState.players.guest1.hp = 10;
+    room.matchState.players.host1.score = 50;
+    room.matchState.players.guest1.score = 20;
+    await settle();
     await finalizeMatch('room1', 'host1', 'guest1');
-  });
-
-  // Coverage: 22. HP20 vs HP40 both correct → HP0 vs20, second player wins
-  test('finalizeMatch: HP 20 vs 40 -> HP 0 vs 20 -> Guest wins', async () => {
-    runTransaction.mockImplementationOnce((ref, fn) => {
-      const state = {
-        meta: { status: RoomStatus.IN_BATTLE },
-        matchState: {
-          players: {
-            host1: { hp: 0, score: 50 },
-            guest1: { hp: 20, score: 50 }
-          }
-        }
-      };
-      const result = fn(state);
-      expect(result.matchState.result.winnerUid).toBe('guest1');
-      return { committed: true };
+    expect(room.matchState.result).toMatchObject({
+      winnerUid: null, loserUid: null, finalHp: { host1: 0, guest1: 0 },
+      scores: { host1: 60, guest1: 30 },
     });
-
-    await finalizeMatch('room1', 'host1', 'guest1');
+    expect(room.meta.status).toBe('FINISHED');
+    expect(room.matchState.phase).toBe('FINISHED');
   });
-
-  // Coverage: 23. question exhaustion uses HP → score → draw
-  test('finalizeMatch: question exhaustion uses HP then Score', async () => {
-    runTransaction.mockImplementationOnce((ref, fn) => {
-      const state = {
-        meta: { status: RoomStatus.IN_BATTLE },
-        matchState: {
-          players: {
-            host1: { hp: 60, score: 100 },
-            guest1: { hp: 60, score: 110 }
-          }
-        }
-      };
-      const result = fn(state);
-      expect(result.matchState.result.winnerUid).toBe('guest1'); // Guest has higher score
-      return { committed: true };
-    });
-
+  test('one KO awards the surviving player the win', async () => {
+    room.matchState.phase = 'ROUND_RESULT';
+    room.matchState.players.host1.hp = 0;
+    room.matchState.players.guest1.hp = 20;
     await finalizeMatch('room1', 'host1', 'guest1');
+    expect(room.matchState.result.winnerUid).toBe('guest1');
+  });
+  test('question exhaustion uses HP then score', async () => {
+    room.matchState.phase = 'ROUND_RESULT';
+    room.matchState.roundIndex = 9;
+    room.matchState.players.host1.score = 10;
+    room.matchState.players.guest1.score = 20;
+    await finalizeMatch('room1', 'host1', 'guest1');
+    expect(room.matchState.result.winnerUid).toBe('guest1');
+  });
+  test('non-KO match cannot be finalized before exhaustion', async () => {
+    room.matchState.phase = 'ROUND_RESULT';
+    expect((await finalizeMatch('room1', 'host1', 'guest1')).committed).toBe(false);
+  });
+  test('subscription returns only the unsubscribe for its own listener', () => {
+    const first = jest.fn();
+    const second = jest.fn();
+    onValue.mockReturnValueOnce(first).mockReturnValueOnce(second);
+    const callback = jest.fn();
+    const stopFirst = subscribeToMatchState('room1', callback);
+    const stopSecond = subscribeToMatchState('room1', jest.fn());
+    onValue.mock.calls[0][1]({ val: () => null });
+    expect(callback).toHaveBeenCalledWith(null);
+    stopFirst();
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).not.toHaveBeenCalled();
+    stopSecond();
+    expect(second).toHaveBeenCalledTimes(1);
   });
 });

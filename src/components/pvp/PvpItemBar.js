@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -6,9 +6,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../theme';
 import { ITEM_TYPES, PVP_ITEMS } from '../../domain/pvp/pvpItems';
 
-export default function PvpItemBar({ items, onUseItem, disabled, disabledReason }) {
+export default function PvpItemBar({ items, hp, onUseItem, disabled, disabledReason }) {
   const { t } = useTranslation();
   const [selectedItem, setSelectedItem] = useState(null);
+  const selectedRemaining = items?.[selectedItem]?.remaining || 0;
+  useEffect(() => {
+    if (disabled || selectedRemaining <= 0 || (selectedItem === ITEM_TYPES.HEAL && hp >= 100)) {
+      setSelectedItem(null);
+    }
+  }, [disabled, selectedRemaining, selectedItem, hp]);
 
   const handleSelect = (itemId) => {
     if (disabled) return;
@@ -24,11 +30,6 @@ export default function PvpItemBar({ items, onUseItem, disabled, disabledReason 
     onUseItem(selectedItem);
     setSelectedItem(null);
   };
-
-  // Close selection if disabled externally (e.g. answer submitted)
-  if (disabled && selectedItem) {
-    setSelectedItem(null);
-  }
 
   const getItemIcon = (itemId) => {
     switch (itemId) {
@@ -62,6 +63,7 @@ export default function PvpItemBar({ items, onUseItem, disabled, disabledReason 
 
   const isItemDisabled = (itemId) => {
     if (disabled) return true;
+    if (itemId === ITEM_TYPES.HEAL && hp >= 100) return true;
     return (items?.[itemId]?.remaining || 0) <= 0;
   };
 
@@ -92,7 +94,6 @@ export default function PvpItemBar({ items, onUseItem, disabled, disabledReason 
         )}
 
         <View style={styles.slotsContainer}>
-          {console.log("ITEMS IN PVPITEMBAR:", items)}
           {[ITEM_TYPES.HEAL, ITEM_TYPES.SHIELD, ITEM_TYPES.POWER].map(itemId => {
             const remaining = items?.[itemId]?.remaining || 0;
             // Slot is disabled if item count is zero OR the whole bar is disabled (e.g., after using an item this round)

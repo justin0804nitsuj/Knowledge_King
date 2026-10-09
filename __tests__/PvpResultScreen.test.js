@@ -4,7 +4,8 @@ import PvpResultScreen from '../src/screens/PvpResultScreen';
 import * as PvpRoomContext from '../src/context/PvpRoomContext';
 import * as PvpBattleService from '../src/services/pvp/pvpBattleService';
 import { gameFeedback } from '../src/services/feedback/gameFeedback';
-import { Animated } from 'react-native';
+import { Animated, TouchableOpacity, BackHandler } from 'react-native';
+import { leaveRoom } from '../src/services/pvp/roomService';
 
 // Removed react-native mock
 
@@ -37,6 +38,42 @@ describe('PvpResultScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(Animated, 'timing').mockReturnValue({ start: jest.fn(), stop: jest.fn() });
+  });
+
+  it.each(['button', 'Android Back'])('%s cleans up using the user object and resets the completed stack', async action => {
+    const user = { uid: 'player-1', displayName: 'Player' };
+    const reset = jest.fn();
+    const stopMatchListener = jest.fn();
+    let backHandler;
+    const removeBackHandler = jest.fn();
+    jest.spyOn(BackHandler, 'addEventListener').mockImplementation((event, handler) => {
+      backHandler = handler;
+      return { remove: removeBackHandler };
+    });
+    PvpRoomContext.usePvpRoom.mockReturnValue({
+      roomId: 'room-1', user,
+      room: { meta: { hostUid: user.uid }, players: { 'player-1': {}, 'player-2': {} } },
+    });
+    PvpBattleService.subscribeToMatchState.mockImplementation((id, callback) => {
+      callback({ result: { winnerUid: user.uid }, players: {} });
+      return stopMatchListener;
+    });
+    leaveRoom.mockResolvedValue(undefined);
+    let component;
+    act(() => { component = renderer.create(<PvpResultScreen navigation={{ reset }} />); });
+    await act(async () => {
+      if (action === 'button') await component.root.findByType(TouchableOpacity).props.onPress();
+      else expect(backHandler()).toBe(true);
+    });
+    expect(leaveRoom).toHaveBeenCalledWith('room-1', user);
+    expect(leaveRoom).toHaveBeenCalledTimes(1);
+    expect(reset).toHaveBeenCalledWith({
+      index: 0, routes: [{ name: 'MainTabs', params: { screen: 'Arena' } }],
+    });
+    act(() => { component.unmount(); });
+    expect(stopMatchListener).toHaveBeenCalledTimes(1);
+    expect(removeBackHandler).toHaveBeenCalledTimes(1);
+    jest.restoreAllMocks();
   });
 
   it('renders initial null result then transitions to WIN without hook errors, and plays feedback once', () => {

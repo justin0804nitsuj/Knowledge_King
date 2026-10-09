@@ -194,7 +194,9 @@ export async function leaveRoom(roomCode, user) {
     
     if (roomData.meta.hostUid === user.uid) {
       // Host leaves: cancel and remove room
-      await set(ref(db, `rooms/${roomCode}/meta/status`), RoomStatus.CANCELLED);
+      if (roomData.meta.status === RoomStatus.WAITING) {
+        await set(ref(db, `rooms/${roomCode}/meta/status`), RoomStatus.CANCELLED);
+      }
       await remove(roomRef);
 
     } else {
@@ -220,11 +222,9 @@ export async function setPlayerReady(roomCode, user, isReady) {
   }
   const playerReadyRef = ref(db, `rooms/${roomCode}/players/${user.uid}/ready`);
   try {
-    console.log(`[PVP-PERM] setPlayerReady begin path=rooms/${roomCode}/players/${user.uid}/ready`);
     await set(playerReadyRef, isReady);
-    console.log(`[PVP-PERM] setPlayerReady success`);
   } catch (e) {
-    console.log(`[PVP-PERM] setPlayerReady error code=${e.code} message=${e.message}`);
+    if (__DEV__) console.error('[PvP] Failed to set player ready:', e);
     throw e;
   }
 }
@@ -240,7 +240,6 @@ export async function startMatch(roomCode, user) {
   }
 
   const roomRef = ref(db, `rooms/${roomCode}`);
-  console.log(`[PVP-PERM] startMatch begin transaction path=rooms/${roomCode}`);
   let result;
   try {
     result = await runTransaction(roomRef, (currentData) => {
@@ -320,9 +319,8 @@ export async function startMatch(roomCode, user) {
     throw e;
   }
   
-  console.log(`[PVP-PERM] startMatch success`);
   } catch (e) {
-    console.log(`[PVP-PERM] startMatch error code=${e.code} message=${e.message}`);
+    if (__DEV__) console.error('[PvP] Failed to start match:', e);
     throw e;
   }
 }

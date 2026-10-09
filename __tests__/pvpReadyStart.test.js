@@ -1,6 +1,6 @@
 import { createRoom, joinRoom, leaveRoom, setPlayerReady, startMatch, setupWaitingRoomPresence } from '../src/services/pvp/roomService';
 import { RoomStatus } from '../src/domain/pvp/roomConstants';
-import { getCompatibilityInfo } from '../src/domain/game/pvpCompatibility';
+import { getCompatibilityInfo, RULESET_VERSION } from '../src/domain/game/pvpCompatibility';
 import { createInitialState, nextQuestion } from '../src/domain/game/battleEngine';
 import { getWordsByLevel } from '../src/domain/vocabulary/vocabularyRepository';
 
@@ -49,7 +49,7 @@ describe('PvP Ready and Start Match', () => {
     it('Guest initial ready=false', async () => {
       get.mockResolvedValueOnce({
         val: () => ({
-          meta: { status: 'WAITING', hostUid: 'host1', rulesetVersion: '1.0.0', vocabularyVersion: '1.0.0', vocabularySchemaVersion: '1.0' },
+          meta: { status: 'WAITING', hostUid: 'host1', rulesetVersion: RULESET_VERSION, vocabularyVersion: '1.0.0', vocabularySchemaVersion: '1.0' },
           players: { host1: { ready: true } }
         })
       });

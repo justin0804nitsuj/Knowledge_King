@@ -1,6 +1,6 @@
 import manifest from '../../../assets/vocabulary/manifest.json';
 
-export const RULESET_VERSION = '1.0.0';
+export const RULESET_VERSION = '1.1.0';
 
 export function getCompatibilityInfo() {
   return {

@@ -1,5 +1,6 @@
 import { createRoom, joinRoom, leaveRoom } from '../src/services/pvp/roomService';
 import { loadPlayerProgress } from '../src/storage/playerProgressStorage';
+import { RULESET_VERSION } from '../src/domain/game/pvpCompatibility';
 
 jest.mock('firebase/database', () => {
   return {
@@ -119,7 +120,7 @@ describe('Phase 8A PvP Foundation', () => {
       // Mock joinRoom successful get and runTransaction
       get.mockResolvedValueOnce({
         val: () => ({
-          meta: { status: 'WAITING', hostUid: 'host123', rulesetVersion: '1.0.0', vocabularyVersion: '1.0.0', vocabularySchemaVersion: "1.0" },
+          meta: { status: 'WAITING', hostUid: 'host123', rulesetVersion: RULESET_VERSION, vocabularyVersion: '1.0.0', vocabularySchemaVersion: "1.0" },
           players: { host123: {} }
         })
       });
@@ -152,13 +153,22 @@ describe('Phase 8A PvP Foundation', () => {
   });
 
   describe('Concurrency and Join Edge Cases', () => {
+    it('rejects pre-hardening ruleset rooms to prevent mixed question sequences', async () => {
+      const { get, runTransaction } = require('firebase/database');
+      get.mockResolvedValueOnce({ val: () => ({
+        meta: { status: 'WAITING', hostUid: 'host123', rulesetVersion: '1.0.0', vocabularyVersion: '1.0.0', vocabularySchemaVersion: '1.0' },
+        players: { host123: {} },
+      }) });
+      await expect(joinRoom('12345', { uid: 'guest456' })).rejects.toMatchObject({ code: 'INCOMPATIBLE' });
+      expect(runTransaction).not.toHaveBeenCalled();
+    });
     it('should correctly block a third player when two guests join concurrently via transaction', async () => {
       const { runTransaction, get } = require('firebase/database');
       
       // Mock get to pass initial validation
       get.mockResolvedValue({
         val: () => ({
-          meta: { status: 'WAITING', hostUid: 'host123', rulesetVersion: '1.0.0', vocabularyVersion: '1.0.0', vocabularySchemaVersion: "1.0" },
+          meta: { status: 'WAITING', hostUid: 'host123', rulesetVersion: RULESET_VERSION, vocabularyVersion: '1.0.0', vocabularySchemaVersion: "1.0" },
           players: { host123: {} }
         })
       });
@@ -185,7 +195,7 @@ describe('Phase 8A PvP Foundation', () => {
       
       get.mockResolvedValue({
         val: () => ({
-          meta: { status: 'WAITING', hostUid: 'host123', rulesetVersion: '1.0.0', vocabularyVersion: '1.0.0', vocabularySchemaVersion: "1.0" },
+          meta: { status: 'WAITING', hostUid: 'host123', rulesetVersion: RULESET_VERSION, vocabularyVersion: '1.0.0', vocabularySchemaVersion: "1.0" },
           players: { host123: {}, guestA: {} }
         })
       });
@@ -213,7 +223,7 @@ describe('Phase 8A PvP Foundation', () => {
       const { get } = require('firebase/database');
       get.mockResolvedValue({
         val: () => ({
-          meta: { status: 'WAITING', hostUid: 'host123', rulesetVersion: '1.0.0', vocabularyVersion: '1.0.0', vocabularySchemaVersion: "1.0" },
+          meta: { status: 'WAITING', hostUid: 'host123', rulesetVersion: RULESET_VERSION, vocabularyVersion: '1.0.0', vocabularySchemaVersion: "1.0" },
           players: { host123: {} }
         })
       });
@@ -251,6 +261,17 @@ describe('Phase 8A PvP Foundation', () => {
         
         await leaveRoom('12345', { uid: 'host123' });
         expect(set).toHaveBeenCalledWith('rooms/12345/meta/status', 'CANCELLED');
+        expect(remove).toHaveBeenCalledWith('rooms/12345');
+      });
+
+      it('Host removes a completed room without trying to cancel it', async () => {
+        const { get, remove, set } = require('firebase/database');
+        get.mockResolvedValueOnce({ val: () => ({
+          meta: { status: 'FINISHED', hostUid: 'host123' },
+          players: { host123: {}, guest456: {} },
+        }) });
+        await leaveRoom('12345', { uid: 'host123' });
+        expect(set).not.toHaveBeenCalled();
         expect(remove).toHaveBeenCalledWith('rooms/12345');
       });
 

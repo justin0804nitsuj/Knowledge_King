@@ -1,44 +1,27 @@
-import { createInitialState, nextQuestion } from '../src/domain/game/battleEngine';
-import { getWordsByLevel } from '../src/domain/vocabulary/vocabularyRepository';
+import { createPvpQuestions } from '../src/domain/pvp/pvpQuestions';
 
-describe('pvp deterministic target', () => {
-  test('generates exactly identical targets for same seed', () => {
-    const seed = 123456789;
-    const level = 1;
-    const words = getWordsByLevel(level);
-    const config = { playerHp: 3, enemyHp: 3, timePerQuestionMs: 10000 };
-    
-    // Client A
-    let stateA = createInitialState(seed, level, words, config);
-    stateA = nextQuestion(stateA);
-    const a1 = stateA.currentQuestion.targetId;
-    stateA = { ...stateA, status: 'QUESTION_RESOLVED' };
-    stateA = nextQuestion(stateA);
-    const a2 = stateA.currentQuestion.targetId;
-    stateA = { ...stateA, status: 'QUESTION_RESOLVED' };
-    stateA = nextQuestion(stateA);
-    const a3 = stateA.currentQuestion.targetId;
-    
-    // Client B
-    let stateB = createInitialState(seed, level, words, config);
-    stateB = nextQuestion(stateB);
-    const b1 = stateB.currentQuestion.targetId;
-    stateB = { ...stateB, status: 'QUESTION_RESOLVED' };
-    stateB = nextQuestion(stateB);
-    const b2 = stateB.currentQuestion.targetId;
-    stateB = { ...stateB, status: 'QUESTION_RESOLVED' };
-    stateB = nextQuestion(stateB);
-    const b3 = stateB.currentQuestion.targetId;
-    
-    console.log("ACTUAL TARGETS:", a1, a2, a3);
-    
-    expect(a1).toBe(b1);
-    expect(a2).toBe(b2);
-    expect(a3).toBe(b3);
-    
-    // Ensure they don't repeat
-    expect(a1).not.toBe(a2);
-    expect(a2).not.toBe(a3);
-    expect(a1).not.toBe(a3);
+describe('PvP canonical question sequence', () => {
+  test.each([0, 1, 2, 42, 12345, 123456789, 999999])('seed %s produces identical nonrepeating Host/Guest questions', seed => {
+    const match = { battleSeed: String(seed), level: 1, questionCount: 10 };
+    const host = createPvpQuestions(match);
+    const guest = createPvpQuestions(match);
+    expect(host).toHaveLength(10);
+    expect(host).toEqual(guest);
+    expect(new Set(host.map(question => question.targetId)).size).toBe(10);
+    // A reconnect can reconstruct any shared round without local answer history.
+    expect(createPvpQuestions(match)[7]).toEqual(host[7]);
+  });
+  test.each([2, 3, 4, 5, 6])('level %s preserves canonical choices and target uniqueness', level => {
+    const match = { battleSeed: '42', level, questionCount: 10 };
+    const questions = createPvpQuestions(match);
+    expect(questions).toEqual(createPvpQuestions(match));
+    expect(new Set(questions.map(question => question.targetId)).size).toBe(10);
+    questions.forEach(question => {
+      expect(question.choices).toHaveLength(4);
+      expect(question.choices.filter(choice => choice.id === question.correctChoiceId)).toHaveLength(1);
+    });
+  });
+  test.each(['invalid', '123suffix', '', '-1'])('invalid seed %s fails without a clock fallback', battleSeed => {
+    expect(() => createPvpQuestions({ battleSeed, level: 1, questionCount: 10 })).toThrow();
   });
 });

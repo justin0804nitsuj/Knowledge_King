@@ -1,212 +1,429 @@
 const { initializeTestEnvironment, assertSucceeds, assertFails } = require('@firebase/rules-unit-testing');
-const fs = require('fs');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { createRequire } = require('node:module');
+const { transformSync } = require('@babel/core');
 
-async function run() {
-  const testEnv = await initializeTestEnvironment({
-    projectId: 'gsat-battle-items',
-    database: {
-      rules: fs.readFileSync('firebase/database.rules.json', 'utf8')
-    }
-  });
+const roomPath = 'rooms/room1';
+const clone = value => JSON.parse(JSON.stringify(value));
+const player = (hp = 80) => ({
+  hp, score: 0, correct: 0, wrong: 0,
+  items: { HEAL: { remaining: 2 }, SHIELD: { remaining: 1 }, POWER: { remaining: 1 } },
+});
+const makeRoom = () => ({
+  meta: {
+    hostUid: 'hostUid', status: 'IN_BATTLE', createdAt: 1,
+    rulesetVersion: '1', vocabularyVersion: '1', vocabularySchemaVersion: '1',
+  },
+  players: {
+    hostUid: { displayName: 'Host', role: 'HOST', joinedAt: 1, ready: true },
+    guestUid: { displayName: 'Guest', role: 'GUEST', joinedAt: 1, ready: true },
+  },
+  match: { matchId: 'match1', battleSeed: '12345', rulesetVersion: '1', vocabularyVersion: '1', createdAt: 1, level: 1, questionCount: 10 },
+  matchState: { roundIndex: 0, phase: 'ANSWERING', players: { hostUid: player(), guestUid: player() } },
+});
+const answer = (selectedChoiceId = 'choice') => ({ selectedChoiceId, submittedAt: 1 });
+const itemUse = itemId => ({ itemId, actionId: 'action1', usedAt: 1 });
+const applyItem = (room, uid, itemId, roundIndex = 0) => {
+  const state = room.matchState.players[uid];
+  state.items[itemId].remaining -= 1;
+  state.itemUses = { ...state.itemUses, [roundIndex]: itemUse(itemId) };
+  if (itemId === 'HEAL') state.hp = Math.min(100, state.hp + 25);
+  return room;
+};
 
-  const host = testEnv.authenticatedContext('hostUid');
-  const guest = testEnv.authenticatedContext('guestUid');
-  const hacker = testEnv.authenticatedContext('hackerUid');
-
-  let passed = 0;
-  let failed = 0;
-
-  async function test(name, promise) {
-    try {
-      await promise;
-      console.log(`✅ ${name}`);
-      passed++;
-    } catch (e) {
-      console.error(`❌ ${name}`);
-      console.error(e.message);
-      failed++;
-    }
+// Transpile the actual service and its domain imports using the existing Jest/Babel toolchain.
+function loadService(db, entry = 'src/services/pvp/pvpBattleService.js') {
+  const cache = new Map();
+  function load(filename) {
+    if (cache.has(filename)) return cache.get(filename).exports;
+    const module = { exports: {} };
+    cache.set(filename, module);
+    const requireFrom = createRequire(filename);
+    const localRequire = specifier => {
+      if (specifier === '../firebase/firebaseDatabase') return { db };
+      const resolved = requireFrom.resolve(specifier);
+      if (resolved.startsWith(path.resolve('src') + path.sep) && resolved.endsWith('.js')) return load(resolved);
+      return requireFrom(specifier);
+    };
+    const { code } = transformSync(fs.readFileSync(filename, 'utf8'), {
+      filename, configFile: false, babelrc: false,
+      plugins: [require.resolve('@babel/plugin-transform-modules-commonjs')],
+    });
+    new Function('require', 'module', 'exports', code)(localRequire, module, module.exports);
+    return module.exports;
   }
-
-  // Set up initial state
-  await testEnv.withSecurityRulesDisabled(async context => {
-    const db = context.database();
-    await db.ref('rooms/room1').set({
-      meta: {
-        hostUid: 'hostUid',
-        status: 'IN_BATTLE'
-      },
-      matchState: {
-        roundIndex: 0,
-        phase: 'ANSWERING',
-        players: {
-          hostUid: { 
-            hp: 80, 
-            items: { HEAL: { remaining: 2 }, SHIELD: { remaining: 1 }, POWER: { remaining: 1 } }, 
-            score: 0, correct: 0, wrong: 0, itemUses: {} 
-          },
-          guestUid: { 
-            hp: 100, 
-            items: { HEAL: { remaining: 2 }, SHIELD: { remaining: 1 }, POWER: { remaining: 1 } }, 
-            score: 0, correct: 0, wrong: 0, itemUses: {} 
-          }
-        },
-        rounds: {
-          '0': {}
-        }
-      }
-    });
-  });
-
-  // 1. legal own HEAL
-  await test('legal own HEAL', assertSucceeds(
-    host.database().ref('rooms/room1/matchState/players/hostUid').update({
-      hp: 100,
-      'items/HEAL/remaining': 1,
-      'itemUses/0': { itemId: 'HEAL', actionId: 'action1', usedAt: 123456 }
-    })
-  ));
-
-  // 2. HEAL at full HP rejected
-  await test('HEAL at full HP rejected', assertFails(
-    guest.database().ref('rooms/room1/matchState/players/guestUid').update({
-      hp: 125,
-      'items/HEAL/remaining': 1,
-      'itemUses/0': { itemId: 'HEAL', actionId: 'action2', usedAt: 123456 }
-    })
-  ));
-
-  // Set up answer for host
-  await testEnv.withSecurityRulesDisabled(async context => {
-    await context.database().ref('rooms/room1/matchState/rounds/0/answers/hostUid').set({
-      selectedChoiceId: 'a', isCorrect: true, submittedAt: 123
-    });
-  });
-
-  // 3. HEAL after answer rejected
-  await test('HEAL after answer rejected', assertFails(
-    host.database().ref('rooms/room1/matchState/players/hostUid').update({
-      hp: 100, // already 100, wait let's change HP back to 80 via rules disabled
-      'items/HEAL/remaining': 0,
-      'itemUses/1': { itemId: 'HEAL', actionId: 'action3', usedAt: 123456 }
-    })
-  ));
-
-  // Reset host state
-  await testEnv.withSecurityRulesDisabled(async context => {
-    await context.database().ref('rooms/room1/matchState/players/hostUid').set({
-      hp: 80, 
-      items: { HEAL: { remaining: 2 }, SHIELD: { remaining: 1 }, POWER: { remaining: 1 } }, 
-      score: 0, correct: 0, wrong: 0, itemUses: {} 
-    });
-    await context.database().ref('rooms/room1/matchState/players/guestUid').set({
-      hp: 80, 
-      items: { HEAL: { remaining: 2 }, SHIELD: { remaining: 1 }, POWER: { remaining: 1 } }, 
-      score: 0, correct: 0, wrong: 0, itemUses: {} 
-    });
-  });
-
-  // 4. legal SHIELD
-  await test('legal SHIELD', assertSucceeds(
-    host.database().ref('rooms/room1/matchState/players/hostUid').update({
-      'items/SHIELD/remaining': 0,
-      'itemUses/0': { itemId: 'SHIELD', actionId: 'action4', usedAt: 123456 }
-    })
-  ));
-
-  // 5. legal POWER
-  await test('legal POWER', assertSucceeds(
-    guest.database().ref('rooms/room1/matchState/players/guestUid').update({
-      'items/POWER/remaining': 0,
-      'itemUses/0': { itemId: 'POWER', actionId: 'action5', usedAt: 123456 }
-    })
-  ));
-
-  // 6. second item same round rejected (Host already used SHIELD in round 0)
-  await test('second item same round rejected', assertFails(
-    host.database().ref('rooms/room1/matchState/players/hostUid').update({
-      'items/POWER/remaining': 0,
-      'itemUses/0': { itemId: 'POWER', actionId: 'action6', usedAt: 123456 } // overwriting index 0
-    })
-  ));
-
-  // 7. zero inventory rejected
-  await test('zero inventory rejected', assertFails(
-    host.database().ref('rooms/room1/matchState/players/hostUid').update({
-      'items/SHIELD/remaining': -1,
-      'itemUses/1': { itemId: 'SHIELD', actionId: 'action7', usedAt: 123456 } 
-    })
-  ));
-
-  // 8. opponent inventory mutation rejected
-  await test('opponent inventory mutation rejected', assertFails(
-    host.database().ref('rooms/room1/matchState/players/guestUid').update({
-      'items/HEAL/remaining': 0,
-      'itemUses/1': { itemId: 'HEAL', actionId: 'action8', usedAt: 123456 } 
-    })
-  ));
-
-  // 9. inventory increase rejected
-  await test('inventory increase rejected', assertFails(
-    guest.database().ref('rooms/room1/matchState/players/guestUid').update({
-      'items/POWER/remaining': 2,
-      'itemUses/1': { itemId: 'POWER', actionId: 'action9', usedAt: 123456 } 
-    })
-  ));
-
-  // 10. forged HP mutation rejected
-  await test('forged HP mutation rejected', assertFails(
-    guest.database().ref('rooms/room1/matchState/players/guestUid').update({
-      hp: 100, // healing without decrementing potion
-    })
-  ));
-
-  // 11. itemUse overwrite rejected
-  await test('itemUse overwrite rejected', assertFails(
-    host.database().ref('rooms/room1/matchState/players/hostUid/itemUses/0').set({
-      itemId: 'HEAL', actionId: 'action10', usedAt: 123456 
-    })
-  ));
-
-  // Prepare round answers for settlement
-  await testEnv.withSecurityRulesDisabled(async context => {
-    await context.database().ref('rooms/room1/matchState/rounds/0').set({
-      answers: {
-        hostUid: { selectedChoiceId: 'a', isCorrect: true, submittedAt: 123 },
-        guestUid: { selectedChoiceId: 'b', isCorrect: false, submittedAt: 124 }
-      }
-    });
-  });
-
-  // 12. Guest settlement rejected
-  await test('Guest settlement rejected', assertFails(
-    guest.database().ref('rooms/room1/matchState').update({
-      phase: 'ROUND_RESULT',
-      'players/guestUid/hp': 60
-    })
-  ));
-
-  // 13. Host legal settlement accepted
-  await test('Host legal settlement accepted', assertSucceeds(
-    host.database().ref('rooms/room1/matchState').update({
-      phase: 'ROUND_RESULT',
-      'players/hostUid/score': 10,
-      'players/hostUid/correct': 1,
-      'players/guestUid/hp': 60,
-      'players/guestUid/wrong': 1,
-      'rounds/0/resolution': {
-        hostCorrect: true, guestCorrect: false
-      }
-    })
-  ));
-
-  console.log('---------------------------------');
-  console.log(`Total: ${passed + failed}`);
-  console.log(`Passed: ${passed}`);
-  console.log(`Failed: ${failed}`);
-  console.log('---------------------------------');
-
-  await testEnv.cleanup();
+  return load(path.resolve(entry));
 }
 
-run().catch(console.error);
+async function run() {
+  if (!process.env.FIREBASE_DATABASE_EMULATOR_HOST) throw new Error('Run with firebase emulators:exec --only database.');
+  const [host, port] = process.env.FIREBASE_DATABASE_EMULATOR_HOST.split(':');
+  const testEnv = await initializeTestEnvironment({
+    projectId: process.env.GCLOUD_PROJECT || 'demo-knowledge-king',
+    database: { host, port: Number(port), rules: fs.readFileSync('firebase/database.rules.json', 'utf8') },
+  });
+  const contexts = {
+    host: testEnv.authenticatedContext('hostUid'),
+    guest: testEnv.authenticatedContext('guestUid'),
+    outsider: testEnv.authenticatedContext('outsiderUid'),
+  };
+  const db = role => contexts[role].database();
+  const seed = async room => testEnv.withSecurityRulesDisabled(context => context.database().ref(roomPath).set(room));
+  const stateRef = (role, suffix = '') => db(role).ref(roomPath + '/matchState' + suffix);
+  const guestPlayer = () => stateRef('guest', '/players/guestUid');
+  let passed = 0;
+  let failed = 0;
+  async function test(name, scenario) {
+    try {
+      const room = makeRoom();
+      await seed(room);
+      await scenario(room);
+      console.log('PASS ' + name);
+      passed += 1;
+    } catch (error) {
+      console.error('FAIL ' + name + ': ' + error.message);
+      failed += 1;
+    }
+  }
+  async function serviceAction(role, callback) {
+    const roomRef = db(role).ref(roomPath);
+    let listener;
+    await new Promise((resolve, reject) => {
+      listener = () => resolve();
+      roomRef.on('value', listener, reject);
+    });
+    try { return await callback(loadService(db(role)._delegate)); }
+    finally { roomRef.off('value', listener); }
+  }
+
+  try {
+    await test('current ANSWERING answer accepted', () => assertSucceeds(stateRef('guest', '/rounds/0/answers/guestUid').set(answer())));
+    for (const phase of ['RESOLVING', 'ROUND_RESULT', 'FINISHED']) {
+      await test('answer rejected during ' + phase, async room => {
+        room.matchState.phase = phase;
+        await seed(room);
+        await assertFails(stateRef('guest', '/rounds/0/answers/guestUid').set(answer()));
+      });
+    }
+    for (const roundIndex of [-1, 1]) {
+      await test('answer rejected for wrong round ' + roundIndex, () => assertFails(stateRef('guest', '/rounds/' + roundIndex + '/answers/guestUid').set(answer())));
+    }
+    await test('past nonnegative round answer rejected', async room => {
+      room.matchState.roundIndex = 1;
+      await seed(room);
+      await assertFails(stateRef('guest', '/rounds/0/answers/guestUid').set(answer()));
+    });
+    for (const status of ['WAITING', 'FINISHED', 'CANCELLED']) {
+      await test('answer rejected in ' + status + ' room', async room => {
+        room.meta.status = status;
+        await seed(room);
+        await assertFails(stateRef('guest', '/rounds/0/answers/guestUid').set(answer()));
+      });
+    }
+    await test('dead player answer rejected', async room => {
+      room.matchState.players.guestUid.hp = 0;
+      await seed(room);
+      await assertFails(stateRef('guest', '/rounds/0/answers/guestUid').set(answer()));
+    });
+    await test('outsider answer rejected', () => assertFails(stateRef('outsider', '/rounds/0/answers/outsiderUid').set(answer())));
+    await test('opponent answer mutation rejected', () => assertFails(stateRef('guest', '/rounds/0/answers/hostUid').set(answer())));
+    await test('duplicate answer mutation rejected', async room => {
+      room.matchState.rounds = { 0: { answers: { guestUid: answer() } } };
+      await seed(room);
+      await assertFails(stateRef('guest', '/rounds/0/answers/guestUid').set(answer('different')));
+    });
+    await test('answer timestamp mutation rejected', async room => {
+      room.matchState.rounds = { 0: { answers: { guestUid: answer() } } };
+      await seed(room);
+      await assertFails(stateRef('guest', '/rounds/0/answers/guestUid/submittedAt').set(2));
+    });
+
+    for (const itemId of ['HEAL', 'SHIELD', 'POWER']) {
+      await test('legal own ' + itemId + ' at service transaction scope', async room => {
+        applyItem(room, 'guestUid', itemId);
+        await assertSucceeds(db('guest').ref(roomPath).set(room));
+      });
+      await test(itemId + ' after answer rejected with otherwise legal HP/inventory', async room => {
+        room.matchState.rounds = { 0: { answers: { guestUid: answer() } } };
+        await seed(room);
+        applyItem(room, 'guestUid', itemId);
+        await assertFails(db('guest').ref(roomPath).set(room));
+      });
+    }
+    for (const phase of ['RESOLVING', 'ROUND_RESULT', 'FINISHED']) {
+      await test('item rejected during ' + phase, async room => {
+        room.matchState.phase = phase;
+        await seed(room);
+        const used = applyItem(clone(room), 'guestUid', 'POWER');
+        await assertFails(guestPlayer().set(used.matchState.players.guestUid));
+      });
+    }
+    for (const roundIndex of [-1, 1]) {
+      await test('item rejected for wrong round ' + roundIndex, async room => {
+        applyItem(room, 'guestUid', 'POWER', roundIndex);
+        await assertFails(db('guest').ref(roomPath).set(room));
+      });
+    }
+    await test('past nonnegative item round rejected', async room => {
+      room.matchState.roundIndex = 1;
+      await seed(room);
+      applyItem(room, 'guestUid', 'POWER', 0);
+      await assertFails(db('guest').ref(roomPath).set(room));
+    });
+    for (const status of ['WAITING', 'FINISHED', 'CANCELLED']) {
+      await test('item rejected in ' + status + ' room', async room => {
+        room.meta.status = status;
+        await seed(room);
+        applyItem(room, 'guestUid', 'POWER');
+        await assertFails(guestPlayer().set(room.matchState.players.guestUid));
+      });
+    }
+    await test('HEAL at full HP rejected', async room => {
+      room.matchState.players.guestUid.hp = 100;
+      await seed(room);
+      applyItem(room, 'guestUid', 'HEAL');
+      await assertFails(db('guest').ref(roomPath).set(room));
+    });
+    await test('dead player item rejected', async room => {
+      room.matchState.players.guestUid.hp = 0;
+      await seed(room);
+      applyItem(room, 'guestUid', 'SHIELD');
+      await assertFails(db('guest').ref(roomPath).set(room));
+    });
+    await test('second item in same round rejected', async room => {
+      applyItem(room, 'guestUid', 'SHIELD');
+      await seed(room);
+      applyItem(room, 'guestUid', 'POWER');
+      await assertFails(db('guest').ref(roomPath).set(room));
+    });
+    await test('zero inventory use rejected', async room => {
+      room.matchState.players.guestUid.items.POWER.remaining = 0;
+      await seed(room);
+      applyItem(room, 'guestUid', 'POWER');
+      await assertFails(db('guest').ref(roomPath).set(room));
+    });
+    for (const itemId of ['HEAL', 'SHIELD', 'POWER']) {
+      await test(itemId + ' inventory 0 -> 1 refill rejected', async room => {
+        room.matchState.players.guestUid.items[itemId].remaining = 0;
+        await seed(room);
+        await assertFails(guestPlayer().child('items/' + itemId + '/remaining').set(1));
+      });
+    }
+    await test('inventory decrement without itemUse rejected', () => assertFails(guestPlayer().child('items/POWER/remaining').set(0)));
+    await test('multiple inventory decrements rejected', async room => {
+      applyItem(room, 'guestUid', 'POWER');
+      room.matchState.players.guestUid.items.SHIELD.remaining = 0;
+      await assertFails(db('guest').ref(roomPath).set(room));
+    });
+    await test('HEAL decrement by two rejected', async room => {
+      applyItem(room, 'guestUid', 'HEAL');
+      room.matchState.players.guestUid.items.HEAL.remaining = 0;
+      await assertFails(db('guest').ref(roomPath).set(room));
+    });
+    await test('fractional inventory rejected', () => assertFails(guestPlayer().child('items/POWER/remaining').set(0.5)));
+    await test('itemUse without inventory decrement rejected', () => assertFails(guestPlayer().child('itemUses/0').set(itemUse('POWER'))));
+    await test('invalid item ID rejected', async room => {
+      room.matchState.players.guestUid.itemUses = { 0: itemUse('INVALID') };
+      await assertFails(db('guest').ref(roomPath).set(room));
+    });
+    await test('itemUse with same actionId but changed itemId rejected', async room => {
+      applyItem(room, 'guestUid', 'SHIELD');
+      await seed(room);
+      await assertFails(guestPlayer().child('itemUses/0/itemId').set('POWER'));
+    });
+    await test('itemUse timestamp overwrite rejected', async room => {
+      applyItem(room, 'guestUid', 'SHIELD');
+      await seed(room);
+      await assertFails(guestPlayer().child('itemUses/0/usedAt').set(2));
+    });
+    for (const role of ['host', 'guest']) {
+      await test(role + ' cannot mutate opponent inventory', async room => {
+        const opponent = role === 'host' ? 'guestUid' : 'hostUid';
+        applyItem(room, opponent, 'POWER');
+        await assertFails(db(role).ref(roomPath).set(room));
+      });
+    }
+    for (const hp of [0, 60, 100]) {
+      await test('arbitrary own HP ' + hp + ' rejected', () => assertFails(guestPlayer().child('hp').set(hp)));
+    }
+    await test('opponent HP modification rejected', () => assertFails(stateRef('guest', '/players/hostUid/hp').set(60)));
+    await test('HEAL exact amount required', async room => {
+      applyItem(room, 'guestUid', 'HEAL');
+      room.matchState.players.guestUid.hp = 90;
+      await assertFails(db('guest').ref(roomPath).set(room));
+    });
+    await test('cannot submit answer and use item in the same write', async room => {
+      applyItem(room, 'guestUid', 'POWER');
+      room.matchState.rounds = { 0: { answers: { guestUid: answer() } } };
+      await assertFails(db('guest').ref(roomPath).set(room));
+    });
+
+    for (const suffix of ['/rounds/0/answers/guestUid', '/rounds/0/answers', '/rounds/0', '/rounds']) {
+      await test('answer history deletion rejected at ' + suffix, async room => {
+        room.matchState.rounds = { 0: { answers: { hostUid: answer(), guestUid: answer() } } };
+        await seed(room);
+        await assertFails(stateRef('guest', suffix).remove());
+      });
+    }
+    for (const suffix of ['/players/guestUid/itemUses/0', '/players/guestUid/itemUses', '/players/guestUid/items', '/players/hostUid', '/players', '']) {
+      await test('combat state deletion rejected at ' + (suffix || '/matchState'), async room => {
+        applyItem(room, 'guestUid', 'POWER');
+        await seed(room);
+        await assertFails(stateRef('guest', suffix).remove());
+      });
+    }
+    await test('old round deletion rejected while adding current answer', async room => {
+      room.matchState.roundIndex = 1;
+      room.matchState.rounds = { 0: { answers: { hostUid: answer(), guestUid: answer() } } };
+      await seed(room);
+      delete room.matchState.rounds[0];
+      room.matchState.rounds[1] = { answers: { guestUid: answer() } };
+      await assertFails(db('guest').ref(roomPath).set(room));
+    });
+    for (const suffix of ['/phase', '/roundIndex', '/players/guestUid/score', '/players/guestUid/correct']) {
+      await test('Guest cannot change settlement field ' + suffix, () => assertFails(stateRef('guest', suffix).set(suffix === '/phase' ? 'ROUND_RESULT' : 1)));
+    }
+    await test('Guest cannot create resolution', () => assertFails(stateRef('guest', '/rounds/0/resolution').set({ hostCorrect: true, guestCorrect: false })));
+    await test('outsider room transaction rejected', room => assertFails(db('outsider').ref(roomPath).set(applyItem(room, 'guestUid', 'POWER'))));
+
+    await test('real Guest service answer transaction accepted; duplicate rejected', async () => {
+      await serviceAction('guest', async service => {
+        const result = await service.submitAnswer('room1', 'guestUid', 0, 'choice');
+        assert.equal(result.committed, true);
+        assert.equal((await service.submitAnswer('room1', 'guestUid', 0, 'other')).committed, false);
+        const stored = result.snapshot.val().matchState.rounds[0].answers.guestUid;
+        assert.equal(stored.selectedChoiceId, 'choice');
+        assert.equal(Object.hasOwn(stored, 'isCorrect'), false);
+      });
+    });
+    for (const itemId of ['HEAL', 'SHIELD', 'POWER']) {
+      await test('real Guest service ' + itemId + ' transaction accepted', () => serviceAction('guest', async service => {
+        const result = await service.useBattleItem({ roomCode: 'room1', uid: 'guestUid', roundIndex: 0, itemId, actionId: 'action1' });
+        assert.equal(result.committed, true);
+      }));
+    }
+    for (const itemId of ['HEAL', 'SHIELD', 'POWER']) {
+      await test('real Host service ' + itemId + ' transaction accepted', () => serviceAction('host', async service => {
+        const result = await service.useBattleItem({ roomCode: 'room1', uid: 'hostUid', roundIndex: 0, itemId, actionId: 'action1' });
+        assert.equal(result.committed, true);
+      }));
+    }
+    await test('real service rejects item after answer', () => serviceAction('guest', async service => {
+      assert.equal((await service.submitAnswer('room1', 'guestUid', 0, 'choice')).committed, true);
+      assert.equal((await service.useBattleItem({ roomCode: 'room1', uid: 'guestUid', roundIndex: 0, itemId: 'POWER', actionId: 'action1' })).committed, false);
+    }));
+    await test('honest Host ignores forged true for wrong choice in emulator settlement', async room => {
+      room.matchState.rounds = { 0: { answers: {
+        hostUid: { ...answer('invalid-choice'), isCorrect: false },
+        guestUid: { ...answer('another-invalid-choice'), isCorrect: true },
+      } } };
+      await seed(room);
+      await serviceAction('host', async service => {
+        const result = await service.resolveRound('room1', 'hostUid', 'guestUid', 0);
+        assert.equal(result.committed, true);
+        const state = result.snapshot.val().matchState;
+        assert.equal(state.rounds[0].resolution.guestCorrect, false);
+        assert.equal(state.players.hostUid.hp, 80);
+      });
+    });
+    const { createPvpQuestions } = loadService(db('host')._delegate, 'src/domain/pvp/pvpQuestions.js');
+    const [question] = createPvpQuestions(makeRoom().match);
+    const wrongChoice = question.choices.find(choice => choice.id !== question.correctChoiceId).id;
+    for (const [name, hostCorrect, guestCorrect, hostItem, guestItem, toHost, toGuest] of [
+      ['normal', true, false, null, null, 0, 20],
+      ['Guest correct', false, true, null, null, 20, 0],
+      ['both correct', true, true, null, null, 20, 20],
+      ['both wrong', false, false, null, null, 0, 0],
+      ['POWER', true, false, 'POWER', null, 0, 30],
+      ['SHIELD', true, false, null, 'SHIELD', 0, 0],
+      ['POWER vs SHIELD', true, false, 'POWER', 'SHIELD', 0, 10],
+      ['both POWER', true, true, 'POWER', 'POWER', 30, 30],
+      ['both SHIELD', true, true, 'SHIELD', 'SHIELD', 0, 0],
+      ['wrong POWER', false, true, 'POWER', null, 20, 0],
+    ]) {
+      await test('real Host settlement: ' + name + ' ignores submitted booleans', async room => {
+        if (hostItem) applyItem(room, 'hostUid', hostItem);
+        if (guestItem) applyItem(room, 'guestUid', guestItem);
+        room.matchState.rounds = { 0: { answers: {
+          hostUid: { ...answer(hostCorrect ? question.correctChoiceId : wrongChoice), isCorrect: !hostCorrect },
+          guestUid: { ...answer(guestCorrect ? question.correctChoiceId : wrongChoice), isCorrect: !guestCorrect },
+        } } };
+        await seed(room);
+        await serviceAction('host', async service => {
+          const result = await service.resolveRound('room1', 'hostUid', 'guestUid', 0);
+          assert.equal(result.committed, true);
+          const state = result.snapshot.val().matchState;
+          assert.equal(state.players.hostUid.hp, 80 - toHost);
+          assert.equal(state.players.guestUid.hp, 80 - toGuest);
+          assert.equal(state.rounds[0].resolution.hostCorrect, hostCorrect);
+          assert.equal(state.rounds[0].resolution.guestCorrect, guestCorrect);
+        });
+      });
+    }
+    await test('Host can advance a settled round; Guest cannot', async room => {
+      room.matchState.phase = 'ROUND_RESULT';
+      await seed(room);
+      await assertFails(stateRef('guest').update({ phase: 'ANSWERING', roundIndex: 1 }));
+      await serviceAction('host', async service => assert.equal((await service.advanceRound('room1', 0)).committed, true));
+    });
+    await test('real service preserves item inventory and history across round advancement', async () => {
+      await serviceAction('guest', async service => {
+        assert.equal((await service.useBattleItem({ roomCode: 'room1', uid: 'guestUid', roundIndex: 0, itemId: 'SHIELD', actionId: 'shield1' })).committed, true);
+        assert.equal((await service.submitAnswer('room1', 'guestUid', 0, question.correctChoiceId)).committed, true);
+      });
+      await serviceAction('host', async service => {
+        assert.equal((await service.submitAnswer('room1', 'hostUid', 0, question.correctChoiceId)).committed, true);
+        assert.equal((await service.resolveRound('room1', 'hostUid', 'guestUid', 0)).committed, true);
+        assert.equal((await service.advanceRound('room1', 0)).committed, true);
+      });
+      await serviceAction('guest', async service => {
+        const result = await service.useBattleItem({ roomCode: 'room1', uid: 'guestUid', roundIndex: 1, itemId: 'POWER', actionId: 'power2' });
+        assert.equal(result.committed, true);
+        const state = result.snapshot.val().matchState.players.guestUid;
+        assert.equal(state.items.SHIELD.remaining, 0);
+        assert.equal(state.items.POWER.remaining, 0);
+        assert.equal(state.itemUses[0].itemId, 'SHIELD');
+        assert.equal(state.itemUses[1].itemId, 'POWER');
+      });
+    });
+    await test('real simultaneous KO finalization remains DRAW with unequal scores', async room => {
+      room.matchState.players.hostUid.hp = 10;
+      room.matchState.players.guestUid.hp = 10;
+      room.matchState.players.hostUid.score = 50;
+      room.matchState.players.guestUid.score = 10;
+      room.matchState.rounds = { 0: { answers: {
+        hostUid: answer(question.correctChoiceId), guestUid: answer(question.correctChoiceId),
+      } } };
+      await seed(room);
+      await serviceAction('host', async service => {
+        assert.equal((await service.resolveRound('room1', 'hostUid', 'guestUid', 0)).committed, true);
+        const result = await service.finalizeMatch('room1', 'hostUid', 'guestUid');
+        assert.equal(result.committed, true);
+        assert.equal(result.snapshot.val().meta.status, 'FINISHED');
+        assert.equal(result.snapshot.val().matchState.result.winnerUid, undefined);
+      });
+    });
+    await test('finished Guest may leave without altering results', async room => {
+      room.meta.status = 'FINISHED';
+      room.matchState.phase = 'FINISHED';
+      await seed(room);
+      await assertSucceeds(db('guest').ref(roomPath + '/players/guestUid').remove());
+    });
+    await test('Guest retains existing active-room departure permission', () =>
+      assertSucceeds(db('guest').ref(roomPath + '/players/guestUid').remove()));
+    await test('finished Host may remove the room', async room => {
+      room.meta.status = 'FINISHED';
+      room.matchState.phase = 'FINISHED';
+      await seed(room);
+      await assertSucceeds(db('host').ref(roomPath).remove());
+    });
+  } finally {
+    console.log('Total: ' + (passed + failed) + '; Passed: ' + passed + '; Failed: ' + failed);
+    await testEnv.cleanup();
+  }
+  if (failed) process.exitCode = 1;
+}
+
+run().catch(error => { console.error(error); process.exitCode = 1; });

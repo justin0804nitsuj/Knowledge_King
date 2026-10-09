@@ -41,6 +41,8 @@ async function run() {
   });
 
   const hostContext = testEnv.authenticatedContext(hostUid);
+  let passed = 0;
+  let failed = 0;
 
   // Attempt the startMatch transaction equivalent
   const newData = {
@@ -81,8 +83,10 @@ async function run() {
   try {
     await assertSucceeds(hostContext.database().ref(`rooms/${roomId}`).set(newData));
     console.log("SUCCESS!");
+    passed++;
   } catch (e) {
     console.error("FAILED!", e);
+    failed++;
   }
 
   // Attempt unauthorized guest rewrite
@@ -93,11 +97,15 @@ async function run() {
   try {
     await assertFails(hostContext.database().ref(`rooms/${roomId}`).set(badData));
     console.log("SUCCESS! Denied as expected.");
+    passed++;
   } catch (e) {
     console.error("FAILED! Should have been denied.", e);
+    failed++;
   }
 
   await testEnv.cleanup();
+  console.log(`Total: ${passed + failed}; Passed: ${passed}; Failed: ${failed}`);
+  if (failed) process.exitCode = 1;
 }
 
-run();
+run().catch(error => { console.error(error); process.exitCode = 1; });

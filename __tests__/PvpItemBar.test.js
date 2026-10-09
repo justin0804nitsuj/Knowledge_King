@@ -94,5 +94,21 @@ describe('PvpItemBar UI Polish', () => {
     const texts = getTexts(component.root);
     expect(texts).toContain('×0');
   });
+
+  test.each(['disabled', 'empty', 'fullHp'])('selection clears when %s makes the item unusable', reason => {
+    let component;
+    act(() => {
+      component = renderer.create(<PvpItemBar items={defaultItems} hp={60} onUseItem={jest.fn()} />);
+    });
+    act(() => { component.root.findAllByType(TouchableOpacity)[0].props.onPress(); });
+    expect(getTexts(component.root)).toContain('USE');
+    const items = reason === 'empty' ? { ...defaultItems, HEAL: { remaining: 0 } } : defaultItems;
+    act(() => {
+      component.update(<PvpItemBar items={items} hp={reason === 'fullHp' ? 100 : 60}
+        disabled={reason === 'disabled'} onUseItem={jest.fn()} />);
+    });
+    expect(getTexts(component.root)).not.toContain('USE');
+    act(() => { component.unmount(); });
+  });
 });
 

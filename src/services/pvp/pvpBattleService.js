@@ -1,39 +1,45 @@
-import { ref, runTransaction, onValue, off, serverTimestamp } from 'firebase/database';
+import { ref, runTransaction, onValue, serverTimestamp } from 'firebase/database';
 import { db } from '../firebase/firebaseDatabase';
 import { RoomStatus } from '../../domain/pvp/roomConstants';
-import { PVP_ITEMS, ITEM_TYPES, getInitialItemsState } from '../../domain/pvp/pvpItems';
+import { PVP_ITEMS, ITEM_TYPES } from '../../domain/pvp/pvpItems';
+import { createPvpQuestions } from '../../domain/pvp/pvpQuestions';
 
 const MAX_HP = 100;
 const BASE_DAMAGE = 20;
 
-function getInitialPlayerState() {
-  return {
-    hp: MAX_HP,
-    score: 0,
-    correct: 0,
-    wrong: 0,
-    items: getInitialItemsState(),
-  };
+function getAnsweringState(roomData, uid, roundIndex) {
+  const state = roomData?.matchState;
+  if (roomData?.meta?.status !== RoomStatus.IN_BATTLE || !roomData.players?.[uid] ||
+      !Number.isInteger(roomData.match?.questionCount) ||
+      !Number.isInteger(roundIndex) || roundIndex < 0 ||
+      roundIndex >= roomData.match?.questionCount || state?.phase !== 'ANSWERING' ||
+      state.roundIndex !== roundIndex || !(state.players?.[uid]?.hp > 0)) return null;
+  return state;
 }
 
-export async function submitAnswer(roomCode, uid, opponentUid, roundIndex, choiceId, isCorrect, points) {
-  const answerRef = ref(db, `rooms/${roomCode}/matchState/rounds/${roundIndex}/answers/${uid}`);
-  return runTransaction(answerRef, (current) => {
-    if (current) return; // already answered
-    return {
+export async function submitAnswer(roomCode, uid, roundIndex, choiceId) {
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  return runTransaction(roomRef, (roomData) => {
+    const state = getAnsweringState(roomData, uid, roundIndex);
+    if (!state || typeof choiceId !== 'string' || !choiceId.length) return;
+    if (state.rounds?.[roundIndex]?.answers?.[uid]) return;
+    if (!state.rounds) state.rounds = {};
+    if (!state.rounds[roundIndex]) state.rounds[roundIndex] = {};
+    if (!state.rounds[roundIndex].answers) state.rounds[roundIndex].answers = {};
+    state.rounds[roundIndex].answers[uid] = {
       selectedChoiceId: choiceId,
-      isCorrect,
       submittedAt: serverTimestamp()
     };
+    return roomData;
   }, { applyLocally: false });
 }
 
 export async function resolveRound(roomCode, hostUid, guestUid, roundIndex) {
-  const matchStateRef = ref(db, `rooms/${roomCode}/matchState`);
-  return runTransaction(matchStateRef, (matchState) => {
-    if (!matchState) return;
-    if (matchState.roundIndex !== roundIndex) return; // Not the right round
-    if (matchState.phase !== 'ANSWERING') return matchState; // Already resolving/resolved
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  return runTransaction(roomRef, (roomData) => {
+    const matchState = getAnsweringState(roomData, hostUid, roundIndex);
+    if (!matchState || roomData.meta.hostUid !== hostUid || hostUid === guestUid ||
+        !roomData.players?.[guestUid] || !(matchState.players?.[guestUid]?.hp > 0)) return;
     
     const round = matchState.rounds?.[roundIndex];
     if (!round || !round.answers || !round.answers[hostUid] || !round.answers[guestUid]) {
@@ -41,16 +47,17 @@ export async function resolveRound(roomCode, hostUid, guestUid, roundIndex) {
     }
 
     if (round.resolution) {
-      return matchState; // Already resolved
+      return; // Already resolved
     }
-
-    matchState.phase = 'RESOLVING';
 
     const hostAnswer = round.answers[hostUid];
     const guestAnswer = round.answers[guestUid];
 
-    const hostCorrect = hostAnswer.isCorrect;
-    const guestCorrect = guestAnswer.isCorrect;
+    // Legacy answer.isCorrect, if present, is non-authoritative.
+    const question = createPvpQuestions(roomData.match)[roundIndex];
+    const hostCorrect = hostAnswer.selectedChoiceId === question.correctChoiceId;
+    const guestCorrect = guestAnswer.selectedChoiceId === question.correctChoiceId;
+    matchState.phase = 'RESOLVING';
 
     const hostHpBefore = matchState.players[hostUid].hp;
     const guestHpBefore = matchState.players[guestUid].hp;
@@ -63,8 +70,8 @@ export async function resolveRound(roomCode, hostUid, guestUid, roundIndex) {
     const hostShieldActive = hostItemUse?.itemId === ITEM_TYPES.SHIELD;
     const guestShieldActive = guestItemUse?.itemId === ITEM_TYPES.SHIELD;
 
-    const hostPowerBonus = hostPowerActive ? PVP_ITEMS[ITEM_TYPES.POWER].bonusDamage : 0;
-    const guestPowerBonus = guestPowerActive ? PVP_ITEMS[ITEM_TYPES.POWER].bonusDamage : 0;
+    const hostPowerBonus = hostPowerActive && hostCorrect ? PVP_ITEMS[ITEM_TYPES.POWER].bonusDamage : 0;
+    const guestPowerBonus = guestPowerActive && guestCorrect ? PVP_ITEMS[ITEM_TYPES.POWER].bonusDamage : 0;
 
     const hostBaseDamage = hostCorrect ? BASE_DAMAGE : 0;
     const guestBaseDamage = guestCorrect ? BASE_DAMAGE : 0;
@@ -120,7 +127,7 @@ export async function resolveRound(roomCode, hostUid, guestUid, roundIndex) {
     }
 
     matchState.phase = 'ROUND_RESULT';
-    return matchState;
+    return roomData;
   }, { applyLocally: false });
 }
 
@@ -138,12 +145,13 @@ export async function advanceRound(roomCode, currentRoundIndex) {
 }
 
 export async function useBattleItem({ roomCode, uid, roundIndex, itemId, actionId }) {
-  const playerStateRef = ref(db, `rooms/${roomCode}/matchState/players/${uid}`);
-  
-  return runTransaction(playerStateRef, (currentState) => {
-    if (!currentState) return;
-
-    if (currentState.hp <= 0) return;
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  return runTransaction(roomRef, (roomData) => {
+    const matchState = getAnsweringState(roomData, uid, roundIndex);
+    if (!matchState || !Object.prototype.hasOwnProperty.call(PVP_ITEMS, itemId) ||
+        typeof actionId !== 'string' || !actionId.length ||
+        matchState.rounds?.[roundIndex]?.answers?.[uid]) return;
+    const currentState = matchState.players[uid];
 
     if (currentState.itemUses && currentState.itemUses[roundIndex]) {
       return; // Already used an item this round
@@ -169,7 +177,7 @@ export async function useBattleItem({ roomCode, uid, roundIndex, itemId, actionI
       usedAt: serverTimestamp()
     };
 
-    return currentState;
+    return roomData;
   }, { applyLocally: false });
 }
 
@@ -186,20 +194,27 @@ export async function finalizeMatch(roomCode, hostUid, guestUid) {
     const hostState = roomData.matchState?.players?.[hostUid];
     const guestState = roomData.matchState?.players?.[guestUid];
     
-    if (!hostState || !guestState) {
+    if (!hostState || !guestState || roomData.meta.hostUid !== hostUid ||
+        roomData.matchState.phase !== 'ROUND_RESULT') {
       return; 
     }
+    const exhausted = roomData.matchState.roundIndex + 1 >= roomData.match?.questionCount;
+    if (hostState.hp > 0 && guestState.hp > 0 && !exhausted) return;
     
     let winnerUid = null;
     let loserUid = null;
     
-    if (hostState.hp > guestState.hp) {
+    if (hostState.hp <= 0 && guestState.hp <= 0) {
+      // Simultaneous KO is always a draw, regardless of accumulated score.
+      winnerUid = null;
+      loserUid = null;
+    } else if (hostState.hp > guestState.hp) {
       winnerUid = hostUid;
       loserUid = guestUid;
     } else if (guestState.hp > hostState.hp) {
       winnerUid = guestUid;
       loserUid = hostUid;
-    } else {
+    } else if (exhausted) {
       if (hostState.score > guestState.score) {
         winnerUid = hostUid;
         loserUid = guestUid;
@@ -234,12 +249,8 @@ export async function finalizeMatch(roomCode, hostUid, guestUid) {
 export function subscribeToMatchState(roomCode, onUpdate) {
   const stateRef = ref(db, `rooms/${roomCode}/matchState`);
   
-  onValue(stateRef, (snapshot) => {
+  return onValue(stateRef, (snapshot) => {
     const data = snapshot.val();
-    onUpdate(data || {});
+    onUpdate(data);
   });
-  
-  return () => {
-    off(stateRef);
-  };
 }

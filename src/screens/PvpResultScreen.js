@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, BackHandler } from 'react-native';
 import { usePvpRoom } from '../context/PvpRoomContext';
 import { theme } from '../theme';
 import { useTranslation } from 'react-i18next';
@@ -9,11 +9,35 @@ import { gameFeedback } from '../services/feedback/gameFeedback';
 import { PVP_ITEMS } from '../domain/pvp/pvpItems';
 
 export default function PvpResultScreen({ navigation }) {
-  const { roomId, room, user, isHost } = usePvpRoom();
+  const { roomId, room, user } = usePvpRoom();
   const { t } = useTranslation();
   const [matchState, setMatchState] = useState(null);
   const animValue = useRef(new Animated.Value(0)).current;
   const playedResultRef = useRef(null);
+  const leavingRef = useRef(false);
+
+  const handleLeave = useCallback(async () => {
+    if (leavingRef.current) return;
+    leavingRef.current = true;
+    try {
+      if (roomId && user?.uid) await leaveRoom(roomId, user);
+    } catch (e) {
+      console.error('Failed to leave room:', e);
+    } finally {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs', params: { screen: 'Arena' } }]
+      });
+    }
+  }, [roomId, user, navigation]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleLeave();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [handleLeave]);
 
   useEffect(() => {
     gameFeedback.init();
@@ -101,21 +125,6 @@ export default function PvpResultScreen({ navigation }) {
 
   const myItemsUsed = calculateItemsUsed(myState);
   const oppItemsUsed = calculateItemsUsed(oppState);
-
-  const handleLeave = async () => {
-    try {
-      if (roomId && user?.uid) {
-        await leaveRoom(roomId, user.uid, isHost);
-      }
-    } catch (e) {
-      console.error('Failed to leave room:', e);
-    } finally {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'MainTabs', params: { screen: 'Arena' } }]
-      });
-    }
-  };
 
   const scaleAnim = animValue.interpolate({
     inputRange: [0, 0.5, 1],

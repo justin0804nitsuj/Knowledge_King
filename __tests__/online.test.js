@@ -119,7 +119,7 @@ describe('Phase 7 Online Foundation', () => {
   describe('PvP Compatibility Helper', () => {
     it('should expose ruleset, vocabulary version, and schema', () => {
       const info = getCompatibilityInfo();
-      expect(info.rulesetVersion).toBe('1.0.0');
+      expect(info.rulesetVersion).toBe('1.1.0');
       expect(info.vocabularyVersion).toBeDefined();
       expect(info.vocabularySchemaVersion).toBeDefined();
       expect(info.supportedModes).toContain('STANDARD_4_CHOICE');
