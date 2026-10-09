@@ -55,8 +55,8 @@ export async function resolveRound(roomCode, hostUid, guestUid, roundIndex) {
     const hostHpBefore = matchState.players[hostUid].hp;
     const guestHpBefore = matchState.players[guestUid].hp;
 
-    const hostItemUse = round.itemUses?.[hostUid];
-    const guestItemUse = round.itemUses?.[guestUid];
+    const hostItemUse = matchState.players[hostUid].itemUses?.[roundIndex];
+    const guestItemUse = matchState.players[guestUid].itemUses?.[roundIndex];
 
     const hostPowerActive = hostItemUse?.itemId === ITEM_TYPES.POWER;
     const guestPowerActive = guestItemUse?.itemId === ITEM_TYPES.POWER;

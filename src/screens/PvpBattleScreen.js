@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Animated } from 'react-native';
 import { usePvpRoom } from '../context/PvpRoomContext';
 import { theme } from '../theme';
 import { createInitialState, nextQuestion } from '../domain/game/battleEngine';
@@ -23,6 +23,7 @@ export default function PvpBattleScreen({ navigation }) {
   const [isItemPending, setIsItemPending] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [countdown, setCountdown] = useState(null); // 3, 2, 1, 'GO!', null
+  const fadeAnim = useRef(new Animated.Value(0)).current;
   
   const lastMyHpRef = useRef(100);
   const lastOppHpRef = useRef(100);
@@ -82,13 +83,27 @@ export default function PvpBattleScreen({ navigation }) {
   useEffect(() => {
     if (phase === 'COUNTDOWN') {
       if (countdown === null) return;
+
+      fadeAnim.setValue(0.35);
+      Animated.timing(fadeAnim, {
+        toValue: countdown === 'GO!' ? 1 : 0.8,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }).start();
+      });
+
       if (countdown === 'GO!') {
         gameFeedback.playCountdownGo();
         const timer = setTimeout(() => {
           setCountdown(null);
           setPhase('READY');
         }, 1000);
-        return () => clearTimeout(timer);
+        return () => { clearTimeout(timer); fadeAnim.stopAnimation(); };
       }
       
       gameFeedback.playCountdownTick();
@@ -99,9 +114,9 @@ export default function PvpBattleScreen({ navigation }) {
           setCountdown('GO!');
         }
       }, 1000);
-      return () => clearTimeout(timer);
+      return () => { clearTimeout(timer); fadeAnim.stopAnimation(); };
     }
-  }, [phase, countdown]);
+  }, [phase, countdown, fadeAnim]);
 
   // Subscribe to realtime matchState
   useEffect(() => {
@@ -372,12 +387,7 @@ export default function PvpBattleScreen({ navigation }) {
       </View>
 
 
-      
-      {phase === 'COUNTDOWN' && countdown && (
-        <View style={styles.countdownContainer}>
-          <Text style={styles.countdownText}>{countdown === 'GO!' ? t('pvp.go') : countdown}</Text>
-        </View>
-      )}
+
 
       {matchPhase === 'ROUND_RESULT' && currentRound?.resolution ? (() => {
         const res = currentRound.resolution;
@@ -457,9 +467,15 @@ export default function PvpBattleScreen({ navigation }) {
         <PvpItemBar 
           items={safeMyState.items} 
           onUseItem={handleUseItem} 
-          disabled={itemsDisabled} 
+          disabled={itemsDisabled || phase === 'COUNTDOWN'} 
           disabledReason={itemDisabledReason} 
         />
+      )}
+
+      {phase === 'COUNTDOWN' && countdown && (
+        <Animated.View pointerEvents="none" style={[styles.countdownContainer, { opacity: fadeAnim }]}>
+          <Text style={styles.countdownText}>{countdown === 'GO!' ? t('pvp.go') : countdown}</Text>
+        </Animated.View>
       )}
     </View>
   );
@@ -502,6 +518,6 @@ const styles = StyleSheet.create({
   textSuccess: { color: theme.colors.success },
   textDanger: { color: theme.colors.danger },
   damageText: { fontSize: 16, color: theme.colors.secondary, marginTop: 12, fontWeight: '600', textAlign: 'center' },
-  countdownContainer: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
+  countdownContainer: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
   countdownText: { fontSize: 120, fontWeight: 'bold', color: 'white', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 10 }
 });

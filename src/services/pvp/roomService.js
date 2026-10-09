@@ -289,11 +289,15 @@ export async function startMatch(roomCode, user) {
       
       const getInitialState = () => ({
         hp: 100,
-        potionsRemaining: 2,
+        items: {
+          HEAL: { remaining: 2 },
+          SHIELD: { remaining: 1 },
+          POWER: { remaining: 1 }
+        },
         score: 0,
         correct: 0,
         wrong: 0,
-        processedActions: {}
+        itemUses: {}
       });
       
       currentData.matchState = {
