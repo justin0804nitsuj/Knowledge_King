@@ -14,7 +14,7 @@ import { gameFeedback } from '../services/feedback/gameFeedback';
 export default function PvpBattleScreen({ navigation }) {
   const { roomId, room, isHost, user } = usePvpRoom();
   const { t } = useTranslation();
-  
+
   const [phase, setPhase] = useState('LOADING_MATCH');
   const [questions, setQuestions] = useState(null);
   const [initError, setInitError] = useState(null);
@@ -24,7 +24,7 @@ export default function PvpBattleScreen({ navigation }) {
   const [countdown, setCountdown] = useState(null); // 3, 2, 1, 'GO!', null
   const [itemUsedThisRound, setItemUsedThisRound] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  
+
   const lastMyHpRef = useRef(null);
   const lastOppHpRef = useRef(null);
   const lastResultRoundRef = useRef(-1);
@@ -33,20 +33,20 @@ export default function PvpBattleScreen({ navigation }) {
     gameFeedback.init();
     return () => gameFeedback.cleanup();
   }, []);
-  
+
   useEffect(() => {
     if (!room || !room.match) {
       setPhase('LOADING_MATCH');
       return;
     }
-    
+
     try {
       const { battleSeed, level, matchId, rulesetVersion, vocabularyVersion, questionCount } = room.match;
-      
+
       if (!battleSeed || level === undefined || !matchId || !rulesetVersion || !vocabularyVersion || !questionCount) {
         throw new Error("Malformed or incomplete match config");
       }
-      
+
       setInitError(null);
       setQuestions(createPvpQuestions(room.match));
       setPhase('PREPARING_MATCH');
@@ -84,7 +84,7 @@ export default function PvpBattleScreen({ navigation }) {
         }, 1000);
         return () => { clearTimeout(timer); fadeAnim.stopAnimation(); };
       }
-      
+
       gameFeedback.playCountdownTick();
       const timer = setTimeout(() => {
         if (countdown > 1) {
@@ -103,7 +103,7 @@ export default function PvpBattleScreen({ navigation }) {
     if (!roomId) return;
     return subscribeToMatchState(roomId, setMatchState);
   }, [roomId]);
-  
+
   const hostUid = room?.meta?.hostUid;
   const playerUids = Object.keys(room?.players || {});
   const myUid = user?.uid;
@@ -126,23 +126,23 @@ export default function PvpBattleScreen({ navigation }) {
       setCountdown(3);
     }
   }, [phase, hasLiveState]);
-  
+
   // Host Settlement Logic
   useEffect(() => {
     if (isHost && phase === 'READY' && room?.meta?.status === RoomStatus.IN_BATTLE) {
       const currentRound = matchState?.rounds?.[roundIndex];
-      
+
       if (matchPhase === 'ANSWERING') {
         const hostAnswer = currentRound?.answers?.[hostUid];
         const guestAnswer = currentRound?.answers?.[guestUid];
-        
+
         if (hostAnswer && guestAnswer && !currentRound.resolution) {
           resolveRound(roomId, hostUid, guestUid, roundIndex).catch(err => {
             console.error('Failed to resolve round', err);
           });
         }
       }
-      
+
       if (matchPhase === 'ROUND_RESULT') {
         // Wait a short moment then advance
         const timer = setTimeout(() => {
@@ -150,15 +150,15 @@ export default function PvpBattleScreen({ navigation }) {
           const hostHp = matchState.players?.[hostUid]?.hp || 0;
           const guestHp = matchState.players?.[guestUid]?.hp || 0;
           const totalQuestions = room?.match?.questionCount || 10;
-          
+
           if (hostHp <= 0 || guestHp <= 0 || roundIndex + 1 >= totalQuestions) {
-             finalizeMatch(roomId, hostUid, guestUid).catch(err => {
-               console.error('Failed to finalize match', err);
-             });
+            finalizeMatch(roomId, hostUid, guestUid).catch(err => {
+              console.error('Failed to finalize match', err);
+            });
           } else {
-             advanceRound(roomId, roundIndex).catch(err => {
-               console.error('Failed to advance round', err);
-             });
+            advanceRound(roomId, roundIndex).catch(err => {
+              console.error('Failed to advance round', err);
+            });
           }
         }, 3000);
         return () => clearTimeout(timer);
@@ -174,7 +174,7 @@ export default function PvpBattleScreen({ navigation }) {
   }, [room?.meta?.status, matchState?.phase, navigation]);
 
   const totalQuestions = room?.match?.questionCount || 10;
-  
+
   // Feedback listeners
   // Feedback listeners for HP changes (damage/heal)
   useEffect(() => {
@@ -201,14 +201,14 @@ export default function PvpBattleScreen({ navigation }) {
   }, [hasLiveState, oppState?.hp]);
 
   const currentRound = matchState?.rounds?.[roundIndex];
-  
+
   useEffect(() => {
     if (matchPhase === 'ROUND_RESULT' && currentRound?.resolution && lastResultRoundRef.current !== roundIndex) {
       const hostDamaged = currentRound.resolution.damageToHost > 0;
       const guestDamaged = currentRound.resolution.damageToGuest > 0;
-      
+
       if (!hostDamaged && !guestDamaged) {
-         gameFeedback.playDraw();
+        gameFeedback.playDraw();
       }
       lastResultRoundRef.current = roundIndex;
     }
@@ -219,7 +219,7 @@ export default function PvpBattleScreen({ navigation }) {
   // Lock answering if we answered, if it's not ANSWERING phase, if countdown is active, or submitting
   const isLocked = !hasLiveState || !currentQuestion || hasAnswered ||
     matchPhase !== 'ANSWERING' || isSubmitting || isItemPending || phase !== 'READY';
-  
+
   const myItemUse = myState?.itemUses?.[roundIndex];
   const hasUsedItem = !!myItemUse;
 
@@ -241,25 +241,25 @@ export default function PvpBattleScreen({ navigation }) {
 
   const handleChoice = async (choiceId) => {
     if (isLocked || !currentQuestion) return;
-    
+
     // Safety invariant checks
     if (!user || !myUid || !room || !room.players || !room.players[myUid]) return;
     if (playerUids.length !== 2 || !opponentUid) return;
     if (room.meta.status !== RoomStatus.IN_BATTLE) return;
-    
+
     setIsSubmitting(true);
-    
+
     const isCorrect = choiceId === currentQuestion.correctChoiceId;
     if (isCorrect) {
       gameFeedback.playAnswerCorrect();
     } else {
       gameFeedback.playAnswerWrong();
     }
-    
+
     try {
       await submitAnswer(
-        roomId, 
-        myUid, 
+        roomId,
+        myUid,
         roundIndex,
         choiceId
       );
@@ -274,7 +274,7 @@ export default function PvpBattleScreen({ navigation }) {
   const handleUseItem = async (itemId) => {
     if (itemsDisabled) return;
     setIsItemPending(true);
-    
+
     const actionId = `item_${roundIndex}_${itemId}`;
     try {
       const result = await useBattleItem({ roomCode: roomId, uid: myUid, roundIndex, itemId, actionId });
@@ -300,8 +300,8 @@ export default function PvpBattleScreen({ navigation }) {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>
-          {phase === 'LOADING_MATCH' ? 'Loading Match...' : 
-           'Preparing Match...'}
+          {phase === 'LOADING_MATCH' ? 'Loading Match...' :
+            'Preparing Match...'}
         </Text>
       </View>
     );
@@ -309,164 +309,192 @@ export default function PvpBattleScreen({ navigation }) {
 
   const getButtonStateStyle = (choiceId) => {
     const isSelected = myAnswer?.selectedChoiceId === choiceId;
-    
+
     // InROUND_RESULT we reveal correct answers
     if (matchPhase === 'ROUND_RESULT') {
-       const isCorrect = choiceId === currentQuestion.correctChoiceId;
-       if (isCorrect) return styles.choiceCorrect;
-       if (isSelected && !isCorrect) return styles.choiceWrong;
-       return { opacity: 0.5 };
+      const isCorrect = choiceId === currentQuestion.correctChoiceId;
+      if (isCorrect) return styles.choiceCorrect;
+      if (isSelected && !isCorrect) return styles.choiceWrong;
+      return { opacity: 0.5 };
     }
-    
+
     // While answering
     if (isSelected) {
       return styles.choiceSelected; // Just selected, not revealed
     }
-    
+
     if (hasAnswered && !isSelected) {
       return { opacity: 0.5 };
     }
-    
+
     return {};
   };
 
   const getButtonTextStyle = (choiceId) => {
     const isSelected = myAnswer?.selectedChoiceId === choiceId;
-    
+
     if (matchPhase === 'ROUND_RESULT') {
-       const isCorrect = choiceId === currentQuestion.correctChoiceId;
-       if (isCorrect) return styles.choiceTextCorrect;
-       if (isSelected && !isCorrect) return styles.choiceTextWrong;
-       return {};
+      const isCorrect = choiceId === currentQuestion.correctChoiceId;
+      if (isCorrect) return styles.choiceTextCorrect;
+      if (isSelected && !isCorrect) return styles.choiceTextWrong;
+      return {};
     }
-    
+
     return {};
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.playerStats}>
-          <PvpHealthBar 
-            name={`${t('pvp.you')} (${myState.score})`}
-            hp={myState.hp}
-          />
-        </View>
-        <View style={styles.vsContainer}>
-          <Text style={styles.vsText}>VS</Text>
-          <Text style={styles.roundText}>{t('pvp.round', { current: roundIndex + 1, total: totalQuestions })}</Text>
-        </View>
-        <View style={styles.playerStats}>
-          <PvpHealthBar 
-            name={`${t('pvp.opponent')} (${oppState.score})`} 
-            hp={oppState.hp} 
-            isOpponent={true}
-          />
-        </View>
+<View style={styles.header}>
+  <View style={styles.playerStats}>
+    <PvpHealthBar
+      name={`${t('pvp.you')} (${myState?.score ?? 0})`}
+      hp={myState?.hp}
+    />
+  </View>
+
+  <View style={styles.vsContainer}>
+    <Text style={styles.vsText}>VS</Text>
+    <Text style={styles.roundText}>
+      {t('pvp.round', {
+        current: roundIndex + 1,
+        total: totalQuestions,
+      })}
+    </Text>
+  </View>
+
+  <View style={styles.playerStats}>
+    <PvpHealthBar
+      name={`${t('pvp.opponent')} (${oppState?.score ?? 0})`}
+      hp={oppState?.hp}
+      isOpponent={true}
+    />
+  </View>
+</View>
+
+
+
+
+      <View style={styles.battleBody}>
+        {matchPhase === 'ROUND_RESULT' && currentRound?.resolution ? (() => {
+          const res = currentRound.resolution;
+          const iAmHost = myUid === hostUid;
+          const myCorrect = res[iAmHost ? 'hostCorrect' : 'guestCorrect'];
+          const oppCorrect = res[iAmHost ? 'guestCorrect' : 'hostCorrect'];
+          const myPowerBonus = res[iAmHost ? 'hostPowerBonus' : 'guestPowerBonus'];
+          const oppPowerBonus = res[iAmHost ? 'guestPowerBonus' : 'hostPowerBonus'];
+          const myShieldBlocked = res[iAmHost ? 'hostShieldBlocked' : 'guestShieldBlocked'];
+          const oppShieldBlocked = res[iAmHost ? 'guestShieldBlocked' : 'hostShieldBlocked'];
+          const myDamageDealt = res[iAmHost ? 'damageToGuest' : 'damageToHost'];
+          const myDamageReceived = res[iAmHost ? 'damageToHost' : 'damageToGuest'];
+
+          return (
+            <View style={styles.resultContainer}>
+              <Text style={styles.resultTitle}>{t('pvp.roundResult')}</Text>
+
+              <View style={styles.resultColumns}>
+                <View style={styles.resultCol}>
+                  <Text style={styles.resultColTitle}>{t('pvp.you')}</Text>
+                  <Text style={[styles.resultText, myCorrect ? styles.textSuccess : styles.textDanger]}>
+                    {myCorrect ? t('pvp.correctLabel', 'Correct') : t('pvp.wrongLabel', 'Wrong')}
+                  </Text>
+                  {myPowerBonus > 0 && <Text style={styles.itemEffectText}>{t('pvp.powerBonus', { bonus: myPowerBonus }, 'Power +{{bonus}}')}</Text>}
+                  {myShieldBlocked > 0 && <Text style={styles.itemEffectText}>{t('pvp.shieldBlocked', { blocked: myShieldBlocked }, 'Shield blocked {{blocked}}')}</Text>}
+                  <Text style={styles.damageText}>{t('pvp.youDealt', { amount: myDamageDealt })}</Text>
+                </View>
+
+                <View style={styles.resultCol}>
+                  <Text style={styles.resultColTitle}>{t('pvp.opponent')}</Text>
+                  <Text style={[styles.resultText, oppCorrect ? styles.textSuccess : styles.textDanger]}>
+                    {oppCorrect ? t('pvp.correctLabel', 'Correct') : t('pvp.wrongLabel', 'Wrong')}
+                  </Text>
+                  {oppPowerBonus > 0 && <Text style={styles.itemEffectText}>{t('pvp.powerBonus', { bonus: oppPowerBonus }, 'Power +{{bonus}}')}</Text>}
+                  {oppShieldBlocked > 0 && <Text style={styles.itemEffectText}>{t('pvp.shieldBlocked', { blocked: oppShieldBlocked }, 'Shield blocked {{blocked}}')}</Text>}
+                  <Text style={styles.damageText}>{t('pvp.youReceived', { amount: myDamageReceived })}</Text>
+                </View>
+              </View>
+            </View>
+          );
+        })() : (
+          currentQuestion && (
+            <ScrollView
+              style={[styles.questionContainer, isContentHidden ? { opacity: 0 } : {}]}
+              pointerEvents={isContentHidden ? 'none' : 'auto'}
+              importantForAccessibility={isContentHidden ? 'no-hide-descendants' : 'auto'}
+            >
+              <Text style={styles.questionLabel}>Question {roundIndex + 1}</Text>
+              <Text style={styles.questionText}>{currentQuestion.word}</Text>
+
+              <View style={styles.choicesContainer}>
+                {currentQuestion.choices.map((choice) => (
+                  <TouchableOpacity
+                    key={choice.id}
+                    style={[styles.choiceButton, getButtonStateStyle(choice.id)]}
+                    onPress={() => handleChoice(choice.id)}
+                    disabled={isLocked}
+                  >
+                    <Text style={[styles.choiceText, getButtonTextStyle(choice.id)]}>{choice.text}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          )
+        )}
+
+        {matchPhase === 'ANSWERING' && hasAnswered && phase !== 'COUNTDOWN' && (
+          <View style={styles.waitingContainer}>
+            <Text style={styles.waitingTextHeader}>{t('pvp.answerLocked')}</Text>
+            <Text style={styles.waitingText}>{t('pvp.waitingForOpponent')}</Text>
+          </View>
+        )}
+
+        {matchPhase === 'RESOLVING' && (
+          <View style={styles.waitingContainer}>
+            <Text style={styles.waitingText}>...</Text>
+          </View>
+        )}
       </View>
 
+      <PvpItemBar
+        items={myState?.items || {}}
+        hp={myState?.hp}
+        onUseItem={handleUseItem}
+        disabled={itemsDisabled || phase === 'COUNTDOWN'}
+        disabledReason={phase === 'COUNTDOWN' ? null : itemDisabledReason}
+      />
 
 
 
-      {matchPhase === 'ROUND_RESULT' && currentRound?.resolution ? (() => {
-        const res = currentRound.resolution;
-        const iAmHost = myUid === hostUid;
-        const myCorrect = res[iAmHost ? 'hostCorrect' : 'guestCorrect'];
-        const oppCorrect = res[iAmHost ? 'guestCorrect' : 'hostCorrect'];
-        const myPowerBonus = res[iAmHost ? 'hostPowerBonus' : 'guestPowerBonus'];
-        const oppPowerBonus = res[iAmHost ? 'guestPowerBonus' : 'hostPowerBonus'];
-        const myShieldBlocked = res[iAmHost ? 'hostShieldBlocked' : 'guestShieldBlocked'];
-        const oppShieldBlocked = res[iAmHost ? 'guestShieldBlocked' : 'hostShieldBlocked'];
-        const myDamageDealt = res[iAmHost ? 'damageToGuest' : 'damageToHost'];
-        const myDamageReceived = res[iAmHost ? 'damageToHost' : 'damageToGuest'];
 
-        return (
-          <View style={styles.resultContainer}>
-            <Text style={styles.resultTitle}>{t('pvp.roundResult')}</Text>
-            
-            <View style={styles.resultColumns}>
-              <View style={styles.resultCol}>
-                <Text style={styles.resultColTitle}>{t('pvp.you')}</Text>
-                <Text style={[styles.resultText, myCorrect ? styles.textSuccess : styles.textDanger]}>
-                  {myCorrect ? t('pvp.correctLabel', 'Correct') : t('pvp.wrongLabel', 'Wrong')}
+
+{phase === 'COUNTDOWN' && Boolean(countdown) && (
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  StyleSheet.absoluteFill,
+                  styles.countdownContainer,
+                  { opacity: fadeAnim },
+                ]}
+              >
+                <Text style={styles.countdownText}>
+                  {countdown === 'GO!' ? t('pvp.go') : countdown}
                 </Text>
-                {myPowerBonus > 0 && <Text style={styles.itemEffectText}>{t('pvp.powerBonus', { bonus: myPowerBonus }, 'Power +{{bonus}}')}</Text>}
-                {myShieldBlocked > 0 && <Text style={styles.itemEffectText}>{t('pvp.shieldBlocked', { blocked: myShieldBlocked }, 'Shield blocked {{blocked}}')}</Text>}
-                <Text style={styles.damageText}>{t('pvp.youDealt', { amount: myDamageDealt })}</Text>
-              </View>
+              </Animated.View>
+            )}
 
-              <View style={styles.resultCol}>
-                <Text style={styles.resultColTitle}>{t('pvp.opponent')}</Text>
-                <Text style={[styles.resultText, oppCorrect ? styles.textSuccess : styles.textDanger]}>
-                  {oppCorrect ? t('pvp.correctLabel', 'Correct') : t('pvp.wrongLabel', 'Wrong')}
-                </Text>
-                {oppPowerBonus > 0 && <Text style={styles.itemEffectText}>{t('pvp.powerBonus', { bonus: oppPowerBonus }, 'Power +{{bonus}}')}</Text>}
-                {oppShieldBlocked > 0 && <Text style={styles.itemEffectText}>{t('pvp.shieldBlocked', { blocked: oppShieldBlocked }, 'Shield blocked {{blocked}}')}</Text>}
-                <Text style={styles.damageText}>{t('pvp.youReceived', { amount: myDamageReceived })}</Text>
-              </View>
-            </View>
-          </View>
-        );
-      })() : (
-        currentQuestion && (
-          <ScrollView 
-            style={[styles.questionContainer, isContentHidden ? { opacity: 0 } : {}]}
-            pointerEvents={isContentHidden ? 'none' : 'auto'}
-            importantForAccessibility={isContentHidden ? 'no-hide-descendants' : 'auto'}
-          >
-            <Text style={styles.questionLabel}>Question {roundIndex + 1}</Text>
-            <Text style={styles.questionText}>{currentQuestion.word}</Text>
-            
-            <View style={styles.choicesContainer}>
-              {currentQuestion.choices.map((choice) => (
-                <TouchableOpacity 
-                  key={choice.id} 
-                  style={[styles.choiceButton, getButtonStateStyle(choice.id)]}
-                  onPress={() => handleChoice(choice.id)}
-                  disabled={isLocked}
-                >
-                  <Text style={[styles.choiceText, getButtonTextStyle(choice.id)]}>{choice.text}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-        )
-      )}
-      
-      {matchPhase === 'ANSWERING' && hasAnswered && phase !== 'COUNTDOWN' && (
-        <View style={styles.waitingContainer}>
-          <Text style={styles.waitingTextHeader}>{t('pvp.answerLocked')}</Text>
-          <Text style={styles.waitingText}>{t('pvp.waitingForOpponent')}</Text>
-        </View>
-      )}
-      
-      {matchPhase === 'RESOLVING' && (
-        <View style={styles.waitingContainer}>
-          <Text style={styles.waitingText}>...</Text>
-        </View>
-      )}
 
-      {matchPhase === 'ANSWERING' && (
-        <PvpItemBar 
-          items={myState.items}
-          hp={myState.hp}
-          onUseItem={handleUseItem} 
-          disabled={itemsDisabled || phase === 'COUNTDOWN'} 
-          disabledReason={itemDisabledReason} 
-        />
-      )}
 
-      {phase === 'COUNTDOWN' && countdown && (
-        <Animated.View pointerEvents="none" style={[styles.countdownContainer, { opacity: fadeAnim }]}>
-          <Text style={styles.countdownText}>{countdown === 'GO!' ? t('pvp.go') : countdown}</Text>
-        </Animated.View>
-      )}
+
+
+
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.background },
+  battleBody: { flex: 1, minHeight: 0 },
+  container: { flex: 1, position: 'relative', backgroundColor: theme.colors.background },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     padding: theme.spacing.medium, backgroundColor: theme.colors.card,

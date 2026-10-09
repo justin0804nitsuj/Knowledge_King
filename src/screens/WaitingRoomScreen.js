@@ -298,7 +298,7 @@ export default function WaitingRoomScreen({ navigation }) {
       </TouchableOpacity>
 
       {startingMatch && (
-        <View style={styles.overlay}>
+        <View style={[StyleSheet.absoluteFill, styles.overlay]}>
           <ActivityIndicator size="large" color="#fff" />
           <Text style={styles.overlayText}>{t('arena.battleStarting', 'Battle Starting...')}</Text>
         </View>
