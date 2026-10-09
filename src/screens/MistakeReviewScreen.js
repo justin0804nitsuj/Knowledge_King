@@ -69,6 +69,14 @@ export default function MistakeReviewScreen({ navigation }) {
     setFeedback(null);
   };
 
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
   const handleAnswer = async (choiceId) => {
     if (feedback) return; // Prevent double tap
 
@@ -90,7 +98,7 @@ export default function MistakeReviewScreen({ navigation }) {
       }));
 
       // Next question delay
-      setTimeout(() => {
+      timerRef.current = setTimeout(() => {
         const nextIndex = currentIndex + 1;
         if (nextIndex < activeMistakes.length) {
           setCurrentIndex(nextIndex);

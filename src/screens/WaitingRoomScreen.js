@@ -37,25 +37,29 @@ export default function WaitingRoomScreen({ navigation }) {
   const navigatedMatchIdRef = useRef(null);
 
   useEffect(() => {
+    let timer;
     if (status === RoomStatus.IN_BATTLE && room?.match) {
       if (navigatedMatchIdRef.current !== room.match.matchId) {
         navigatedMatchIdRef.current = room.match.matchId;
         setStartingMatch(true);
         // Short local delay for polish, Firebase remains authoritative
-        setTimeout(() => {
+        timer = setTimeout(() => {
           navigation.navigate('PvpBattle');
         }, 800);
       }
     }
+    return () => { if (timer) clearTimeout(timer); };
   }, [status, room?.match, navigation]);
 
   useEffect(() => {
-    Animated.loop(
+    const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(vsAnim, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
         Animated.timing(vsAnim, { toValue: 0, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
       ])
-    ).start();
+    );
+    loop.start();
+    return () => loop.stop();
   }, [vsAnim]);
 
   useEffect(() => {
