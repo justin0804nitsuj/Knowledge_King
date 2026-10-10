@@ -193,18 +193,56 @@ export async function leaveRoom(roomCode, user) {
     }
     
     if (roomData.meta.hostUid === user.uid) {
-      // Host leaves: cancel and remove room
+      // Host leaves handling based on match status
       if (roomData.meta.status === RoomStatus.WAITING) {
+        // Cancel waiting room entirely
         await set(ref(db, `rooms/${roomCode}/meta/status`), RoomStatus.CANCELLED);
+        await remove(roomRef);
+        return;
+      } else if (roomData.meta.status === RoomStatus.FINISHED) {
+        // Record departure flag for host instead of removing player node
+        const departRef = ref(db, `rooms/${roomCode}/departures/${user.uid}`);
+        await set(departRef, true);
+        // Keep FINISHED status and match data intact
+      } else {
+        // For other statuses (e.g., IN_BATTLE), just remove host player
+        const hostPlayerRef = ref(db, `rooms/${roomCode}/players/${user.uid}`);
+        await remove(hostPlayerRef);
       }
-      await remove(roomRef);
-
     } else {
-      // Guest leaves: just remove self
-      const playerRef = ref(db, `rooms/${roomCode}/players/${user.uid}`);
-      await remove(playerRef);
-
+      // Guest leaves handling based on match status
+      if (roomData.meta.status === RoomStatus.FINISHED) {
+        // Record departure flag for guest instead of removing player node
+        const departRef = ref(db, `rooms/${roomCode}/departures/${user.uid}`);
+        await set(departRef, true);
+        // Keep FINISHED status and match data intact
+      } else {
+        // Guest leaves: just remove self
+        const playerRef = ref(db, `rooms/${roomCode}/players/${user.uid}`);
+        await remove(playerRef);
+      }
     }
+    // Cleanup after departure
+    if (roomData.meta.status === RoomStatus.FINISHED) {
+      const snap = await get(roomRef);
+      const players = snap.val()?.players || {};
+      // Check departures map for both host and guest
+      const departuresSnap = await get(ref(db, `rooms/${roomCode}/departures`));
+      const departures = departuresSnap.val() || {};
+      const hostUid = roomData.meta.hostUid;
+      const playerUids = Object.keys(roomData.players || {});
+      const guestUid = playerUids.find(uid => uid !== hostUid);
+      if (departures[hostUid] === true && departures[guestUid] === true) {
+        await remove(roomRef);
+      }
+    } else {
+      const postSnap = await get(roomRef);
+      const remaining = postSnap.val()?.players;
+      if (!remaining || Object.keys(remaining).length === 0) {
+        await remove(roomRef);
+      }
+    }
+
   } catch (e) {
     if (__DEV__) console.error("Leave room failed", e);
     throw e;
@@ -264,6 +302,10 @@ export async function startMatch(roomCode, user) {
     const guestUid = playerUids.find(id => id !== hostUid);
 
     if (!guestUid) return; // no guest
+    if (currentData.players[guestUid].role !== 'GUEST') return; // invalid role
+
+    // Record immutable guestUid in meta for the match start
+    currentData.meta.guestUid = guestUid;
 
     // Treat missing ready as false
     const hostReady = currentData.players[hostUid]?.ready === true;

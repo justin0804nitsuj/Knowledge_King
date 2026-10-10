@@ -13,7 +13,7 @@ const player = (hp = 80) => ({
 });
 const makeRoom = () => ({
   meta: {
-    hostUid: 'hostUid', status: 'IN_BATTLE', createdAt: 1,
+    hostUid: 'hostUid', guestUid: 'guestUid', status: 'IN_BATTLE', createdAt: 1,
     rulesetVersion: '1', vocabularyVersion: '1', vocabularySchemaVersion: '1',
   },
   players: {
@@ -416,8 +416,20 @@ async function run() {
     await test('finished Host may remove the room', async room => {
       room.meta.status = 'FINISHED';
       room.matchState.phase = 'FINISHED';
+      room.departures = { hostUid: true, guestUid: true };
       await seed(room);
       await assertSucceeds(db('host').ref(roomPath).remove());
+      // ----- CANCELLED room deletion tests -----
+      await test('host can delete CANCELLED room', async room => {
+        room.meta.status = 'CANCELLED';
+        await seed(room);
+        await assertSucceeds(db('host').ref(roomPath).remove());
+      });
+      await test('guest cannot delete CANCELLED room', async room => {
+        room.meta.status = 'CANCELLED';
+        await seed(room);
+        await assertFails(db('guest').ref(roomPath).remove());
+      });
     });
   } finally {
     console.log('Total: ' + (passed + failed) + '; Passed: ' + passed + '; Failed: ' + failed);

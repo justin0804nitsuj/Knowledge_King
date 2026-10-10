@@ -184,6 +184,8 @@ export default {
     damageDealt: 'Damage dealt',
     damageReceived: 'Damage received',
     roundResult: 'Round Result',
+    shieldBadge: 'Shield',
+    powerBadge: 'Power',
     heal: 'Heal',
     potionsLeft: '{{count}} left',
     go: 'GO!',
@@ -206,7 +208,9 @@ export default {
     correctLabel: 'Correct',
     wrongLabel: 'Wrong',
     powerBonus: 'Power +{{bonus}}',
-    shieldBlocked: 'Shield blocked {{blocked}}'
+    shieldBlocked: 'Shield blocked {{blocked}}',
+    shieldBadge: 'Shield',
+    powerBadge: 'Power'
   },
   pvpItems: {
     healName: 'Healing Potion',

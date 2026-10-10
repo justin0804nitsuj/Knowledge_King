@@ -44,6 +44,7 @@ describe('PvpResultScreen', () => {
     const user = { uid: 'player-1', displayName: 'Player' };
     const reset = jest.fn();
     const stopMatchListener = jest.fn();
+    const mockContextLeaveRoom = jest.fn().mockResolvedValue(undefined);
     let backHandler;
     const removeBackHandler = jest.fn();
     jest.spyOn(BackHandler, 'addEventListener').mockImplementation((event, handler) => {
@@ -53,20 +54,19 @@ describe('PvpResultScreen', () => {
     PvpRoomContext.usePvpRoom.mockReturnValue({
       roomId: 'room-1', user,
       room: { meta: { hostUid: user.uid }, players: { 'player-1': {}, 'player-2': {} } },
+      leaveRoom: mockContextLeaveRoom,
     });
     PvpBattleService.subscribeToMatchState.mockImplementation((id, callback) => {
       callback({ result: { winnerUid: user.uid }, players: {} });
       return stopMatchListener;
     });
-    leaveRoom.mockResolvedValue(undefined);
     let component;
     act(() => { component = renderer.create(<PvpResultScreen navigation={{ reset }} />); });
     await act(async () => {
       if (action === 'button') await component.root.findByType(TouchableOpacity).props.onPress();
       else expect(backHandler()).toBe(true);
     });
-    expect(leaveRoom).toHaveBeenCalledWith('room-1', user);
-    expect(leaveRoom).toHaveBeenCalledTimes(1);
+    expect(mockContextLeaveRoom).toHaveBeenCalledTimes(1);
     expect(reset).toHaveBeenCalledWith({
       index: 0, routes: [{ name: 'MainTabs', params: { screen: 'Arena' } }],
     });

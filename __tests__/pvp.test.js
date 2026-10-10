@@ -262,16 +262,80 @@ describe('Phase 8A PvP Foundation', () => {
         await leaveRoom('12345', { uid: 'host123' });
         expect(set).toHaveBeenCalledWith('rooms/12345/meta/status', 'CANCELLED');
         expect(remove).toHaveBeenCalledWith('rooms/12345');
+        expect(remove).toHaveBeenCalledTimes(1);
       });
 
-      it('Host removes a completed room without trying to cancel it', async () => {
+      it('Host records departure from a finished room without deleting shared data', async () => {
         const { get, remove, set } = require('firebase/database');
-        get.mockResolvedValueOnce({ val: () => ({
-          meta: { status: 'FINISHED', hostUid: 'host123' },
-          players: { host123: {}, guest456: {} },
-        }) });
+        get.mockImplementation(async (path) => {
+          if (path === 'rooms/12345/departures') {
+            return { val: () => ({ host123: true }) };
+          }
+          return {
+            val: () => ({
+              meta: { status: 'FINISHED', hostUid: 'host123' },
+              players: { host123: {}, guest456: {} },
+            })
+          };
+        });
         await leaveRoom('12345', { uid: 'host123' });
-        expect(set).not.toHaveBeenCalled();
+        expect(set).toHaveBeenCalledWith('rooms/12345/departures/host123', true);
+        expect(remove).not.toHaveBeenCalledWith('rooms/12345/players/host123');
+        expect(remove).not.toHaveBeenCalledWith('rooms/12345/players/guest456');
+        expect(remove).not.toHaveBeenCalledWith('rooms/12345');
+      });
+
+      it('Second player departure cleans up full room when both have departed', async () => {
+        const { get, remove, set } = require('firebase/database');
+        get.mockImplementation(async (path) => {
+          if (path === 'rooms/12345/departures') {
+            return { val: () => ({ host123: true, guest456: true }) };
+          }
+          return {
+            val: () => ({
+              meta: { status: 'FINISHED', hostUid: 'host123' },
+              players: { host123: {}, guest456: {} },
+            })
+          };
+        });
+        await leaveRoom('12345', { uid: 'guest456' });
+        expect(set).toHaveBeenCalledWith('rooms/12345/departures/guest456', true);
+        expect(remove).toHaveBeenCalledWith('rooms/12345');
+      });
+
+      it('Reverse order: Guest departs first (room remains), then Host departs second (room deleted)', async () => {
+        const { get, remove, set } = require('firebase/database');
+        // Step 1: Guest departs first
+        get.mockImplementation(async (path) => {
+          if (path === 'rooms/12345/departures') {
+            return { val: () => ({ guest456: true }) };
+          }
+          return {
+            val: () => ({
+              meta: { status: 'FINISHED', hostUid: 'host123' },
+              players: { host123: {}, guest456: {} },
+            })
+          };
+        });
+        await leaveRoom('12345', { uid: 'guest456' });
+        expect(set).toHaveBeenCalledWith('rooms/12345/departures/guest456', true);
+        expect(remove).not.toHaveBeenCalledWith('rooms/12345');
+
+        // Step 2: Host departs second
+        jest.clearAllMocks();
+        get.mockImplementation(async (path) => {
+          if (path === 'rooms/12345/departures') {
+            return { val: () => ({ host123: true, guest456: true }) };
+          }
+          return {
+            val: () => ({
+              meta: { status: 'FINISHED', hostUid: 'host123' },
+              players: { host123: {}, guest456: {} },
+            })
+          };
+        });
+        await leaveRoom('12345', { uid: 'host123' });
+        expect(set).toHaveBeenCalledWith('rooms/12345/departures/host123', true);
         expect(remove).toHaveBeenCalledWith('rooms/12345');
       });
 

@@ -4,12 +4,11 @@ import { usePvpRoom } from '../context/PvpRoomContext';
 import { theme } from '../theme';
 import { useTranslation } from 'react-i18next';
 import { subscribeToMatchState } from '../services/pvp/pvpBattleService';
-import { leaveRoom } from '../services/pvp/roomService';
 import { gameFeedback } from '../services/feedback/gameFeedback';
 import { PVP_ITEMS } from '../domain/pvp/pvpItems';
 
 export default function PvpResultScreen({ navigation }) {
-  const { roomId, room, user } = usePvpRoom();
+  const { roomId, room, user, leaveRoom } = usePvpRoom();
   const { t } = useTranslation();
   const [matchState, setMatchState] = useState(null);
   const animValue = useRef(new Animated.Value(0)).current;
@@ -20,7 +19,9 @@ export default function PvpResultScreen({ navigation }) {
     if (leavingRef.current) return;
     leavingRef.current = true;
     try {
-      if (roomId && user?.uid) await leaveRoom(roomId, user);
+      if (leaveRoom) {
+        await leaveRoom();
+      }
     } catch (e) {
       console.error('Failed to leave room:', e);
     } finally {
@@ -29,7 +30,7 @@ export default function PvpResultScreen({ navigation }) {
         routes: [{ name: 'MainTabs', params: { screen: 'Arena' } }]
       });
     }
-  }, [roomId, user, navigation]);
+  }, [leaveRoom, navigation]);
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {

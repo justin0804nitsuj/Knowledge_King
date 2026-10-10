@@ -9,6 +9,8 @@ import { RoomStatus } from '../domain/pvp/roomConstants';
 import PvpHealthBar from '../components/pvp/PvpHealthBar';
 import PvpItemBar from '../components/pvp/PvpItemBar';
 import { Ionicons } from '@expo/vector-icons';
+import { ITEM_TYPES } from '../domain/pvp/pvpItems';
+import PvpActiveEffectBadge from '../components/pvp/PvpActiveEffectBadge';
 import { gameFeedback } from '../services/feedback/gameFeedback';
 
 export default function PvpBattleScreen({ navigation }) {
@@ -117,6 +119,13 @@ export default function PvpBattleScreen({ navigation }) {
   const hasLiveState = Number.isInteger(matchState?.roundIndex) && !!matchPhase &&
     typeof myState?.hp === 'number' && typeof oppState?.hp === 'number' &&
     !!myState?.items && !!oppState?.items;
+
+  // Authoritative item use for local player
+  const myItemUse = myState?.itemUses?.[roundIndex];
+  // Badges shown while round not resolved
+  const isRoundUnresolved = matchPhase === 'ANSWERING' || matchPhase === 'RESOLVING';
+  const activeShield = isRoundUnresolved && myItemUse?.itemId === ITEM_TYPES.SHIELD;
+  const activePower = isRoundUnresolved && myItemUse?.itemId === ITEM_TYPES.POWER;
   const currentQuestion = questions?.[roundIndex];
   const isContentHidden = phase !== 'READY';
 
@@ -220,7 +229,7 @@ export default function PvpBattleScreen({ navigation }) {
   const isLocked = !hasLiveState || !currentQuestion || hasAnswered ||
     matchPhase !== 'ANSWERING' || isSubmitting || isItemPending || phase !== 'READY';
 
-  const myItemUse = myState?.itemUses?.[roundIndex];
+
   const hasUsedItem = !!myItemUse;
 
   let itemDisabledReason = null;
@@ -345,32 +354,46 @@ export default function PvpBattleScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-<View style={styles.header}>
-  <View style={styles.playerStats}>
-    <PvpHealthBar
-      name={`${t('pvp.you')} (${myState?.score ?? 0})`}
-      hp={myState?.hp}
-    />
-  </View>
+      <View style={styles.header}>
+        <View style={[styles.playerStats, styles.localHudWrapper]}>
+          <PvpHealthBar
+            name={`${t('pvp.you')} (${myState?.score ?? 0})`}
+            hp={myState?.hp}
+          />
+          {isRoundUnresolved && myItemUse?.itemId === ITEM_TYPES.SHIELD && (
+            <PvpActiveEffectBadge
+              type="SHIELD"
+              label={t('pvp.shieldBadge')}
+              testID="localShieldBadge"
+            />
+          )}
+          {isRoundUnresolved && myItemUse?.itemId === ITEM_TYPES.POWER && (
+            <PvpActiveEffectBadge
+              type="POWER"
+              label={t('pvp.powerBadge')}
+              testID="localPowerBadge"
+            />
+          )}
+        </View>
 
-  <View style={styles.vsContainer}>
-    <Text style={styles.vsText}>VS</Text>
-    <Text style={styles.roundText}>
-      {t('pvp.round', {
-        current: roundIndex + 1,
-        total: totalQuestions,
-      })}
-    </Text>
-  </View>
+        <View style={styles.vsContainer}>
+          <Text style={styles.vsText}>VS</Text>
+          <Text style={styles.roundText}>
+            {t('pvp.round', {
+              current: roundIndex + 1,
+              total: totalQuestions,
+            })}
+          </Text>
+        </View>
 
-  <View style={styles.playerStats}>
-    <PvpHealthBar
-      name={`${t('pvp.opponent')} (${oppState?.score ?? 0})`}
-      hp={oppState?.hp}
-      isOpponent={true}
-    />
-  </View>
-</View>
+        <View style={styles.playerStats}>
+          <PvpHealthBar
+            name={`${t('pvp.opponent')} (${oppState?.score ?? 0})`}
+            hp={oppState?.hp}
+            isOpponent={true}
+          />
+        </View>
+      </View>
 
 
 
@@ -467,20 +490,20 @@ export default function PvpBattleScreen({ navigation }) {
 
 
 
-{phase === 'COUNTDOWN' && Boolean(countdown) && (
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  StyleSheet.absoluteFill,
-                  styles.countdownContainer,
-                  { opacity: fadeAnim },
-                ]}
-              >
-                <Text style={styles.countdownText}>
-                  {countdown === 'GO!' ? t('pvp.go') : countdown}
-                </Text>
-              </Animated.View>
-            )}
+      {phase === 'COUNTDOWN' && Boolean(countdown) && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            styles.countdownContainer,
+            { opacity: fadeAnim },
+          ]}
+        >
+          <Text style={styles.countdownText}>
+            {countdown === 'GO!' ? t('pvp.go') : countdown}
+          </Text>
+        </Animated.View>
+      )}
 
 
 
@@ -501,6 +524,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingTop: 50,
   },
   playerStats: { flex: 1 },
+  localHudWrapper: { position: 'relative' },
   vsContainer: { paddingHorizontal: theme.spacing.medium, alignItems: 'center' },
   vsText: { fontSize: 18, fontWeight: 'bold', color: theme.colors.secondary },
   roundText: { fontSize: 12, color: theme.colors.textMuted, marginTop: 4 },

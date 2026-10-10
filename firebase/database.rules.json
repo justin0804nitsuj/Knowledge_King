@@ -25,13 +25,16 @@
     "rooms": {
       "$roomId": {
         ".read": "auth != null",
-        ".write": "auth != null && ( (!data.exists() && newData.child('meta/hostUid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('meta/hostUid').val() === auth.uid) || (data.exists() && newData.exists() && data.child('meta/hostUid').val() === auth.uid && data.child('meta/status').val() === 'WAITING' && newData.child('meta/status').val() === 'IN_BATTLE' && newData.child('meta/hostUid').val() === data.child('meta/hostUid').val() && newData.child('meta/createdAt').val() === data.child('meta/createdAt').val() && newData.child('meta/rulesetVersion').val() === data.child('meta/rulesetVersion').val() && newData.child('meta/vocabularyVersion').val() === data.child('meta/vocabularyVersion').val() && newData.child('meta/vocabularySchemaVersion').val() === data.child('meta/vocabularySchemaVersion').val()) || (data.exists() && newData.exists() && data.child('meta/hostUid').val() === auth.uid && data.child('meta/status').val() === 'IN_BATTLE' && newData.child('meta/status').val() === 'FINISHED')  || (root.child('rooms').child($roomId).child('meta/status').val() === 'IN_BATTLE' && newData.child('meta/status').val() === 'IN_BATTLE' && root.child('rooms').child($roomId).child('players').child(auth.uid).exists() && newData.hasChildren(['meta','players','match','matchState']) && newData.child('players').child(auth.uid).exists() && (auth.uid === root.child('rooms').child($roomId).child('meta/hostUid').val() || (root.child('rooms').child($roomId).child('matchState').child('phase').val() === 'ANSWERING' && newData.child('matchState/phase').val() === 'ANSWERING' && newData.child('matchState/roundIndex').val() === root.child('rooms').child($roomId).child('matchState').child('roundIndex').val()))) )",
+        ".write": "auth != null && ( (!data.exists() && newData.child('meta/hostUid').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('meta/status').val() === 'FINISHED' && root.child('rooms').child($roomId).child('players').child(auth.uid).exists() && data.child('departures').child(data.child('meta/hostUid').val()).val() === true && data.child('departures').child(data.child('meta/guestUid').val()).val() === true) || (data.exists() && !newData.exists() && data.child('meta/status').val() === 'CANCELLED' && data.child('meta/hostUid').val() === auth.uid) || (data.exists() && newData.exists() && data.child('meta/hostUid').val() === auth.uid && data.child('meta/status').val() === 'WAITING' && newData.child('meta/status').val() === 'IN_BATTLE' && newData.child('meta/hostUid').val() === data.child('meta/hostUid').val() && newData.child('meta/createdAt').val() === data.child('meta/createdAt').val() && newData.child('meta/rulesetVersion').val() === data.child('meta/rulesetVersion').val() && newData.child('meta/vocabularyVersion').val() === data.child('meta/vocabularyVersion').val() && newData.child('meta/vocabularySchemaVersion').val() === data.child('meta/vocabularySchemaVersion').val()) || (data.exists() && newData.exists() && data.child('meta/hostUid').val() === auth.uid && data.child('meta/status').val() === 'IN_BATTLE' && newData.child('meta/status').val() === 'FINISHED') || (root.child('rooms').child($roomId).child('meta/status').val() === 'IN_BATTLE' && newData.child('meta/status').val() === 'IN_BATTLE' && root.child('rooms').child($roomId).child('players').child(auth.uid).exists() && newData.hasChildren(['meta','players','match','matchState']) && newData.child('players').child(auth.uid).exists() && (auth.uid === root.child('rooms').child($roomId).child('meta/hostUid').val() || (root.child('rooms').child($roomId).child('matchState').child('phase').val() === 'ANSWERING' && newData.child('matchState/phase').val() === 'ANSWERING' && newData.child('matchState/roundIndex').val() === root.child('rooms').child($roomId).child('matchState').child('roundIndex').val()))) )",
         ".validate": "!newData.exists() || (newData.hasChildren(['meta','players']) && (!data.child('match').exists() || newData.child('match').exists()) && (!data.child('matchState').exists() || newData.child('matchState').exists()))",
         "meta": {
           ".write": "auth != null && data.child('hostUid').val() === auth.uid",
-          ".validate": "!newData.exists() || newData.hasChildren(['hostUid', 'status', 'createdAt', 'rulesetVersion', 'vocabularyVersion', 'vocabularySchemaVersion'])",
+          ".validate": "!newData.exists() || ((newData.child('status').val() === 'WAITING' || newData.child('status').val() === 'CANCELLED') ? newData.hasChildren(['hostUid','status','createdAt','rulesetVersion','vocabularyVersion','vocabularySchemaVersion']) : newData.hasChildren(['hostUid','guestUid','status','createdAt','rulesetVersion','vocabularyVersion','vocabularySchemaVersion']))",
           "hostUid": {
             ".validate": "(!data.exists() && newData.val() === auth.uid) || (data.exists() && data.val() === newData.val())"
+          },
+          "guestUid": {
+            ".validate": "(!data.exists() && auth != null && auth.uid === data.parent().child('hostUid').val() && newData.isString() && newData.val() !== data.parent().child('hostUid').val() && root.child('rooms').child($roomId).child('players').child(newData.val()).child('role').val() === 'GUEST') || (data.exists() && data.val() === newData.val())"
           },
           "status": {
             ".validate": "newData.val() === data.val() || (!data.exists() && newData.val() === 'WAITING') || (auth.uid === data.parent().child('hostUid').val() && ((data.val() === 'WAITING' && (newData.val() === 'CANCELLED' || newData.val() === 'IN_BATTLE')) || (data.val() === 'IN_BATTLE' && newData.val() === 'FINISHED')))"
@@ -106,6 +109,12 @@
             }
           }
         },
+      "departures": {
+        "$uid": {
+          ".write": "auth != null && $uid === auth.uid && root.child('rooms').child($roomId).child('players').child($uid).exists() && root.child('rooms').child($roomId).child('meta/status').val() === 'FINISHED'",
+          ".validate": "newData.val() === true"
+        }
+      },
         "matchState": {
           ".write": "auth != null && auth.uid === data.parent().child('meta').child('hostUid').val()",
           "roundIndex": {

@@ -184,6 +184,8 @@ export default {
     damageDealt: '造成傷害',
     damageReceived: '受到傷害',
     roundResult: '回合結果',
+    shieldBadge: '護盾',
+    powerBadge: '力量增幅',
     heal: '回血',
     potionsLeft: '剩餘 {{count}}',
     go: '開始！',
@@ -206,7 +208,9 @@ export default {
     correctLabel: '正確',
     wrongLabel: '錯誤',
     powerBonus: '攻擊 +{{bonus}}',
-    shieldBlocked: '護盾格擋 {{blocked}}'
+    shieldBlocked: '護盾格擋 {{blocked}}',
+    shieldBadge: '護盾',
+    powerBadge: '力量增幅'
   },
   pvpItems: {
     healName: '治療藥水',

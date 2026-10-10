@@ -172,4 +172,46 @@ describe('PvP departure alert deduplication', () => {
     expect(h.alerts.length).toBe(alertsBefore);
     expect(h.session.isRoomGoneHandled()).toBe(false);
   });
+
+  describe('Physical QA scenarios C, D, E (two-player departure and alert behavior)', () => {
+    it('C. FINISHED: Challenger leaves second -> room deleted -> Challenger gets NO "Host closed room" alert', async () => {
+      const challenger = makeHarness({ wasHost: false });
+      // Host has already departed remotely. Now Challenger explicitly leaves:
+      await performExplicitDeparture({
+        isHost: false,
+        setIntent: (i) => { challenger.intent = i; },
+        leave: async () => {
+          // Destructive write deletes room in Firebase; listener triggers roomGone effect mid-write
+          challenger.roomGoneEffect();
+        },
+        clearActiveRoom: () => {},
+      });
+      // Any trailing roomGone snapshots also ignored
+      challenger.roomGoneEffect();
+      expect(challenger.alerts).toEqual([]);
+    });
+
+    it('D. Reverse order: Host leaves second -> room deleted -> Host gets NO false room-closed alert', async () => {
+      const host = makeHarness({ wasHost: true });
+      // Challenger has already departed. Now Host explicitly leaves:
+      await performExplicitDeparture({
+        isHost: true,
+        setIntent: (i) => { host.intent = i; },
+        leave: async () => {
+          // Destructive write deletes room in Firebase; listener triggers roomGone effect mid-write
+          host.roomGoneEffect();
+        },
+        clearActiveRoom: () => {},
+      });
+      host.roomGoneEffect();
+      expect(host.alerts).toEqual([]);
+    });
+
+    it('E. Genuine unexpected room removal: remaining player NOT explicitly leaving -> room-closed alert appears', () => {
+      const remainingChallenger = makeHarness({ wasHost: false });
+      // Challenger did NOT tap leave; intent is NONE
+      remainingChallenger.roomGoneEffect();
+      expect(remainingChallenger.alerts).toEqual([DepartureAlert.ROOM_CLOSED]);
+    });
+  });
 });
