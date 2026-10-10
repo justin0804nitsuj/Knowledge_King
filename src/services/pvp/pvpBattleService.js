@@ -1,5 +1,6 @@
 import { ref, runTransaction, onValue, serverTimestamp } from 'firebase/database';
 import { db } from '../firebase/firebaseDatabase';
+import { getServerNow } from '../firebase/serverTimeService';
 import { RoomStatus } from '../../domain/pvp/roomConstants';
 import { PVP_ITEMS, ITEM_TYPES } from '../../domain/pvp/pvpItems';
 import { createPvpQuestions } from '../../domain/pvp/pvpQuestions';
@@ -114,12 +115,46 @@ function getAnsweringState(roomData, uid, roundIndex) {
   return state;
 }
 
+export const ROUND_TIME_LIMIT_MS = 6000;
+export const ROUND_PRE_BATTLE_MS = 4000;
+
+export function getRoundDeadline(roundStartedAt, roundIndex) {
+  if (typeof roundStartedAt !== 'number') return null;
+  const preBattleMs = roundIndex === 0 ? ROUND_PRE_BATTLE_MS : 0;
+  return roundStartedAt + preBattleMs + ROUND_TIME_LIMIT_MS;
+}
+
+export function getRoundAnsweringStart(roundStartedAt, roundIndex) {
+  if (typeof roundStartedAt !== 'number') return null;
+  return roundIndex === 0 ? roundStartedAt + ROUND_PRE_BATTLE_MS : roundStartedAt;
+}
+
+export async function startRoundTimer(roomCode, roundIndex = 0) {
+  const matchStateRef = ref(db, `rooms/${roomCode}/matchState`);
+  return runTransaction(matchStateRef, (matchState) => {
+    if (!matchState) return;
+    if (matchState.roundIndex !== roundIndex) return;
+    if (matchState.phase !== 'ANSWERING') return;
+    if (matchState.roundStartedAt) return; // already started
+
+    matchState.roundStartedAt = serverTimestamp();
+    return matchState;
+  }, { applyLocally: false });
+}
+
 export async function submitAnswer(roomCode, uid, roundIndex, choiceId) {
   const roomRef = ref(db, `rooms/${roomCode}`);
   return runTransaction(roomRef, (roomData) => {
     const state = getAnsweringState(roomData, uid, roundIndex);
     if (!state || typeof choiceId !== 'string' || !choiceId.length) return;
     if (state.rounds?.[roundIndex]?.answers?.[uid]) return;
+
+    const deadline = getRoundDeadline(state.roundStartedAt, roundIndex);
+    const now = getServerNow();
+    if (typeof deadline === 'number' && now > deadline) {
+      return; // answer rejected after deadline
+    }
+
     if (!state.rounds) state.rounds = {};
     if (!state.rounds[roundIndex]) state.rounds[roundIndex] = {};
     if (!state.rounds[roundIndex].answers) state.rounds[roundIndex].answers = {};
@@ -131,6 +166,85 @@ export async function submitAnswer(roomCode, uid, roundIndex, choiceId) {
   }, { applyLocally: false });
 }
 
+export async function submitTimeout(roomCode, uid, roundIndex) {
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  return runTransaction(roomRef, (roomData) => {
+    const state = getAnsweringState(roomData, uid, roundIndex);
+    if (!state) return;
+    if (state.rounds?.[roundIndex]?.answers?.[uid]) return;
+
+    const deadline = getRoundDeadline(state.roundStartedAt, roundIndex);
+    const now = getServerNow();
+    // Cannot submit timeout before deadline
+    if (typeof deadline === 'number' && now < deadline) {
+      return;
+    }
+
+    if (!state.rounds) state.rounds = {};
+    if (!state.rounds[roundIndex]) state.rounds[roundIndex] = {};
+    if (!state.rounds[roundIndex].answers) state.rounds[roundIndex].answers = {};
+    state.rounds[roundIndex].answers[uid] = {
+      timedOut: true,
+      submittedAt: serverTimestamp()
+    };
+    return roomData;
+  }, { applyLocally: false });
+}
+
+export async function fillMissingTimeouts(roomCode, hostUid, guestUid, roundIndex) {
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  return runTransaction(roomRef, (roomData) => {
+    const matchState = getAnsweringState(roomData, hostUid, roundIndex);
+    if (!matchState || roomData.meta.hostUid !== hostUid || hostUid === guestUid ||
+        !roomData.players?.[guestUid] || !(matchState.players?.[guestUid]?.hp > 0)) return;
+
+    if (!matchState.rounds) matchState.rounds = {};
+    if (!matchState.rounds[roundIndex]) matchState.rounds[roundIndex] = {};
+    if (!matchState.rounds[roundIndex].answers) matchState.rounds[roundIndex].answers = {};
+    const round = matchState.rounds[roundIndex];
+
+    if (round.resolution) {
+      return; // Already resolved
+    }
+
+    const deadline = getRoundDeadline(matchState.roundStartedAt, roundIndex);
+    const now = getServerNow();
+    if (typeof deadline === 'number' && now < deadline) {
+      return; // Cannot fill timeout before deadline
+    }
+
+    const hostAnswer = round.answers[hostUid];
+    const guestAnswer = round.answers[guestUid];
+
+    if (hostAnswer && guestAnswer) {
+      return roomData; // Both already have answers or timeouts, no-op
+    }
+
+    const ts = serverTimestamp();
+    if (!hostAnswer) {
+      round.answers[hostUid] = {
+        timedOut: true,
+        submittedAt: ts
+      };
+    }
+    if (!guestAnswer) {
+      round.answers[guestUid] = {
+        timedOut: true,
+        submittedAt: ts
+      };
+    }
+
+    return roomData;
+  }, { applyLocally: false });
+}
+
+export async function autoResolveRound(roomCode, hostUid, guestUid, roundIndex) {
+  // Step A: authoritatively fill any missing timeout answers while phase is still ANSWERING
+  await fillMissingTimeouts(roomCode, hostUid, guestUid, roundIndex);
+  // Step B: settle the round using complete answers
+  return resolveRound(roomCode, hostUid, guestUid, roundIndex);
+}
+
 export async function resolveRound(roomCode, hostUid, guestUid, roundIndex) {
   const roomRef = ref(db, `rooms/${roomCode}`);
   return runTransaction(roomRef, (roomData) => {
@@ -138,22 +252,53 @@ export async function resolveRound(roomCode, hostUid, guestUid, roundIndex) {
     if (!matchState || roomData.meta.hostUid !== hostUid || hostUid === guestUid ||
         !roomData.players?.[guestUid] || !(matchState.players?.[guestUid]?.hp > 0)) return;
     
-    const round = matchState.rounds?.[roundIndex];
-    if (!round || !round.answers || !round.answers[hostUid] || !round.answers[guestUid]) {
-      return; // Both haven't answered yet
-    }
+    if (!matchState.rounds) matchState.rounds = {};
+    if (!matchState.rounds[roundIndex]) matchState.rounds[roundIndex] = {};
+    if (!matchState.rounds[roundIndex].answers) matchState.rounds[roundIndex].answers = {};
+    const round = matchState.rounds[roundIndex];
 
     if (round.resolution) {
       return; // Already resolved
     }
 
+    const deadline = getRoundDeadline(matchState.roundStartedAt, roundIndex);
+    const now = getServerNow();
+    const isTimedOut = typeof deadline === 'number' && now >= deadline;
+
     const hostAnswer = round.answers[hostUid];
     const guestAnswer = round.answers[guestUid];
 
-    // Legacy answer.isCorrect, if present, is non-authoritative.
+    const hostDone = !!hostAnswer || isTimedOut;
+    const guestDone = !!guestAnswer || isTimedOut;
+
+    if (!hostDone || !guestDone) {
+      return; // Both haven't finished answering/timing out yet
+    }
+
+    // Fill in timeout record for missing answer
+    const ts = serverTimestamp();
+    if (!hostAnswer) {
+      round.answers[hostUid] = {
+        timedOut: true,
+        submittedAt: ts
+      };
+    }
+    if (!guestAnswer) {
+      round.answers[guestUid] = {
+        timedOut: true,
+        submittedAt: ts
+      };
+    }
+
+    const finalHostAnswer = round.answers[hostUid];
+    const finalGuestAnswer = round.answers[guestUid];
+
+    const hostTimedOut = Boolean(finalHostAnswer?.timedOut || !finalHostAnswer?.selectedChoiceId);
+    const guestTimedOut = Boolean(finalGuestAnswer?.timedOut || !finalGuestAnswer?.selectedChoiceId);
+
     const question = createPvpQuestions(roomData.match)[roundIndex];
-    const hostCorrect = hostAnswer.selectedChoiceId === question.correctChoiceId;
-    const guestCorrect = guestAnswer.selectedChoiceId === question.correctChoiceId;
+    const hostCorrect = !hostTimedOut && finalHostAnswer.selectedChoiceId === question.correctChoiceId;
+    const guestCorrect = !guestTimedOut && finalGuestAnswer.selectedChoiceId === question.correctChoiceId;
     matchState.phase = 'RESOLVING';
 
     const hostHpBefore = matchState.players[hostUid].hp;
@@ -167,12 +312,14 @@ export async function resolveRound(roomCode, hostUid, guestUid, roundIndex) {
     const hostShieldActive = hostItemUse?.itemId === ITEM_TYPES.SHIELD;
     const guestShieldActive = guestItemUse?.itemId === ITEM_TYPES.SHIELD;
 
-    const speed = calculateSpeedOutcome(
-      hostAnswer?.submittedAt,
-      guestAnswer?.submittedAt,
-      hostCorrect,
-      guestCorrect
-    );
+    const speed = (hostTimedOut || guestTimedOut)
+      ? { speedOutcome: 'NONE', speedDiffMs: 0 }
+      : calculateSpeedOutcome(
+          finalHostAnswer?.submittedAt,
+          finalGuestAnswer?.submittedAt,
+          hostCorrect,
+          guestCorrect
+        );
 
     const {
       hostBaseDamage,
@@ -213,7 +360,9 @@ export async function resolveRound(roomCode, hostUid, guestUid, roundIndex) {
       guestHpAfter,
       resolvedAt: serverTimestamp(),
       speedOutcome: speed.speedOutcome,
-      speedDiffMs: speed.speedDiffMs
+      speedDiffMs: speed.speedDiffMs,
+      hostTimedOut,
+      guestTimedOut
     };
 
     matchState.players[hostUid].hp = hostHpAfter;
@@ -247,6 +396,7 @@ export async function advanceRound(roomCode, currentRoundIndex) {
     
     matchState.roundIndex += 1;
     matchState.phase = 'ANSWERING';
+    matchState.roundStartedAt = serverTimestamp();
     return matchState;
   }, { applyLocally: false });
 }

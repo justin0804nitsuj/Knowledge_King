@@ -73,8 +73,17 @@ jest.mock('../src/context/PvpRoomContext', () => ({
 }));
 jest.mock('../src/services/pvp/pvpBattleService', () => ({
   subscribeToMatchState: jest.fn(),
-  resolveRound: jest.fn(), advanceRound: jest.fn(), finalizeMatch: jest.fn(),
-  submitAnswer: jest.fn(), useBattleItem: jest.fn(),
+  resolveRound: jest.fn(() => Promise.resolve({ committed: true })),
+  advanceRound: jest.fn(() => Promise.resolve({ committed: true })),
+  finalizeMatch: jest.fn(() => Promise.resolve({ committed: true })),
+  submitAnswer: jest.fn(() => Promise.resolve({ committed: true })),
+  useBattleItem: jest.fn(() => Promise.resolve({ committed: true })),
+  startRoundTimer: jest.fn(() => Promise.resolve({ committed: true })),
+  submitTimeout: jest.fn(() => Promise.resolve({ committed: true })),
+  ROUND_TIME_LIMIT_MS: 6000,
+  ROUND_PRE_BATTLE_MS: 4000,
+  getRoundDeadline: jest.fn((started, idx) => (typeof started === 'number' ? started + 6000 : null)),
+  getRoundAnsweringStart: jest.fn((started, idx) => started),
 }));
 
 // Mock dependencies

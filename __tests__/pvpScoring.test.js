@@ -13,7 +13,11 @@ jest.mock('../src/context/PvpRoomContext');
 jest.mock('../src/services/pvp/pvpBattleService', () => ({
   submitAnswer: jest.fn(),
   subscribeToMatchState: jest.fn(() => jest.fn()),
-  finalizeMatch: jest.fn()
+  finalizeMatch: jest.fn(),
+  getRoundDeadline: jest.fn(),
+  getRoundAnsweringStart: jest.fn(),
+  ROUND_TIME_LIMIT_MS: 6000,
+  ROUND_PRE_BATTLE_MS: 4000,
 }));
 jest.mock('react-native-nitro-google-signin', () => ({
   GoogleOneTapSignIn: { configure: jest.fn() },

@@ -21,9 +21,9 @@ const makeRoom = () => ({
     guestUid: { displayName: 'Guest', role: 'GUEST', joinedAt: 1, ready: true },
   },
   match: { matchId: 'match1', battleSeed: '12345', rulesetVersion: '1', vocabularyVersion: '1', createdAt: 1, level: 1, questionCount: 10 },
-  matchState: { roundIndex: 0, phase: 'ANSWERING', players: { hostUid: player(), guestUid: player() } },
+  matchState: { roundIndex: 0, phase: 'ANSWERING', roundStartedAt: Date.now(), players: { hostUid: player(), guestUid: player() } },
 });
-const answer = (selectedChoiceId = 'choice') => ({ selectedChoiceId, submittedAt: 1 });
+const answer = (selectedChoiceId = 'choice') => ({ selectedChoiceId, submittedAt: Date.now() });
 const itemUse = itemId => ({ itemId, actionId: 'action1', usedAt: 1 });
 const applyItem = (room, uid, itemId, roundIndex = 0) => {
   const state = room.matchState.players[uid];
@@ -461,6 +461,307 @@ async function run() {
       room.meta.status = 'CANCELLED';
       await seed(room);
       await assertFails(db('guest').ref(roomPath).remove());
+    });
+
+    // ----- Phase 11C Timer Authority & Timeout Security Cases A-L -----
+    await test('A. valid answer before deadline -> ALLOWED', async room => {
+      room.matchState.roundStartedAt = Date.now();
+      await seed(room);
+      await assertSucceeds(db('guest').ref(roomPath + '/matchState/rounds/0/answers/guestUid').set({
+        selectedChoiceId: 'choice1',
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('B. valid answer after deadline -> DENIED', async room => {
+      room.matchState.roundStartedAt = Date.now() - 15000;
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath + '/matchState/rounds/0/answers/guestUid').set({
+        selectedChoiceId: 'choice1',
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('C. player marks self timedOut before deadline -> DENIED', async room => {
+      room.matchState.roundStartedAt = Date.now();
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath + '/matchState/rounds/0/answers/guestUid').set({
+        timedOut: true,
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('D. player marks self timedOut after deadline -> ALLOWED', async room => {
+      room.matchState.roundStartedAt = Date.now() - 15000;
+      await seed(room);
+      await assertSucceeds(db('guest').ref(roomPath + '/matchState/rounds/0/answers/guestUid').set({
+        timedOut: true,
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('E. Host marks missing Guest timedOut before deadline -> DENIED', async room => {
+      room.matchState.roundStartedAt = Date.now();
+      await seed(room);
+      await assertFails(db('host').ref(roomPath + '/matchState/rounds/0/answers/guestUid').set({
+        timedOut: true,
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('F. Host marks missing Guest timedOut after deadline -> ALLOWED', async room => {
+      room.matchState.roundStartedAt = Date.now() - 15000;
+      await seed(room);
+      await assertSucceeds(db('host').ref(roomPath + '/matchState/rounds/0/answers/guestUid').set({
+        timedOut: true,
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('G. Guest cannot mark Host timedOut -> DENIED', async room => {
+      room.matchState.roundStartedAt = Date.now() - 15000;
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath + '/matchState/rounds/0/answers/hostUid').set({
+        timedOut: true,
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('H. timeout cannot overwrite an already submitted real answer -> DENIED', async room => {
+      room.matchState.roundStartedAt = Date.now() - 15000;
+      room.matchState.rounds = { 0: { answers: { guestUid: { selectedChoiceId: 'c', submittedAt: Date.now() - 14000 } } } };
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath + '/matchState/rounds/0/answers/guestUid').set({
+        timedOut: true,
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('I. real answer cannot overwrite an existing timeout -> DENIED', async room => {
+      room.matchState.roundStartedAt = Date.now();
+      room.matchState.rounds = { 0: { answers: { guestUid: { timedOut: true, submittedAt: Date.now() } } } };
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath + '/matchState/rounds/0/answers/guestUid').set({
+        selectedChoiceId: 'c',
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('J. outsider cannot write answer or timeout -> DENIED', async room => {
+      room.matchState.roundStartedAt = Date.now();
+      await seed(room);
+      await assertFails(db('outsider').ref(roomPath + '/matchState/rounds/0/answers/guestUid').set({
+        selectedChoiceId: 'c',
+        submittedAt: Date.now(),
+      }));
+      await assertFails(db('outsider').ref(roomPath + '/matchState/rounds/0/answers/guestUid').set({
+        timedOut: true,
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('K. previous round deadline cannot authorize current-round writes -> DENIED', async room => {
+      room.matchState.roundIndex = 0;
+      room.matchState.roundStartedAt = Date.now();
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath + '/matchState/rounds/1/answers/guestUid').set({
+        selectedChoiceId: 'c',
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('L. current round deadline cannot modify an old resolved round -> DENIED', async room => {
+      room.matchState.roundIndex = 1;
+      room.matchState.roundStartedAt = Date.now();
+      room.matchState.rounds = {
+        0: {
+          answers: { hostUid: { selectedChoiceId: 'c', submittedAt: Date.now() }, guestUid: { selectedChoiceId: 'c', submittedAt: Date.now() } },
+          resolution: makeResolution('TIE', 0)
+        }
+      };
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath + '/matchState/rounds/0/answers/guestUid').set({
+        selectedChoiceId: 'c2',
+        submittedAt: Date.now(),
+      }));
+    });
+
+    // ----- Phase 11C Both-Timeout Integration Suite (A through J) -----
+    await test('Integration A: both missing after deadline Host auto-resolve -> ALLOWED, both timedOut, round resolves', async room => {
+      room.matchState.roundStartedAt = Date.now() - 15000;
+      delete room.matchState.rounds;
+      await seed(room);
+      await serviceAction('host', async service => {
+        const result = await service.autoResolveRound('room1', 'hostUid', 'guestUid', 0);
+        assert.equal(result.committed, true);
+      });
+      const guestSnap = await db('guest').ref(roomPath).get();
+      assert.equal(guestSnap.exists(), true);
+      const guestVal = guestSnap.val();
+      assert.equal(guestVal.matchState.rounds[0].answers.hostUid.timedOut, true);
+      assert.equal(guestVal.matchState.rounds[0].answers.guestUid.timedOut, true);
+      assert.ok(guestVal.matchState.rounds[0].resolution);
+      assert.equal(guestVal.matchState.rounds[0].resolution.hostTimedOut, true);
+      assert.equal(guestVal.matchState.rounds[0].resolution.guestTimedOut, true);
+      assert.equal(guestVal.matchState.players.hostUid.wrong, 1);
+      assert.equal(guestVal.matchState.players.guestUid.wrong, 1);
+      assert.equal(guestVal.matchState.phase, 'ROUND_RESULT');
+    });
+
+    await test('Integration B: Host answered, Guest missing after deadline -> Guest timeout filled, resolve succeeds', async room => {
+      room.matchState.roundStartedAt = Date.now() - 15000;
+      room.matchState.rounds = { 0: { answers: { hostUid: answer(question.correctChoiceId) } } };
+      await seed(room);
+      await serviceAction('host', async service => {
+        const result = await service.autoResolveRound('room1', 'hostUid', 'guestUid', 0);
+        assert.equal(result.committed, true);
+      });
+      const guestVal = (await db('guest').ref(roomPath).get()).val();
+      assert.equal(guestVal.matchState.rounds[0].answers.guestUid.timedOut, true);
+      assert.equal(guestVal.matchState.rounds[0].answers.hostUid.selectedChoiceId, question.correctChoiceId);
+      assert.equal(guestVal.matchState.rounds[0].resolution.hostCorrect, true);
+      assert.equal(guestVal.matchState.rounds[0].resolution.guestTimedOut, true);
+      assert.equal(guestVal.matchState.players.hostUid.correct, 1);
+      assert.equal(guestVal.matchState.players.guestUid.wrong, 1);
+      assert.equal(guestVal.matchState.phase, 'ROUND_RESULT');
+    });
+
+    await test('Integration C: Guest answered, Host missing after deadline -> Host timeout filled, resolve succeeds', async room => {
+      room.matchState.roundStartedAt = Date.now() - 15000;
+      room.matchState.rounds = { 0: { answers: { guestUid: answer(question.correctChoiceId) } } };
+      await seed(room);
+      await serviceAction('host', async service => {
+        const result = await service.autoResolveRound('room1', 'hostUid', 'guestUid', 0);
+        assert.equal(result.committed, true);
+      });
+      const guestVal = (await db('guest').ref(roomPath).get()).val();
+      assert.equal(guestVal.matchState.rounds[0].answers.hostUid.timedOut, true);
+      assert.equal(guestVal.matchState.rounds[0].answers.guestUid.selectedChoiceId, question.correctChoiceId);
+      assert.equal(guestVal.matchState.rounds[0].resolution.hostTimedOut, true);
+      assert.equal(guestVal.matchState.rounds[0].resolution.guestCorrect, true);
+      assert.equal(guestVal.matchState.players.hostUid.wrong, 1);
+      assert.equal(guestVal.matchState.players.guestUid.correct, 1);
+      assert.equal(guestVal.matchState.phase, 'ROUND_RESULT');
+    });
+
+    await test('Integration D: both timeout records already exist -> resolve succeeds', async room => {
+      room.matchState.roundStartedAt = Date.now() - 15000;
+      room.matchState.rounds = { 0: { answers: {
+        hostUid: { timedOut: true, submittedAt: Date.now() - 1000 },
+        guestUid: { timedOut: true, submittedAt: Date.now() - 1000 }
+      } } };
+      await seed(room);
+      await serviceAction('host', async service => {
+        const result = await service.autoResolveRound('room1', 'hostUid', 'guestUid', 0);
+        assert.equal(result.committed, true);
+      });
+      const guestVal = (await db('guest').ref(roomPath).get()).val();
+      assert.equal(guestVal.matchState.rounds[0].resolution.hostTimedOut, true);
+      assert.equal(guestVal.matchState.rounds[0].resolution.guestTimedOut, true);
+      assert.equal(guestVal.matchState.players.hostUid.wrong, 1);
+      assert.equal(guestVal.matchState.players.guestUid.wrong, 1);
+      assert.equal(guestVal.matchState.phase, 'ROUND_RESULT');
+    });
+
+    await test('Integration E: one real answer exists -> never overwritten by timeout', async room => {
+      room.matchState.roundStartedAt = Date.now() - 15000;
+      room.matchState.rounds = { 0: { answers: { hostUid: answer(question.correctChoiceId) } } };
+      await seed(room);
+      await serviceAction('host', async service => {
+        await service.fillMissingTimeouts('room1', 'hostUid', 'guestUid', 0);
+      });
+      const hostVal = (await db('host').ref(roomPath).get()).val();
+      assert.equal(hostVal.matchState.rounds[0].answers.hostUid.selectedChoiceId, question.correctChoiceId);
+      assert.equal(hostVal.matchState.rounds[0].answers.hostUid.timedOut, undefined);
+      await assertFails(db('host').ref(roomPath + '/matchState/rounds/0/answers/hostUid').set({
+        timedOut: true,
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('Integration F: timeout already exists -> never overwritten', async room => {
+      room.matchState.roundStartedAt = Date.now() - 15000;
+      room.matchState.rounds = { 0: { answers: { hostUid: { timedOut: true, submittedAt: 99999 } } } };
+      await seed(room);
+      await serviceAction('host', async service => {
+        await service.fillMissingTimeouts('room1', 'hostUid', 'guestUid', 0);
+      });
+      const hostVal = (await db('host').ref(roomPath).get()).val();
+      assert.equal(hostVal.matchState.rounds[0].answers.hostUid.submittedAt, 99999);
+      await assertFails(db('host').ref(roomPath + '/matchState/rounds/0/answers/hostUid').set({
+        selectedChoiceId: question.correctChoiceId,
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('Integration G: auto-resolve before deadline -> DENIED / no settlement', async room => {
+      room.matchState.roundStartedAt = Date.now();
+      delete room.matchState.rounds;
+      await seed(room);
+      await serviceAction('host', async service => {
+        const result = await service.autoResolveRound('room1', 'hostUid', 'guestUid', 0);
+        assert.equal(result.committed, false);
+      });
+      const hostVal = (await db('host').ref(roomPath).get()).val();
+      assert.equal(hostVal.matchState.phase, 'ANSWERING');
+      assert.equal(hostVal.matchState.rounds?.[0]?.resolution, undefined);
+      await assertFails(db('host').ref(roomPath + '/matchState/rounds/0/answers/guestUid').set({
+        timedOut: true,
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('Integration H: outsider attempting same settlement -> DENIED', async room => {
+      room.matchState.roundStartedAt = Date.now() - 15000;
+      delete room.matchState.rounds;
+      await seed(room);
+      await assertFails(db('outsider').ref(roomPath + '/matchState/rounds/0/answers/guestUid').set({
+        timedOut: true,
+        submittedAt: Date.now(),
+      }));
+      await assertFails(db('outsider').ref(roomPath + '/matchState/rounds/0/resolution').set(makeResolution('TIE', 0)));
+      await serviceAction('outsider', async service => {
+        await assert.rejects(
+          service.autoResolveRound('room1', 'hostUid', 'guestUid', 0),
+          /permission_denied/
+        );
+      });
+    });
+
+    await test('Integration I: Guest attempting Host-authoritative settlement -> DENIED', async room => {
+      room.matchState.roundStartedAt = Date.now() - 15000;
+      delete room.matchState.rounds;
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath + '/matchState/rounds/0/answers/hostUid').set({
+        timedOut: true,
+        submittedAt: Date.now(),
+      }));
+      await assertFails(db('guest').ref(roomPath + '/matchState/rounds/0/resolution').set(makeResolution('TIE', 0)));
+      await serviceAction('guest', async service => {
+        await assert.rejects(
+          service.autoResolveRound('room1', 'hostUid', 'guestUid', 0),
+          /permission_denied/
+        );
+      });
+    });
+
+    await test('Integration J: repeated Host resolve after resolution -> no duplicate damage / safe no-op', async room => {
+      room.matchState.roundStartedAt = Date.now() - 15000;
+      delete room.matchState.rounds;
+      await seed(room);
+      await serviceAction('host', async service => {
+        const res1 = await service.autoResolveRound('room1', 'hostUid', 'guestUid', 0);
+        assert.equal(res1.committed, true);
+        const hpAfterFirst = res1.snapshot.val().matchState.players.hostUid.hp;
+        const wrongAfterFirst = res1.snapshot.val().matchState.players.hostUid.wrong;
+
+        const res2 = await service.autoResolveRound('room1', 'hostUid', 'guestUid', 0);
+        assert.equal(res2.committed, false);
+
+        const roomVal = (await db('host').ref(roomPath).get()).val();
+        assert.equal(roomVal.matchState.players.hostUid.hp, hpAfterFirst);
+        assert.equal(roomVal.matchState.players.hostUid.wrong, wrongAfterFirst);
+      });
     });
   } finally {
     console.log('Total: ' + (passed + failed) + '; Passed: ' + passed + '; Failed: ' + failed);

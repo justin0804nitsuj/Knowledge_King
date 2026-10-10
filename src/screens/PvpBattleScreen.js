@@ -3,7 +3,21 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Animated }
 import { usePvpRoom } from '../context/PvpRoomContext';
 import { theme } from '../theme';
 import { createPvpQuestions } from '../domain/pvp/pvpQuestions';
-import { submitAnswer, subscribeToMatchState, finalizeMatch, useBattleItem, resolveRound, advanceRound } from '../services/pvp/pvpBattleService';
+import {
+  submitAnswer,
+  subscribeToMatchState,
+  finalizeMatch,
+  useBattleItem,
+  resolveRound,
+  autoResolveRound,
+  advanceRound,
+  submitTimeout,
+  getRoundDeadline,
+  getRoundAnsweringStart,
+  ROUND_TIME_LIMIT_MS,
+  ROUND_PRE_BATTLE_MS
+} from '../services/pvp/pvpBattleService';
+import { initServerTimeOffset, getServerNow } from '../services/firebase/serverTimeService';
 import { useTranslation } from 'react-i18next';
 import { RoomStatus } from '../domain/pvp/roomConstants';
 import PvpHealthBar from '../components/pvp/PvpHealthBar';
@@ -12,6 +26,53 @@ import { Ionicons } from '@expo/vector-icons';
 import { ITEM_TYPES } from '../domain/pvp/pvpItems';
 import PvpActiveEffectBadge from '../components/pvp/PvpActiveEffectBadge';
 import { gameFeedback } from '../services/feedback/gameFeedback';
+
+export async function executeHostDeadlineAutoResolve({
+  roomId,
+  hostUid,
+  guestUid,
+  roundIndex,
+  isHost,
+  getMatchState,
+  autoResolveFn = autoResolveRound,
+  onWarn = console.warn,
+  onError = console.error,
+  scheduleRetry = (fn, delayMs) => setTimeout(fn, delayMs),
+  onRetryScheduled,
+  isCancelled = () => false,
+}) {
+  if (isCancelled() || !roomId || !isHost) return;
+  const currentMatchState = typeof getMatchState === 'function' ? getMatchState() : getMatchState;
+  const roundData = currentMatchState?.rounds?.[roundIndex];
+  if (roundData?.resolution) return;
+
+  try {
+    return await autoResolveFn(roomId, hostUid, guestUid, roundIndex);
+  } catch (err) {
+    if (isCancelled()) return;
+    const isPermissionError = /permission_denied/i.test(err?.message || err?.code || '');
+    if (isPermissionError) {
+      onWarn('[PvP] Host deadline auto-resolve boundary race, retrying in 400ms:', err?.message || err);
+      const timer = scheduleRetry(async () => {
+        if (isCancelled() || !roomId || !isHost) return;
+        const latestMatchState = typeof getMatchState === 'function' ? getMatchState() : getMatchState;
+        const latestRound = latestMatchState?.rounds?.[roundIndex];
+        if (latestMatchState?.phase !== 'ANSWERING' || latestRound?.resolution) {
+          return; // Round already settled or transitioned
+        }
+        try {
+          return await autoResolveFn(roomId, hostUid, guestUid, roundIndex);
+        } catch (retryErr) {
+          if (isCancelled()) return;
+          onError('[PvP] Host deadline auto-resolve retry failed:', retryErr);
+        }
+      }, 400);
+      if (onRetryScheduled) onRetryScheduled(timer);
+    } else {
+      onError('[PvP] Host deadline auto-resolve unexpected failure:', err);
+    }
+  }
+}
 
 export default function PvpBattleScreen({ navigation }) {
   const { roomId, room, isHost, user } = usePvpRoom();
@@ -25,13 +86,19 @@ export default function PvpBattleScreen({ navigation }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [countdown, setCountdown] = useState(null); // 3, 2, 1, 'GO!', null
   const [itemUsedThisRound, setItemUsedThisRound] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const matchStateRef = useRef(matchState);
+  matchStateRef.current = matchState;
 
   const lastMyHpRef = useRef(null);
   const lastOppHpRef = useRef(null);
   const lastResultRoundRef = useRef(-1);
+  const lastAlertedSecondRef = useRef(null);
 
   useEffect(() => {
+    initServerTimeOffset();
     gameFeedback.init();
     return () => gameFeedback.cleanup();
   }, []);
@@ -136,7 +203,82 @@ export default function PvpBattleScreen({ navigation }) {
     }
   }, [phase, hasLiveState]);
 
-  // Host Settlement Logic
+  const roundDeadlineAt = getRoundDeadline(matchState?.roundStartedAt, roundIndex);
+
+  // Active Answering Countdown Timer
+  useEffect(() => {
+    const currentRound = matchState?.rounds?.[roundIndex];
+    const myAnswer = currentRound?.answers?.[myUid];
+    const hasAnswered = !!myAnswer;
+
+    if (matchPhase !== 'ANSWERING' || phase !== 'READY' || !roundDeadlineAt || hasAnswered) {
+      setRemainingSeconds(null);
+      lastAlertedSecondRef.current = null;
+      return;
+    }
+
+    const updateTimer = () => {
+      const serverNow = getServerNow();
+      const diffMs = roundDeadlineAt - serverNow;
+      const secs = Math.max(0, Math.ceil(diffMs / 1000));
+      setRemainingSeconds(secs);
+
+      if (secs <= 2 && secs > 0 && lastAlertedSecondRef.current !== secs) {
+        lastAlertedSecondRef.current = secs;
+        gameFeedback.playCountdownTick?.();
+      }
+
+      if (secs === 0 && !hasAnswered && roomId && myUid) {
+        submitTimeout(roomId, myUid, roundIndex).catch(err => {
+          console.error('Failed to submit timeout', err);
+        });
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 250);
+    return () => clearInterval(interval);
+  }, [matchPhase, phase, roundDeadlineAt, roomId, myUid, roundIndex, matchState]);
+
+  // Host Deadline Auto-Resolve (Liveness Trigger: wakes at deadline + 250ms)
+  useEffect(() => {
+    if (!isHost || matchPhase !== 'ANSWERING' || typeof roundDeadlineAt !== 'number' || !roomId) {
+      return;
+    }
+    const currentRound = matchState?.rounds?.[roundIndex];
+    if (currentRound?.resolution) return;
+
+    const serverNow = getServerNow();
+    const delay = Math.max(0, roundDeadlineAt - serverNow + 250);
+
+    let retryTimer = null;
+    let cancelled = false;
+
+    const executeResolve = () => {
+      executeHostDeadlineAutoResolve({
+        roomId,
+        hostUid,
+        guestUid,
+        roundIndex,
+        isHost,
+        getMatchState: () => matchStateRef.current,
+        autoResolveFn: autoResolveRound,
+        scheduleRetry: (fn, delayMs) => setTimeout(fn, delayMs),
+        onRetryScheduled: (timer) => { retryTimer = timer; },
+        isCancelled: () => cancelled,
+      });
+    };
+
+    const timer = setTimeout(executeResolve, delay);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      if (retryTimer) clearTimeout(retryTimer);
+    };
+  }, [isHost, matchPhase, roundDeadlineAt, roundIndex, roomId, hostUid, guestUid, matchState?.rounds?.[roundIndex]?.resolution]);
+
+  // Host Settlement Logic (triggers immediately when both players have answered)
   useEffect(() => {
     if (isHost && phase === 'READY' && room?.meta?.status === RoomStatus.IN_BATTLE) {
       const currentRound = matchState?.rounds?.[roundIndex];
@@ -145,7 +287,7 @@ export default function PvpBattleScreen({ navigation }) {
         const hostAnswer = currentRound?.answers?.[hostUid];
         const guestAnswer = currentRound?.answers?.[guestUid];
 
-        if (hostAnswer && guestAnswer && !currentRound.resolution) {
+        if (!currentRound?.resolution && hostAnswer && guestAnswer) {
           resolveRound(roomId, hostUid, guestUid, roundIndex).catch(err => {
             console.error('Failed to resolve round', err);
           });
@@ -173,7 +315,7 @@ export default function PvpBattleScreen({ navigation }) {
         return () => clearTimeout(timer);
       }
     }
-  }, [isHost, phase, matchPhase, roundIndex, matchState, roomId, hostUid, guestUid, room]);
+  }, [isHost, phase, matchPhase, roundIndex, matchState, roomId, hostUid, guestUid, room, roundDeadlineAt]);
 
   // Navigate to result screen when FINISHED
   useEffect(() => {
@@ -225,8 +367,9 @@ export default function PvpBattleScreen({ navigation }) {
 
   const myAnswer = currentRound?.answers?.[myUid];
   const hasAnswered = !!myAnswer;
-  // Lock answering if we answered, if it's not ANSWERING phase, if countdown is active, or submitting
-  const isLocked = !hasLiveState || !currentQuestion || hasAnswered ||
+  const isTimedOut = remainingSeconds === 0;
+  // Lock answering if we answered, if timed out, if it's not ANSWERING phase, if countdown is active, or submitting
+  const isLocked = !hasLiveState || !currentQuestion || hasAnswered || isTimedOut ||
     matchPhase !== 'ANSWERING' || isSubmitting || isItemPending || phase !== 'READY';
 
 
@@ -467,7 +610,22 @@ export default function PvpBattleScreen({ navigation }) {
               pointerEvents={isContentHidden ? 'none' : 'auto'}
               importantForAccessibility={isContentHidden ? 'no-hide-descendants' : 'auto'}
             >
-              <Text style={styles.questionLabel}>Question {roundIndex + 1}</Text>
+              <View style={styles.questionHeaderRow}>
+                <Text style={styles.questionLabel}>Question {roundIndex + 1}</Text>
+                {matchPhase === 'ANSWERING' && !hasAnswered && remainingSeconds !== null && (
+                  <View style={[styles.timerBadge, remainingSeconds <= 2 && styles.timerBadgeUrgent]} testID="pvpRoundTimerBadge">
+                    <Ionicons
+                      name="timer-outline"
+                      size={14}
+                      color={remainingSeconds <= 2 ? '#EF4444' : (theme.colors.textSecondary || '#9CA3AF')}
+                      style={styles.timerIcon}
+                    />
+                    <Text style={[styles.timerText, remainingSeconds <= 2 && styles.timerTextUrgent]}>
+                      {remainingSeconds}
+                    </Text>
+                  </View>
+                )}
+              </View>
               <Text style={styles.questionText}>{currentQuestion.word}</Text>
 
               <View style={styles.choicesContainer}>
@@ -551,7 +709,37 @@ const styles = StyleSheet.create({
   vsText: { fontSize: 18, fontWeight: 'bold', color: theme.colors.secondary },
   roundText: { fontSize: 12, color: theme.colors.textMuted, marginTop: 4 },
   questionContainer: { flex: 1, padding: theme.spacing.large },
-  questionLabel: { fontSize: 14, color: theme.colors.textMuted, marginBottom: 8, fontWeight: 'bold', textAlign: 'center' },
+  questionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  questionLabel: { fontSize: 14, color: theme.colors.textMuted, fontWeight: 'bold' },
+  timerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  timerBadgeUrgent: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  timerIcon: {
+    marginRight: 4,
+  },
+  timerText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#E5E7EB',
+  },
+  timerTextUrgent: {
+    color: '#EF4444',
+  },
   questionText: { fontSize: 32, fontWeight: 'bold', color: theme.colors.textMain, marginBottom: 32, textAlign: 'center' },
   choicesContainer: { marginTop: 16 },
   choiceButton: { backgroundColor: theme.colors.card, padding: theme.spacing.medium, borderRadius: 8, marginBottom: 12, borderWidth: 2, borderColor: theme.colors.border, alignItems: 'center' },
