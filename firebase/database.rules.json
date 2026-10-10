@@ -216,7 +216,7 @@
                 }
               },
               "resolution": {
-                ".validate": "newData.hasChildren([\"hostCorrect\",\"guestCorrect\",\"hostBaseDamage\",\"guestBaseDamage\",\"hostPowerBonus\",\"guestPowerBonus\",\"hostShieldBlocked\",\"guestShieldBlocked\",\"damageToHost\",\"damageToGuest\",\"hostHpBefore\",\"guestHpBefore\",\"hostHpAfter\",\"guestHpAfter\",\"resolvedAt\"]) && (data.exists() || (auth.uid === root.child('rooms').child($roomId).child('meta/hostUid').val() && $roundId === root.child('rooms').child($roomId).child('matchState').child('roundIndex').val()+'' && root.child('rooms').child($roomId).child('matchState').child('rounds').child($roundId).child('answers').child(root.child('rooms').child($roomId).child('meta/hostUid').val()).exists() && root.child('rooms').child($roomId).child('matchState').child('rounds').child($roundId).child('answers').child(auth.uid).exists()))",
+                ".validate": "newData.hasChildren([\"hostCorrect\",\"guestCorrect\",\"hostBaseDamage\",\"guestBaseDamage\",\"hostPowerBonus\",\"guestPowerBonus\",\"hostShieldBlocked\",\"guestShieldBlocked\",\"damageToHost\",\"damageToGuest\",\"hostHpBefore\",\"guestHpBefore\",\"hostHpAfter\",\"guestHpAfter\",\"resolvedAt\",\"speedOutcome\",\"speedDiffMs\"]) && (data.exists() || (auth.uid === root.child('rooms').child($roomId).child('meta/hostUid').val() && $roundId === root.child('rooms').child($roomId).child('matchState').child('roundIndex').val()+'' && root.child('rooms').child($roomId).child('matchState').child('rounds').child($roundId).child('answers').child(root.child('rooms').child($roomId).child('meta/hostUid').val()).exists() && root.child('rooms').child($roomId).child('matchState').child('rounds').child($roundId).child('answers').child(auth.uid).exists()))",
                 "hostCorrect": {
                   ".validate": "newData.isBoolean() && (!data.exists() || newData.val() === data.val())"
                 },
@@ -261,6 +261,12 @@
                 },
                 "resolvedAt": {
                   ".validate": "newData.isNumber() && (!data.exists() || newData.val() === data.val())"
+                },
+                "speedOutcome": {
+                  ".validate": "newData.isString() && (newData.val() === 'HOST_FASTER' || newData.val() === 'GUEST_FASTER' || newData.val() === 'TIE' || newData.val() === 'NONE') && (!data.exists() || newData.val() === data.val())"
+                },
+                "speedDiffMs": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0 && (!data.exists() || newData.val() === data.val())"
                 },
                 "$other": {
                   ".validate": false

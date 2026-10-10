@@ -210,7 +210,10 @@ export default {
     powerBonus: '攻擊 +{{bonus}}',
     shieldBlocked: '護盾格擋 {{blocked}}',
     shieldBadge: '護盾',
-    powerBadge: '力量增幅'
+    powerBadge: '力量增幅',
+    speedFaster: '你比對手快 {{seconds}} 秒',
+    speedSlower: '你比對手慢 {{seconds}} 秒',
+    speedTie: '你們幾乎同時作答'
   },
   pvpItems: {
     healName: '治療藥水',

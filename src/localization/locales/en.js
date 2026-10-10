@@ -210,7 +210,10 @@ export default {
     powerBonus: 'Power +{{bonus}}',
     shieldBlocked: 'Shield blocked {{blocked}}',
     shieldBadge: 'Shield',
-    powerBadge: 'Power'
+    powerBadge: 'Power',
+    speedFaster: 'You answered {{seconds}}s faster',
+    speedSlower: 'You answered {{seconds}}s slower',
+    speedTie: 'You answered almost simultaneously'
   },
   pvpItems: {
     healName: 'Healing Potion',

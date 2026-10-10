@@ -6,6 +6,40 @@ import { createPvpQuestions } from '../../domain/pvp/pvpQuestions';
 
 const MAX_HP = 100;
 const BASE_DAMAGE = 20;
+export const NEAR_TIE_THRESHOLD_MS = 150;
+
+export function calculateSpeedOutcome(hostSubmittedAt, guestSubmittedAt, hostCorrect, guestCorrect) {
+  const validTimestamps = typeof hostSubmittedAt === 'number' && Number.isFinite(hostSubmittedAt) &&
+                          typeof guestSubmittedAt === 'number' && Number.isFinite(guestSubmittedAt);
+
+  if (!validTimestamps || !hostCorrect || !guestCorrect) {
+    return {
+      speedOutcome: 'NONE',
+      speedDiffMs: 0
+    };
+  }
+
+  const speedDiffMs = Math.round(Math.abs(hostSubmittedAt - guestSubmittedAt));
+
+  if (speedDiffMs <= NEAR_TIE_THRESHOLD_MS) {
+    return {
+      speedOutcome: 'TIE',
+      speedDiffMs
+    };
+  }
+
+  if (hostSubmittedAt < guestSubmittedAt) {
+    return {
+      speedOutcome: 'HOST_FASTER',
+      speedDiffMs
+    };
+  }
+
+  return {
+    speedOutcome: 'GUEST_FASTER',
+    speedDiffMs
+  };
+}
 
 function getAnsweringState(roomData, uid, roundIndex) {
   const state = roomData?.matchState;
@@ -91,6 +125,13 @@ export async function resolveRound(roomCode, hostUid, guestUid, roundIndex) {
     let hostHpAfter = Math.max(0, hostHpBefore - damageToHost);
     let guestHpAfter = Math.max(0, guestHpBefore - damageToGuest);
 
+    const speed = calculateSpeedOutcome(
+      hostAnswer?.submittedAt,
+      guestAnswer?.submittedAt,
+      hostCorrect,
+      guestCorrect
+    );
+
     round.resolution = {
       hostCorrect,
       guestCorrect,
@@ -106,7 +147,9 @@ export async function resolveRound(roomCode, hostUid, guestUid, roundIndex) {
       guestHpBefore,
       hostHpAfter,
       guestHpAfter,
-      resolvedAt: serverTimestamp()
+      resolvedAt: serverTimestamp(),
+      speedOutcome: speed.speedOutcome,
+      speedDiffMs: speed.speedDiffMs
     };
 
     matchState.players[hostUid].hp = hostHpAfter;

@@ -413,23 +413,54 @@ async function run() {
     });
     await test('Guest retains existing active-room departure permission', () =>
       assertSucceeds(db('guest').ref(roomPath + '/players/guestUid').remove()));
+    const makeResolution = (speedOutcome = 'HOST_FASTER', speedDiffMs = 420) => ({
+      hostCorrect: true, guestCorrect: true,
+      hostBaseDamage: 20, guestBaseDamage: 20,
+      hostPowerBonus: 0, guestPowerBonus: 0,
+      hostShieldBlocked: 0, guestShieldBlocked: 0,
+      damageToHost: 0, damageToGuest: 0,
+      hostHpBefore: 80, guestHpBefore: 80,
+      hostHpAfter: 80, guestHpAfter: 80,
+      resolvedAt: 1,
+      speedOutcome, speedDiffMs,
+    });
+    await test('Host resolution with valid speed fields is accepted', async room => {
+      room.matchState.rounds = { 0: { answers: { hostUid: answer('c'), guestUid: answer('c') } } };
+      await seed(room);
+      await assertSucceeds(db('host').ref(roomPath + '/matchState/rounds/0/resolution').set(makeResolution('HOST_FASTER', 420)));
+    });
+    await test('Host resolution with invalid speedOutcome rejected', async room => {
+      room.matchState.rounds = { 0: { answers: { hostUid: answer('c'), guestUid: answer('c') } } };
+      await seed(room);
+      await assertFails(db('host').ref(roomPath + '/matchState/rounds/0/resolution').set(makeResolution('INVALID_OUTCOME', 420)));
+    });
+    await test('Host resolution with negative speedDiffMs rejected', async room => {
+      room.matchState.rounds = { 0: { answers: { hostUid: answer('c'), guestUid: answer('c') } } };
+      await seed(room);
+      await assertFails(db('host').ref(roomPath + '/matchState/rounds/0/resolution').set(makeResolution('HOST_FASTER', -10)));
+    });
+    await test('Host resolution with fractional speedDiffMs rejected', async room => {
+      room.matchState.rounds = { 0: { answers: { hostUid: answer('c'), guestUid: answer('c') } } };
+      await seed(room);
+      await assertFails(db('host').ref(roomPath + '/matchState/rounds/0/resolution').set(makeResolution('HOST_FASTER', 12.5)));
+    });
     await test('finished Host may remove the room', async room => {
       room.meta.status = 'FINISHED';
       room.matchState.phase = 'FINISHED';
       room.departures = { hostUid: true, guestUid: true };
       await seed(room);
       await assertSucceeds(db('host').ref(roomPath).remove());
-      // ----- CANCELLED room deletion tests -----
-      await test('host can delete CANCELLED room', async room => {
-        room.meta.status = 'CANCELLED';
-        await seed(room);
-        await assertSucceeds(db('host').ref(roomPath).remove());
-      });
-      await test('guest cannot delete CANCELLED room', async room => {
-        room.meta.status = 'CANCELLED';
-        await seed(room);
-        await assertFails(db('guest').ref(roomPath).remove());
-      });
+    });
+    // ----- CANCELLED room deletion tests -----
+    await test('host can delete CANCELLED room', async room => {
+      room.meta.status = 'CANCELLED';
+      await seed(room);
+      await assertSucceeds(db('host').ref(roomPath).remove());
+    });
+    await test('guest cannot delete CANCELLED room', async room => {
+      room.meta.status = 'CANCELLED';
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath).remove());
     });
   } finally {
     console.log('Total: ' + (passed + failed) + '; Passed: ' + passed + '; Failed: ' + failed);

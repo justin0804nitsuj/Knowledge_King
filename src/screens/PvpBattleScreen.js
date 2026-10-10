@@ -411,6 +411,21 @@ export default function PvpBattleScreen({ navigation }) {
           const myDamageDealt = res[iAmHost ? 'damageToGuest' : 'damageToHost'];
           const myDamageReceived = res[iAmHost ? 'damageToHost' : 'damageToGuest'];
 
+          let speedMessage = null;
+          if (res.speedOutcome === 'TIE') {
+            speedMessage = t('pvp.speedTie');
+          } else if (res.speedOutcome === 'HOST_FASTER') {
+            const seconds = (Math.max(0, res.speedDiffMs || 0) / 1000).toFixed(2);
+            speedMessage = iAmHost
+              ? t('pvp.speedFaster', { seconds })
+              : t('pvp.speedSlower', { seconds });
+          } else if (res.speedOutcome === 'GUEST_FASTER') {
+            const seconds = (Math.max(0, res.speedDiffMs || 0) / 1000).toFixed(2);
+            speedMessage = !iAmHost
+              ? t('pvp.speedFaster', { seconds })
+              : t('pvp.speedSlower', { seconds });
+          }
+
           return (
             <View style={styles.resultContainer}>
               <Text style={styles.resultTitle}>{t('pvp.roundResult')}</Text>
@@ -436,6 +451,13 @@ export default function PvpBattleScreen({ navigation }) {
                   <Text style={styles.damageText}>{t('pvp.youReceived', { amount: myDamageReceived })}</Text>
                 </View>
               </View>
+
+              {speedMessage && (
+                <View style={styles.speedPill} testID="pvpSpeedPill">
+                  <Ionicons name="flash-outline" size={14} color={theme.colors.secondary || '#F59E0B'} style={styles.speedIcon} />
+                  <Text style={styles.speedText}>{speedMessage}</Text>
+                </View>
+              )}
             </View>
           );
         })() : (
@@ -555,5 +577,26 @@ const styles = StyleSheet.create({
   textDanger: { color: theme.colors.danger },
   damageText: { fontSize: 16, color: theme.colors.secondary, marginTop: 12, fontWeight: '600', textAlign: 'center' },
   countdownContainer: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
-  countdownText: { fontSize: 120, fontWeight: 'bold', color: 'white', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 10 }
+  countdownText: { fontSize: 120, fontWeight: 'bold', color: 'white', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 10 },
+  speedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    marginTop: 20,
+    alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  speedIcon: {
+    marginRight: 6,
+  },
+  speedText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.textMain,
+  },
 });
