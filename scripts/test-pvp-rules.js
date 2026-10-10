@@ -334,13 +334,13 @@ async function run() {
     for (const [name, hostCorrect, guestCorrect, hostItem, guestItem, toHost, toGuest] of [
       ['normal', true, false, null, null, 0, 20],
       ['Guest correct', false, true, null, null, 20, 0],
-      ['both correct', true, true, null, null, 20, 20],
+      ['both correct (TIE)', true, true, null, null, 10, 10],
       ['both wrong', false, false, null, null, 0, 0],
       ['POWER', true, false, 'POWER', null, 0, 30],
       ['SHIELD', true, false, null, 'SHIELD', 0, 0],
       ['POWER vs SHIELD', true, false, 'POWER', 'SHIELD', 0, 10],
-      ['both POWER', true, true, 'POWER', 'POWER', 30, 30],
-      ['both SHIELD', true, true, 'SHIELD', 'SHIELD', 0, 0],
+      ['both POWER (TIE)', true, true, 'POWER', 'POWER', 20, 20],
+      ['both SHIELD (TIE)', true, true, 'SHIELD', 'SHIELD', 0, 0],
       ['wrong POWER', false, true, 'POWER', null, 20, 0],
     ]) {
       await test('real Host settlement: ' + name + ' ignores submitted booleans', async room => {

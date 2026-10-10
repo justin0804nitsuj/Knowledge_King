@@ -41,6 +41,69 @@ export function calculateSpeedOutcome(hostSubmittedAt, guestSubmittedAt, hostCor
   };
 }
 
+export function calculateRoundDamage({
+  hostCorrect,
+  guestCorrect,
+  speedOutcome,
+  hostPowerActive,
+  guestPowerActive,
+  hostShieldActive,
+  guestShieldActive
+}) {
+  let hostBaseDamage = 0;
+  let guestBaseDamage = 0;
+
+  if (hostCorrect && guestCorrect) {
+    if (speedOutcome === 'HOST_FASTER') {
+      hostBaseDamage = BASE_DAMAGE;
+      guestBaseDamage = 0;
+    } else if (speedOutcome === 'GUEST_FASTER') {
+      hostBaseDamage = 0;
+      guestBaseDamage = BASE_DAMAGE;
+    } else if (speedOutcome === 'TIE') {
+      hostBaseDamage = 10;
+      guestBaseDamage = 10;
+    }
+  } else if (hostCorrect && !guestCorrect) {
+    hostBaseDamage = BASE_DAMAGE;
+    guestBaseDamage = 0;
+  } else if (!hostCorrect && guestCorrect) {
+    hostBaseDamage = 0;
+    guestBaseDamage = BASE_DAMAGE;
+  } else {
+    hostBaseDamage = 0;
+    guestBaseDamage = 0;
+  }
+
+  const hostPowerBonus = (hostPowerActive && hostBaseDamage > 0) ? PVP_ITEMS[ITEM_TYPES.POWER].bonusDamage : 0;
+  const guestPowerBonus = (guestPowerActive && guestBaseDamage > 0) ? PVP_ITEMS[ITEM_TYPES.POWER].bonusDamage : 0;
+
+  const rawHostOutgoingDamage = hostBaseDamage + hostPowerBonus;
+  const rawGuestOutgoingDamage = guestBaseDamage + guestPowerBonus;
+
+  const hostShieldBlock = hostShieldActive ? PVP_ITEMS[ITEM_TYPES.SHIELD].blockAmount : 0;
+  const guestShieldBlock = guestShieldActive ? PVP_ITEMS[ITEM_TYPES.SHIELD].blockAmount : 0;
+
+  const damageToHost = Math.max(0, rawGuestOutgoingDamage - hostShieldBlock);
+  const damageToGuest = Math.max(0, rawHostOutgoingDamage - guestShieldBlock);
+
+  const hostShieldBlocked = Math.min(rawGuestOutgoingDamage, hostShieldBlock);
+  const guestShieldBlocked = Math.min(rawHostOutgoingDamage, guestShieldBlock);
+
+  return {
+    hostBaseDamage,
+    guestBaseDamage,
+    hostPowerBonus,
+    guestPowerBonus,
+    rawHostOutgoingDamage,
+    rawGuestOutgoingDamage,
+    hostShieldBlocked,
+    guestShieldBlocked,
+    damageToHost,
+    damageToGuest
+  };
+}
+
 function getAnsweringState(roomData, uid, roundIndex) {
   const state = roomData?.matchState;
   if (roomData?.meta?.status !== RoomStatus.IN_BATTLE || !roomData.players?.[uid] ||
@@ -104,33 +167,34 @@ export async function resolveRound(roomCode, hostUid, guestUid, roundIndex) {
     const hostShieldActive = hostItemUse?.itemId === ITEM_TYPES.SHIELD;
     const guestShieldActive = guestItemUse?.itemId === ITEM_TYPES.SHIELD;
 
-    const hostPowerBonus = hostPowerActive && hostCorrect ? PVP_ITEMS[ITEM_TYPES.POWER].bonusDamage : 0;
-    const guestPowerBonus = guestPowerActive && guestCorrect ? PVP_ITEMS[ITEM_TYPES.POWER].bonusDamage : 0;
-
-    const hostBaseDamage = hostCorrect ? BASE_DAMAGE : 0;
-    const guestBaseDamage = guestCorrect ? BASE_DAMAGE : 0;
-
-    let rawHostOutgoingDamage = hostCorrect ? (BASE_DAMAGE + hostPowerBonus) : 0;
-    let rawGuestOutgoingDamage = guestCorrect ? (BASE_DAMAGE + guestPowerBonus) : 0;
-
-    const hostShieldBlock = hostShieldActive ? PVP_ITEMS[ITEM_TYPES.SHIELD].blockAmount : 0;
-    const guestShieldBlock = guestShieldActive ? PVP_ITEMS[ITEM_TYPES.SHIELD].blockAmount : 0;
-
-    const damageToHost = Math.max(0, rawGuestOutgoingDamage - hostShieldBlock);
-    const damageToGuest = Math.max(0, rawHostOutgoingDamage - guestShieldBlock);
-    
-    const hostShieldBlocked = Math.min(rawGuestOutgoingDamage, hostShieldBlock);
-    const guestShieldBlocked = Math.min(rawHostOutgoingDamage, guestShieldBlock);
-
-    let hostHpAfter = Math.max(0, hostHpBefore - damageToHost);
-    let guestHpAfter = Math.max(0, guestHpBefore - damageToGuest);
-
     const speed = calculateSpeedOutcome(
       hostAnswer?.submittedAt,
       guestAnswer?.submittedAt,
       hostCorrect,
       guestCorrect
     );
+
+    const {
+      hostBaseDamage,
+      guestBaseDamage,
+      hostPowerBonus,
+      guestPowerBonus,
+      hostShieldBlocked,
+      guestShieldBlocked,
+      damageToHost,
+      damageToGuest
+    } = calculateRoundDamage({
+      hostCorrect,
+      guestCorrect,
+      speedOutcome: speed.speedOutcome,
+      hostPowerActive,
+      guestPowerActive,
+      hostShieldActive,
+      guestShieldActive
+    });
+
+    let hostHpAfter = Math.max(0, hostHpBefore - damageToHost);
+    let guestHpAfter = Math.max(0, guestHpBefore - damageToGuest);
 
     round.resolution = {
       hostCorrect,

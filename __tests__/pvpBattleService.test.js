@@ -50,10 +50,10 @@ describe('PvP integrity and lockstep settlement', () => {
     roomCode: 'room1', uid: 'guest1', roundIndex, itemId, actionId: 'action1',
   });
   const settle = () => resolveRound('room1', 'host1', 'guest1', 0);
-  const seedAnswers = (hostCorrect = true, guestCorrect = true) => {
+  const seedAnswers = (hostCorrect = true, guestCorrect = true, hostSubmittedAt = 1000, guestSubmittedAt = 1000) => {
     room.matchState.rounds[0] = { answers: {
-      host1: { selectedChoiceId: hostCorrect ? correctChoice : wrongChoice },
-      guest1: { selectedChoiceId: guestCorrect ? correctChoice : wrongChoice },
+      host1: { selectedChoiceId: hostCorrect ? correctChoice : wrongChoice, submittedAt: hostSubmittedAt },
+      guest1: { selectedChoiceId: guestCorrect ? correctChoice : wrongChoice, submittedAt: guestSubmittedAt },
     } };
   };
 
@@ -209,13 +209,13 @@ describe('PvP integrity and lockstep settlement', () => {
   test.each([
     ['normal correct', true, false, null, null, 0, 20],
     ['guest correct', false, true, null, null, 20, 0],
-    ['both correct', true, true, null, null, 20, 20],
+    ['both correct (TIE)', true, true, null, null, 10, 10],
     ['both wrong', false, false, null, null, 0, 0],
     ['POWER correct', true, false, 'POWER', null, 0, 30],
     ['SHIELD vs normal', true, false, null, 'SHIELD', 0, 0],
     ['POWER vs SHIELD', true, false, 'POWER', 'SHIELD', 0, 10],
-    ['both POWER', true, true, 'POWER', 'POWER', 30, 30],
-    ['both SHIELD', true, true, 'SHIELD', 'SHIELD', 0, 0],
+    ['both POWER (TIE)', true, true, 'POWER', 'POWER', 20, 20],
+    ['both SHIELD (TIE)', true, true, 'SHIELD', 'SHIELD', 0, 0],
     ['POWER wrong', false, true, 'POWER', null, 20, 0],
   ])('%s settlement', async (name, hostCorrect, guestCorrect, hostItem, guestItem, toHost, toGuest) => {
     seedAnswers(hostCorrect, guestCorrect);
