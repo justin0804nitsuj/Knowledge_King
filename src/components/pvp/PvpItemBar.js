@@ -70,30 +70,8 @@ export default function PvpItemBar({ items, hp, onUseItem, disabled, disabledRea
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {selectedItem && (
-          <View style={styles.selectionArea}>
-            <View style={styles.descriptionBox}>
-              <Text style={styles.itemName}>{getItemName(selectedItem)}</Text>
-              <Text style={styles.itemDesc}>{getItemDescription(selectedItem)}</Text>
-            </View>
-            <View style={styles.actions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setSelectedItem(null)}>
-                <Text style={styles.cancelText}>{t('pvpItems.cancel', 'Cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.useBtn} onPress={handleUse}>
-                <Text style={styles.useText}>{t('pvpItems.use', 'USE')}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {disabled && disabledReason && !selectedItem && (
-          <View style={styles.disabledBanner}>
-            <Text style={styles.disabledText}>{disabledReason}</Text>
-          </View>
-        )}
-
         <View style={styles.slotsContainer}>
+
           {[ITEM_TYPES.HEAL, ITEM_TYPES.SHIELD, ITEM_TYPES.POWER].map(itemId => {
             const remaining = items?.[itemId]?.remaining || 0;
             // Slot is disabled if item count is zero OR the whole bar is disabled (e.g., after using an item this round)
@@ -128,6 +106,27 @@ export default function PvpItemBar({ items, hp, onUseItem, disabled, disabledRea
             );
           })}
         </View>
+        {selectedItem && !isItemDisabled(selectedItem) && selectedRemaining > 0 && !(selectedItem === ITEM_TYPES.HEAL && hp >= 100) && (
+          <View style={styles.selectionOverlay}>
+            <View style={styles.descriptionBox}>
+              <Text style={styles.itemName}>{getItemName(selectedItem)}</Text>
+              <Text style={styles.itemDesc}>{getItemDescription(selectedItem)}</Text>
+            </View>
+            <View style={styles.actions}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setSelectedItem(null)}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.useBtn} onPress={handleUse}>
+                <Text style={styles.useText}>USE</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+        {disabled && (
+          <View style={styles.disabledOverlay}>
+            <Text style={styles.disabledText}>{disabledReason || 'Unavailable'}</Text>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -141,6 +140,7 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: theme.spacing.medium,
+    position: 'relative',
   },
   slotsContainer: {
     flexDirection: 'row',
@@ -200,16 +200,17 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
-  selectionArea: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  selectionOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     backgroundColor: theme.colors.background,
     padding: theme.spacing.medium,
     borderRadius: 12,
-    marginBottom: theme.spacing.medium,
     borderWidth: 1,
     borderColor: theme.colors.primary,
+    zIndex: 10,
   },
   descriptionBox: {
     flex: 1,
@@ -250,12 +251,17 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
   },
-  disabledBanner: {
+  disabledOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     backgroundColor: theme.colors.background,
     padding: theme.spacing.small,
     borderRadius: 8,
     marginBottom: theme.spacing.medium,
     alignItems: 'center',
+    zIndex: 10,
   },
   disabledText: {
     color: theme.colors.danger,
