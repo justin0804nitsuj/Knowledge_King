@@ -60,7 +60,9 @@ describe('PvP integrity and lockstep settlement', () => {
   test('answer records only the action without dealing damage or advancing', async () => {
     expect((await answer('guest1')).committed).toBe(true);
     expect(room.matchState.rounds[0].answers.guest1).toEqual({
-      selectedChoiceId: correctChoice, submittedAt: 123456789,
+      selectedChoiceId: correctChoice,
+      clientSubmittedAt: expect.any(Number),
+      submittedAt: 123456789,
     });
     expect(room.matchState.players.host1.hp).toBe(100);
     expect(room.matchState.players.guest1.hp).toBe(100);

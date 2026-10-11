@@ -23,7 +23,7 @@ const makeRoom = () => ({
   match: { matchId: 'match1', battleSeed: '12345', rulesetVersion: '1', vocabularyVersion: '1', createdAt: 1, level: 1, questionCount: 10 },
   matchState: { roundIndex: 0, phase: 'ANSWERING', roundStartedAt: Date.now(), players: { hostUid: player(), guestUid: player() } },
 });
-const answer = (selectedChoiceId = 'choice') => ({ selectedChoiceId, submittedAt: Date.now() });
+const answer = (selectedChoiceId = 'choice', clientSubmittedAt = Date.now()) => ({ selectedChoiceId, clientSubmittedAt, submittedAt: Date.now() });
 const itemUse = itemId => ({ itemId, actionId: 'action1', usedAt: 1 });
 const applyItem = (room, uid, itemId, roundIndex = 0) => {
   const state = room.matchState.players[uid];
@@ -479,6 +479,130 @@ async function run() {
       await assertFails(db('guest').ref(roomPath + '/matchState/rounds/0/answers/guestUid').set({
         selectedChoiceId: 'choice1',
         submittedAt: Date.now(),
+      }));
+    });
+
+    // Exact deadline boundary tests (no +400ms grace period)
+    await test('B1. Round 0 answer after 10000ms (at 10001ms) -> DENIED', async room => {
+      room.matchState.roundIndex = 0;
+      room.matchState.roundStartedAt = Date.now() - 10001;
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath + '/matchState/rounds/0/answers/guestUid').set({
+        selectedChoiceId: 'choice1',
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('B2. Round 0 answer at 10400ms (no 400ms grace) -> DENIED', async room => {
+      room.matchState.roundIndex = 0;
+      room.matchState.roundStartedAt = Date.now() - 10400;
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath + '/matchState/rounds/0/answers/guestUid').set({
+        selectedChoiceId: 'choice1',
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('B3. Round 1 answer before 6000ms deadline -> ALLOWED', async room => {
+      room.matchState.roundIndex = 1;
+      room.matchState.roundStartedAt = Date.now();
+      await seed(room);
+      await assertSucceeds(db('guest').ref(roomPath + '/matchState/rounds/1/answers/guestUid').set({
+        selectedChoiceId: 'choice1',
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('B4. Round 1 answer after 6000ms (at 6001ms) -> DENIED', async room => {
+      room.matchState.roundIndex = 1;
+      room.matchState.roundStartedAt = Date.now() - 6001;
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath + '/matchState/rounds/1/answers/guestUid').set({
+        selectedChoiceId: 'choice1',
+        submittedAt: Date.now(),
+      }));
+    });
+
+    await test('B5. Round 1 answer at 6400ms (no 400ms grace) -> DENIED', async room => {
+      room.matchState.roundIndex = 1;
+      room.matchState.roundStartedAt = Date.now() - 6400;
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath + '/matchState/rounds/1/answers/guestUid').set({
+        selectedChoiceId: 'choice1',
+        submittedAt: Date.now(),
+      }));
+    });
+
+    // ----- Phase 11D transit tolerance (500ms) & clientSubmittedAt security tests -----
+    await test('B6. Tap before deadline with server receipt after deadline within 500ms transit -> ALLOWED', async room => {
+      room.matchState.roundIndex = 1;
+      const now = Date.now();
+      // Started 6200ms ago -> deadline was 200ms ago
+      room.matchState.roundStartedAt = now - 6200;
+      await seed(room);
+      // Tap was at 300ms ago (which is 100ms BEFORE deadline: 6200 - 300 = 5900ms <= 6000ms)
+      // And now - 300 >= now - 500 (transit was 300ms <= 500ms)
+      const tapTime = now - 300;
+      await assertSucceeds(db('guest').ref(roomPath + '/matchState/rounds/1/answers/guestUid').set({
+        selectedChoiceId: 'choice1',
+        clientSubmittedAt: tapTime,
+        submittedAt: now,
+      }));
+    });
+
+    await test('B7. Tap after deadline arriving within 500ms -> DENIED', async room => {
+      room.matchState.roundIndex = 1;
+      const now = Date.now();
+      // Started 6200ms ago -> deadline was 200ms ago
+      room.matchState.roundStartedAt = now - 6200;
+      await seed(room);
+      // Tap was at 100ms ago (which is 100ms AFTER deadline: 6200 - 100 = 6100ms > 6000ms)
+      const tapTime = now - 100;
+      await assertFails(db('guest').ref(roomPath + '/matchState/rounds/1/answers/guestUid').set({
+        selectedChoiceId: 'choice1',
+        clientSubmittedAt: tapTime,
+        submittedAt: now,
+      }));
+    });
+
+    await test('B8. clientSubmittedAt older than now - 500ms (transit tolerance exceeded) -> DENIED', async room => {
+      room.matchState.roundIndex = 1;
+      const now = Date.now();
+      room.matchState.roundStartedAt = now - 5000;
+      await seed(room);
+      // Tap timestamp is 600ms older than now
+      const tapTime = now - 600;
+      await assertFails(db('guest').ref(roomPath + '/matchState/rounds/1/answers/guestUid').set({
+        selectedChoiceId: 'choice1',
+        clientSubmittedAt: tapTime,
+        submittedAt: now,
+      }));
+    });
+
+    await test('B9. clientSubmittedAt in the future relative to server now -> DENIED', async room => {
+      room.matchState.roundIndex = 1;
+      const now = Date.now();
+      room.matchState.roundStartedAt = now - 1000;
+      await seed(room);
+      // Tap timestamp is in the future
+      const tapTime = now + 1000;
+      await assertFails(db('guest').ref(roomPath + '/matchState/rounds/1/answers/guestUid').set({
+        selectedChoiceId: 'choice1',
+        clientSubmittedAt: tapTime,
+        submittedAt: now,
+      }));
+    });
+
+    await test('B10. Forged backdated clientSubmittedAt far in past -> DENIED', async room => {
+      room.matchState.roundIndex = 1;
+      const now = Date.now();
+      room.matchState.roundStartedAt = now - 10000;
+      await seed(room);
+      const tapTime = now - 9000;
+      await assertFails(db('guest').ref(roomPath + '/matchState/rounds/1/answers/guestUid').set({
+        selectedChoiceId: 'choice1',
+        clientSubmittedAt: tapTime,
+        submittedAt: now,
       }));
     });
 

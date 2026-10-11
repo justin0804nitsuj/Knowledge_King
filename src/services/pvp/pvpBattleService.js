@@ -117,6 +117,7 @@ function getAnsweringState(roomData, uid, roundIndex) {
 
 export const ROUND_TIME_LIMIT_MS = 6000;
 export const ROUND_PRE_BATTLE_MS = 4000;
+export const SUBMISSION_TRANSIT_TOLERANCE_MS = 500;
 
 export function getRoundDeadline(roundStartedAt, roundIndex) {
   if (typeof roundStartedAt !== 'number') return null;
@@ -142,7 +143,8 @@ export async function startRoundTimer(roomCode, roundIndex = 0) {
   }, { applyLocally: false });
 }
 
-export async function submitAnswer(roomCode, uid, roundIndex, choiceId) {
+export async function submitAnswer(roomCode, uid, roundIndex, choiceId, clientSubmittedAt) {
+  const tapTime = typeof clientSubmittedAt === 'number' ? clientSubmittedAt : getServerNow();
   const roomRef = ref(db, `rooms/${roomCode}`);
   return runTransaction(roomRef, (roomData) => {
     const state = getAnsweringState(roomData, uid, roundIndex);
@@ -150,8 +152,7 @@ export async function submitAnswer(roomCode, uid, roundIndex, choiceId) {
     if (state.rounds?.[roundIndex]?.answers?.[uid]) return;
 
     const deadline = getRoundDeadline(state.roundStartedAt, roundIndex);
-    const now = getServerNow();
-    if (typeof deadline === 'number' && now > deadline) {
+    if (typeof deadline === 'number' && tapTime > deadline) {
       return; // answer rejected after deadline
     }
 
@@ -160,6 +161,7 @@ export async function submitAnswer(roomCode, uid, roundIndex, choiceId) {
     if (!state.rounds[roundIndex].answers) state.rounds[roundIndex].answers = {};
     state.rounds[roundIndex].answers[uid] = {
       selectedChoiceId: choiceId,
+      clientSubmittedAt: tapTime,
       submittedAt: serverTimestamp()
     };
     return roomData;
@@ -312,11 +314,14 @@ export async function resolveRound(roomCode, hostUid, guestUid, roundIndex) {
     const hostShieldActive = hostItemUse?.itemId === ITEM_TYPES.SHIELD;
     const guestShieldActive = guestItemUse?.itemId === ITEM_TYPES.SHIELD;
 
+    const hostSubmittedAt = finalHostAnswer?.clientSubmittedAt ?? finalHostAnswer?.submittedAt;
+    const guestSubmittedAt = finalGuestAnswer?.clientSubmittedAt ?? finalGuestAnswer?.submittedAt;
+
     const speed = (hostTimedOut || guestTimedOut)
       ? { speedOutcome: 'NONE', speedDiffMs: 0 }
       : calculateSpeedOutcome(
-          finalHostAnswer?.submittedAt,
-          finalGuestAnswer?.submittedAt,
+          hostSubmittedAt,
+          guestSubmittedAt,
           hostCorrect,
           guestCorrect
         );

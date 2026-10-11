@@ -82,8 +82,15 @@ jest.mock('../src/services/pvp/pvpBattleService', () => ({
   submitTimeout: jest.fn(() => Promise.resolve({ committed: true })),
   ROUND_TIME_LIMIT_MS: 6000,
   ROUND_PRE_BATTLE_MS: 4000,
-  getRoundDeadline: jest.fn((started, idx) => (typeof started === 'number' ? started + 6000 : null)),
-  getRoundAnsweringStart: jest.fn((started, idx) => started),
+  getRoundDeadline: jest.fn((started, idx) => {
+    if (typeof started !== 'number') return null;
+    const preBattleMs = idx === 0 ? 4000 : 0;
+    return started + preBattleMs + 6000;
+  }),
+  getRoundAnsweringStart: jest.fn((started, idx) => {
+    if (typeof started !== 'number') return null;
+    return idx === 0 ? started + 4000 : started;
+  }),
 }));
 
 // Mock dependencies

@@ -207,6 +207,7 @@ export default {
     potionsUsed: 'Potions used',
     correctLabel: 'Correct',
     wrongLabel: 'Wrong',
+    timeoutLabel: 'Timeout',
     powerBonus: 'Power +{{bonus}}',
     shieldBlocked: 'Shield blocked {{blocked}}',
     shieldBadge: 'Shield',

@@ -207,6 +207,7 @@ export default {
     potionsUsed: '使用藥水數',
     correctLabel: '正確',
     wrongLabel: '錯誤',
+    timeoutLabel: '超時',
     powerBonus: '攻擊 +{{bonus}}',
     shieldBlocked: '護盾格擋 {{blocked}}',
     shieldBadge: '護盾',

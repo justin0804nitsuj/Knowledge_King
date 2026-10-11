@@ -37,18 +37,13 @@ export default function WaitingRoomScreen({ navigation }) {
   const navigatedMatchIdRef = useRef(null);
 
   useEffect(() => {
-    let timer;
     if (status === RoomStatus.IN_BATTLE && room?.match) {
       if (navigatedMatchIdRef.current !== room.match.matchId) {
         navigatedMatchIdRef.current = room.match.matchId;
         setStartingMatch(true);
-        // Short local delay for polish, Firebase remains authoritative
-        timer = setTimeout(() => {
-          navigation.navigate('PvpBattle');
-        }, 800);
+        navigation.navigate('PvpBattle');
       }
     }
-    return () => { if (timer) clearTimeout(timer); };
   }, [status, room?.match, navigation]);
 
   useEffect(() => {
