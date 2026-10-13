@@ -3,6 +3,12 @@ import { createRoom as serviceCreateRoom, joinRoom as serviceJoinRoom, leaveRoom
 import { useAuth } from './AuthContext';
 import { RoomStatus } from '../domain/pvp/roomConstants';
 import { DepartureIntent, performExplicitDeparture, createDepartureSession } from '../domain/pvp/departure';
+import {
+  getSavedPvpLoadout,
+  savePvpLoadout,
+  validatePvpLoadout,
+  getDefaultPvpLoadout,
+} from '../domain/pvp/pvpLoadout';
 
 const PvpRoomContext = createContext(null);
 
@@ -11,6 +17,26 @@ export function PvpRoomProvider({ children }) {
   const [roomId, setRoomId] = useState(null);
   const [room, setRoom] = useState(null);
   const [isLoadingRoom, setIsLoadingRoom] = useState(false);
+  const [currentLoadout, setCurrentLoadout] = useState(() => getDefaultPvpLoadout());
+  const [lockedLoadout, setLockedLoadout] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    getSavedPvpLoadout().then((saved) => {
+      if (mounted) {
+        setCurrentLoadout(saved);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const saveLoadout = useCallback(async (newLoadout) => {
+    await savePvpLoadout(newLoadout);
+    setCurrentLoadout(newLoadout);
+  }, []);
+
   // Local-only departure intent. Never written to Firebase.
   const departureIntentRef = useRef(DepartureIntent.NONE);
   const setDepartureIntent = useCallback((intent) => {
@@ -114,6 +140,7 @@ export function PvpRoomProvider({ children }) {
   // Explicit local leave/close. Throws on failure (room stays active, intent reset).
   const leaveRoom = useCallback(async () => {
     if (!roomId || !user) return;
+    setLockedLoadout(null);
     await performExplicitDeparture({
       isHost,
       setIntent: setDepartureIntent,
@@ -133,6 +160,9 @@ export function PvpRoomProvider({ children }) {
     status,
     isHost,
     isLoadingRoom,
+    currentLoadout,
+    lockedLoadout,
+    saveLoadout,
     createRoom,
     joinRoom,
     leaveRoom,
@@ -140,6 +170,12 @@ export function PvpRoomProvider({ children }) {
     getDepartureSession,
     setReady: async (isReady) => {
       if (roomId && user) {
+        if (isReady) {
+          const snapshot = validatePvpLoadout(currentLoadout) ? { ...currentLoadout } : getDefaultPvpLoadout();
+          setLockedLoadout(snapshot);
+        } else {
+          setLockedLoadout(null);
+        }
         await serviceSetPlayerReady(roomId, user, isReady);
       }
     },

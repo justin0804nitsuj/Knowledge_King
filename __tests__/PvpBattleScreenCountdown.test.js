@@ -235,4 +235,84 @@ describe('PvpBattleScreen - Countdown Layout & Visibility', () => {
     act(() => { subscriber(updated); });
     expect(component.root.findAllByType(PvpHealthBar)[0].props.hp).toBe(80);
   });
+
+  test('A. LOADOUT_REVEAL with only local reveal present -> no question content rendered', () => {
+    const revealState = {
+      roundIndex: 0,
+      phase: 'LOADOUT_REVEAL',
+      revealedLoadouts: {
+        host1: { HEAL: 2, SHIELD: 1, POWER: 1 }
+      },
+      players: {
+        host1: { hp: 100, score: 0, items: { HEAL: { remaining: 2 }, SHIELD: { remaining: 1 }, POWER: { remaining: 1 } } },
+        guest1: { hp: 100, score: 0, items: { HEAL: { remaining: 2 }, SHIELD: { remaining: 1 }, POWER: { remaining: 1 } } },
+      }
+    };
+    subscribeToMatchState.mockImplementation((id, callback) => {
+      callback(revealState);
+      return stopListener;
+    });
+    act(() => { component = renderer.create(<PvpBattleScreen navigation={{}} />); });
+    const root = component.root;
+    expect(root.findByProps({ testID: 'pvpLoadoutRevealOverlay' })).toBeDefined();
+    expect(root.findByProps({ testID: 'revealOpponentSyncing' })).toBeDefined();
+    expect(root.findAllByType(ScrollView)).toHaveLength(0);
+    expect(root.findAllByProps({ testID: 'pvpRoundTimerBadge' })).toHaveLength(0);
+    expect(root.findAllByType(PvpItemBar)).toHaveLength(0);
+  });
+
+  test('B. LOADOUT_REVEAL with both reveals present -> no question content rendered', () => {
+    const revealState = {
+      roundIndex: 0,
+      phase: 'LOADOUT_REVEAL',
+      revealedLoadouts: {
+        host1: { HEAL: 1, SHIELD: 1, POWER: 2 },
+        guest1: { HEAL: 2, SHIELD: 2, POWER: 0 }
+      },
+      players: {
+        host1: { hp: 100, score: 0, items: { HEAL: { remaining: 1 }, SHIELD: { remaining: 1 }, POWER: { remaining: 2 } } },
+        guest1: { hp: 100, score: 0, items: { HEAL: { remaining: 2 }, SHIELD: { remaining: 2 }, POWER: { remaining: 0 } } },
+      }
+    };
+    subscribeToMatchState.mockImplementation((id, callback) => {
+      callback(revealState);
+      return stopListener;
+    });
+    act(() => { component = renderer.create(<PvpBattleScreen navigation={{}} />); });
+    const root = component.root;
+    expect(root.findByProps({ testID: 'pvpLoadoutRevealOverlay' })).toBeDefined();
+    expect(root.findByProps({ testID: 'revealLocalDeck' })).toBeDefined();
+    expect(root.findByProps({ testID: 'revealOpponentDeck' })).toBeDefined();
+    expect(root.findAllByType(ScrollView)).toHaveLength(0);
+    expect(root.findAllByProps({ testID: 'pvpRoundTimerBadge' })).toHaveLength(0);
+    expect(root.findAllByType(PvpItemBar)).toHaveLength(0);
+  });
+
+  test('C & D. Round 0 countdown 3/2/1/GO has hidden question, then answer window begins at 6.0', () => {
+    act(() => { component = renderer.create(<PvpBattleScreen navigation={{}} />); });
+    const root = component.root;
+    const questionContainer = root.findByType(ScrollView);
+
+    // C: During countdown (step 3), question container has opacity: 0 and choices are disabled
+    expect(StyleSheet.flatten(questionContainer.props.style).opacity).toBe(0);
+    expect(questionContainer.props.pointerEvents).toBe('none');
+
+    // Advance 1s -> 2
+    act(() => { jest.advanceTimersByTime(1000); });
+    expect(StyleSheet.flatten(questionContainer.props.style).opacity).toBe(0);
+
+    // Advance 1s -> 1
+    act(() => { jest.advanceTimersByTime(1000); });
+    expect(StyleSheet.flatten(questionContainer.props.style).opacity).toBe(0);
+
+    // Advance 1s -> GO!
+    act(() => { jest.advanceTimersByTime(1000); });
+    expect(StyleSheet.flatten(questionContainer.props.style).opacity).toBe(0);
+
+    // D: Advance 1s -> 6.0 second answer window begins
+    act(() => { jest.advanceTimersByTime(1000); });
+    expect(StyleSheet.flatten(questionContainer.props.style).opacity).not.toBe(0);
+    expect(questionContainer.props.pointerEvents).toBe('auto');
+    expect(root.findByProps({ testID: 'pvpRoundTimerBadge' })).toBeDefined();
+  });
 });

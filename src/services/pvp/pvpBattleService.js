@@ -1,9 +1,10 @@
-import { ref, runTransaction, onValue, serverTimestamp } from 'firebase/database';
+import { ref, set, runTransaction, onValue, serverTimestamp } from 'firebase/database';
 import { db } from '../firebase/firebaseDatabase';
 import { getServerNow } from '../firebase/serverTimeService';
 import { RoomStatus } from '../../domain/pvp/roomConstants';
-import { PVP_ITEMS, ITEM_TYPES } from '../../domain/pvp/pvpItems';
+import { PVP_ITEMS, ITEM_TYPES, getInitialItemsState } from '../../domain/pvp/pvpItems';
 import { createPvpQuestions } from '../../domain/pvp/pvpQuestions';
+import { validatePvpLoadout } from '../../domain/pvp/pvpLoadout';
 
 const MAX_HP = 100;
 const BASE_DAMAGE = 20;
@@ -515,4 +516,61 @@ export function subscribeToMatchState(roomCode, onUpdate) {
     const data = snapshot.val();
     onUpdate(data);
   });
+}
+
+export async function publishRevealedLoadout({ roomCode, uid, loadout }) {
+  if (!validatePvpLoadout(loadout)) {
+    throw new Error('Invalid loadout');
+  }
+  const loadoutRef = ref(db, `rooms/${roomCode}/matchState/revealedLoadouts/${uid}`);
+  return set(loadoutRef, {
+    HEAL: loadout.HEAL,
+    SHIELD: loadout.SHIELD,
+    POWER: loadout.POWER,
+  });
+}
+
+export async function startFirstRound({ roomCode, hostUid, guestUid }) {
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  return runTransaction(roomRef, (roomData) => {
+    if (!roomData || !roomData.matchState) return;
+    if (roomData.meta?.hostUid !== hostUid) return;
+    if (roomData.matchState.phase !== 'LOADOUT_REVEAL') return;
+
+    const revealed = roomData.matchState.revealedLoadouts;
+    if (!revealed) return;
+    const hostLoadout = revealed[hostUid];
+    const guestLoadout = revealed[guestUid];
+
+    if (!validatePvpLoadout(hostLoadout) || !validatePvpLoadout(guestLoadout)) {
+      return;
+    }
+
+    roomData.matchState.phase = 'ANSWERING';
+    roomData.matchState.roundStartedAt = serverTimestamp();
+
+    if (!roomData.matchState.players) {
+      roomData.matchState.players = {};
+    }
+    if (roomData.matchState.players[hostUid]) {
+      roomData.matchState.players[hostUid].items = getInitialItemsState(hostLoadout);
+    }
+    if (roomData.matchState.players[guestUid]) {
+      roomData.matchState.players[guestUid].items = getInitialItemsState(guestLoadout);
+    }
+
+    return roomData;
+  }, { applyLocally: false });
+}
+
+export async function cancelMatchOnRevealTimeout({ roomCode, hostUid }) {
+  const roomRef = ref(db, `rooms/${roomCode}`);
+  return runTransaction(roomRef, (roomData) => {
+    if (!roomData) return;
+    if (roomData.meta?.hostUid !== hostUid) return;
+    if (roomData.matchState?.phase !== 'LOADOUT_REVEAL') return;
+
+    roomData.meta.status = RoomStatus.CANCELLED;
+    return roomData;
+  }, { applyLocally: false });
 }

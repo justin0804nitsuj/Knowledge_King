@@ -9,14 +9,51 @@ import { PlayerRole, RoomStatus } from '../domain/pvp/roomConstants';
 import { processRoomGone, processGuestSnapshot } from '../domain/pvp/departure';
 import { theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
+import LoadoutEditorModal from '../components/pvp/LoadoutEditorModal';
+import { loadoutToCardList } from '../domain/pvp/pvpLoadout';
+import { ITEM_TYPES } from '../domain/pvp/pvpItems';
+
+function getSkillIcon(skill) {
+  switch (skill) {
+    case ITEM_TYPES.HEAL: return 'medkit';
+    case ITEM_TYPES.SHIELD: return 'shield';
+    case ITEM_TYPES.POWER: return 'flash';
+    default: return 'help-circle';
+  }
+}
+
+function getSkillColor(skill) {
+  switch (skill) {
+    case ITEM_TYPES.HEAL: return '#10B981';
+    case ITEM_TYPES.SHIELD: return '#3B82F6';
+    case ITEM_TYPES.POWER: return '#F59E0B';
+    default: return '#9CA3AF';
+  }
+}
 
 const devLog = (msg) => { if (__DEV__) console.log(msg); };
 
 export default function WaitingRoomScreen({ navigation }) {
   const { t } = useTranslation();
-  const { roomId, room, role, isHost, isLoadingRoom, leaveRoom, status, getDepartureIntent, getDepartureSession, setReady, startMatch } = usePvpRoom();
+  const {
+    roomId,
+    room,
+    role,
+    isHost,
+    isLoadingRoom,
+    leaveRoom,
+    status,
+    getDepartureIntent,
+    getDepartureSession,
+    setReady,
+    startMatch,
+    currentLoadout,
+    lockedLoadout,
+    saveLoadout,
+  } = usePvpRoom();
   const { isOnline } = useOnline();
   const [copied, setCopied] = useState(false);
+  const [editorVisible, setEditorVisible] = useState(false);
   
   const [startingMatch, setStartingMatch] = useState(false);
 
@@ -187,6 +224,9 @@ export default function WaitingRoomScreen({ navigation }) {
       outputRange: [1, 1.05, 1]
     });
 
+    const isLocalCard = isHost ? isHostCard : !isHostCard;
+    const activeLocalLoadout = lockedLoadout || currentLoadout;
+
     return (
       <Animated.View style={[styles.playerCard, { transform: [{ scale: cardScale }] }, isReady && styles.playerCardReady]}>
         <View style={styles.roleBadge}>
@@ -215,6 +255,34 @@ export default function WaitingRoomScreen({ navigation }) {
             <Text style={[styles.readyBadgeText, isReady && styles.readyBadgeTextActive]}>
               {isReady ? t('arena.ready', 'Ready') : t('arena.notReady', 'Not Ready')}
             </Text>
+          </View>
+        )}
+
+        {isLocalCard && (
+          <View style={styles.localLoadoutWrapper} testID="waitingRoomLocalLoadout">
+            <Text style={styles.loadoutTitleText}>{t('pvpLoadout.yourDeck', 'Your Loadout')}</Text>
+            <View style={styles.chipsRow}>
+              {loadoutToCardList(activeLocalLoadout).map((card, idx) => (
+                <View key={`wr-chip-${idx}`} style={[styles.miniChip, { borderColor: getSkillColor(card) }]}>
+                  <Ionicons name={getSkillIcon(card)} size={13} color={getSkillColor(card)} />
+                </View>
+              ))}
+            </View>
+            {!myReady ? (
+              <TouchableOpacity
+                style={styles.editLoadoutSmallBtn}
+                onPress={() => setEditorVisible(true)}
+                testID="waitingRoomEditLoadoutBtn"
+              >
+                <Ionicons name="create-outline" size={12} color={theme.colors.primary} style={{ marginRight: 3 }} />
+                <Text style={styles.editLoadoutSmallText}>{t('pvpLoadout.edit', 'Edit')}</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.lockedBadge}>
+                <Ionicons name="lock-closed" size={10} color={theme.colors.textMuted} style={{ marginRight: 2 }} />
+                <Text style={styles.lockedText}>{t('pvpLoadout.deckLocked', 'Locked')}</Text>
+              </View>
+            )}
           </View>
         )}
       </Animated.View>
@@ -298,6 +366,13 @@ export default function WaitingRoomScreen({ navigation }) {
           <Text style={styles.overlayText}>{t('arena.battleStarting', 'Battle Starting...')}</Text>
         </View>
       )}
+
+      <LoadoutEditorModal
+        visible={editorVisible}
+        initialLoadout={currentLoadout}
+        onSave={saveLoadout}
+        onClose={() => setEditorVisible(false)}
+      />
     </View>
   );
 }
@@ -543,5 +618,62 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 16,
     letterSpacing: 1,
+  },
+  localLoadoutWrapper: {
+    marginTop: 10,
+    alignItems: 'center',
+    width: '100%',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  loadoutTitleText: {
+    fontSize: 11,
+    color: theme.colors.textMuted,
+    fontWeight: 'bold',
+    marginBottom: 6,
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  miniChip: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 2,
+  },
+  editLoadoutSmallBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    marginTop: 2,
+  },
+  editLoadoutSmallText: {
+    fontSize: 11,
+    color: theme.colors.primary,
+    fontWeight: 'bold',
+  },
+  lockedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    marginTop: 2,
+  },
+  lockedText: {
+    fontSize: 10,
+    color: theme.colors.textMuted,
+    fontWeight: 'bold',
   },
 });

@@ -73,7 +73,7 @@ export default function PvpItemBar({ items, hp, onUseItem, disabled, disabledRea
         <View style={styles.slotsContainer}>
 
           {[ITEM_TYPES.HEAL, ITEM_TYPES.SHIELD, ITEM_TYPES.POWER].map(itemId => {
-            const remaining = items?.[itemId]?.remaining || 0;
+            const remaining = items?.[itemId]?.remaining ?? 0;
             // Slot is disabled if item count is zero OR the whole bar is disabled (e.g., after using an item this round)
             const slotDisabled = isItemDisabled(itemId) || disabled;
             const isSelected = selectedItem === itemId;
@@ -88,6 +88,7 @@ export default function PvpItemBar({ items, hp, onUseItem, disabled, disabledRea
                 ]}
                 disabled={slotDisabled}
                 onPress={() => handleSelect(itemId)}
+                testID={`pvpItemSlot_${itemId}`}
               >
                 <View style={styles.iconContainer}>
                   <Ionicons 
@@ -96,11 +97,14 @@ export default function PvpItemBar({ items, hp, onUseItem, disabled, disabledRea
                     color={slotDisabled ? theme.colors.textMuted : (isSelected ? 'white' : theme.colors.primary)} 
                   />
                 </View>
-                <Text style={[styles.slotName, slotDisabled && styles.textDisabled, isSelected && styles.textSelected]}>
+                <Text style={[styles.slotName, slotDisabled && styles.textDisabled, isSelected && styles.textSelected]} numberOfLines={1}>
                   {getItemName(itemId).split(' ')[0]}
                 </Text>
-                <View style={[styles.badge, remaining <= 0 && styles.badgeEmpty]}>
-                  <Text style={styles.badgeText}>×{remaining}</Text>
+                <View
+                  style={[styles.badge, remaining <= 0 && styles.badgeEmpty]}
+                  testID={`pvpItemBadge_${itemId}`}
+                >
+                  <Text style={styles.badgeText} testID={`pvpItemCount_${itemId}`}>×{remaining}</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -122,9 +126,9 @@ export default function PvpItemBar({ items, hp, onUseItem, disabled, disabledRea
             </View>
           </View>
         )}
-        {disabled && (
+        {disabled && Boolean(disabledReason) && (
           <View style={styles.disabledOverlay}>
-            <Text style={styles.disabledText}>{disabledReason || 'Unavailable'}</Text>
+            <Text style={styles.disabledText}>{disabledReason}</Text>
           </View>
         )}
       </View>
@@ -146,6 +150,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
+    overflow: 'visible',
   },
   slot: {
     flex: 1,
@@ -156,13 +161,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     borderColor: 'transparent',
+    overflow: 'visible',
+    position: 'relative',
   },
   slotSelected: {
     backgroundColor: theme.colors.primary,
     borderColor: theme.colors.primary,
   },
   slotDisabled: {
-    opacity: 0.5,
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
   },
   iconContainer: {
     marginBottom: 4,
@@ -189,8 +196,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 4,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: theme.colors.card,
+    zIndex: 10,
+    elevation: 3,
   },
   badgeEmpty: {
     backgroundColor: theme.colors.textMuted,

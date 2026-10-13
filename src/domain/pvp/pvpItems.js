@@ -22,10 +22,20 @@ export const PVP_ITEMS = {
   }
 };
 
-export function getInitialItemsState() {
+export function getInitialItemsState(loadout) {
+  const healCount = (loadout && typeof loadout[ITEM_TYPES.HEAL] === 'number')
+    ? loadout[ITEM_TYPES.HEAL]
+    : PVP_ITEMS[ITEM_TYPES.HEAL].startingCount;
+  const shieldCount = (loadout && typeof loadout[ITEM_TYPES.SHIELD] === 'number')
+    ? loadout[ITEM_TYPES.SHIELD]
+    : PVP_ITEMS[ITEM_TYPES.SHIELD].startingCount;
+  const powerCount = (loadout && typeof loadout[ITEM_TYPES.POWER] === 'number')
+    ? loadout[ITEM_TYPES.POWER]
+    : PVP_ITEMS[ITEM_TYPES.POWER].startingCount;
+
   return {
-    [ITEM_TYPES.HEAL]: { remaining: PVP_ITEMS[ITEM_TYPES.HEAL].startingCount },
-    [ITEM_TYPES.SHIELD]: { remaining: PVP_ITEMS[ITEM_TYPES.SHIELD].startingCount },
-    [ITEM_TYPES.POWER]: { remaining: PVP_ITEMS[ITEM_TYPES.POWER].startingCount }
+    [ITEM_TYPES.HEAL]: { remaining: healCount },
+    [ITEM_TYPES.SHIELD]: { remaining: shieldCount },
+    [ITEM_TYPES.POWER]: { remaining: powerCount }
   };
 }

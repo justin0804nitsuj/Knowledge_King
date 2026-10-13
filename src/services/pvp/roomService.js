@@ -343,8 +343,8 @@ export async function startMatch(roomCode, user) {
       
       currentData.matchState = {
         roundIndex: 0,
-        phase: 'ANSWERING',
-        roundStartedAt: serverTimestamp(),
+        phase: 'LOADOUT_REVEAL',
+        revealedLoadouts: {},
         players: {
           [hostUid]: getInitialState(),
           [guestUid]: getInitialState()

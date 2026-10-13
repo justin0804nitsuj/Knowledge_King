@@ -6,13 +6,30 @@ import { useOnline } from '../context/OnlineContext';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
+import LoadoutEditorModal from '../components/pvp/LoadoutEditorModal';
+import { loadoutToCardList, TOTAL_DECK_SIZE } from '../domain/pvp/pvpLoadout';
+import { ITEM_TYPES, PVP_ITEMS } from '../domain/pvp/pvpItems';
+
+function getSkillMeta(skill, t) {
+  switch (skill) {
+    case ITEM_TYPES.HEAL:
+      return { icon: 'medkit', color: '#10B981', name: t('pvpItems.healName', 'Heal') };
+    case ITEM_TYPES.SHIELD:
+      return { icon: 'shield', color: '#3B82F6', name: t('pvpItems.shieldName', 'Shield') };
+    case ITEM_TYPES.POWER:
+      return { icon: 'flash', color: '#F59E0B', name: t('pvpItems.powerName', 'Power') };
+    default:
+      return { icon: 'help-circle', color: '#9CA3AF', name: skill };
+  }
+}
 
 export default function ArenaScreen({ navigation }) {
   const { isSignedIn, signInWithGoogle } = useAuth();
   const { isOnline } = useOnline();
-  const { createRoom, joinRoom } = usePvpRoom();
+  const { createRoom, joinRoom, currentLoadout, saveLoadout } = usePvpRoom();
   const { t } = useTranslation();
   const [isCreating, setIsCreating] = useState(false);
+  const [editorVisible, setEditorVisible] = useState(false);
   
   // Join Room State
   const [code, setCode] = useState('');
@@ -110,6 +127,39 @@ export default function ArenaScreen({ navigation }) {
           </View>
         ) : (
           <>
+            <View style={[styles.card, styles.loadoutCard]}>
+              <View style={styles.loadoutHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="layers" size={22} color={theme.colors.secondary} style={{ marginRight: 8 }} />
+                  <Text style={styles.loadoutTitle}>{t('pvpLoadout.title', 'Battle Loadout')}</Text>
+                </View>
+                <Text style={styles.loadoutCount}>
+                  {t('pvpLoadout.deckCount', { count: TOTAL_DECK_SIZE, total: TOTAL_DECK_SIZE })}
+                </Text>
+              </View>
+
+              <View style={styles.loadoutSlotsRow}>
+                {loadoutToCardList(currentLoadout).map((card, idx) => {
+                  const meta = getSkillMeta(card, t);
+                  return (
+                    <View key={`arena-card-${idx}`} style={[styles.loadoutSlot, { borderColor: meta.color, backgroundColor: `${meta.color}15` }]}>
+                      <Ionicons name={meta.icon} size={18} color={meta.color} />
+                      <Text style={[styles.loadoutSlotText, { color: meta.color }]}>{meta.name.split(' ')[0]}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+
+              <TouchableOpacity
+                style={styles.editLoadoutBtn}
+                onPress={() => setEditorVisible(true)}
+                testID="arenaEditLoadoutBtn"
+              >
+                <Ionicons name="create-outline" size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
+                <Text style={styles.editLoadoutBtnText}>{t('pvpLoadout.edit', 'Edit Deck')}</Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={[styles.card, styles.createCard]}>
               <View style={styles.cardHeader}>
                 <Ionicons name="add-circle" size={24} color={theme.colors.primary} />
@@ -179,6 +229,13 @@ export default function ArenaScreen({ navigation }) {
           </>
         )}
       </ScrollView>
+
+      <LoadoutEditorModal
+        visible={editorVisible}
+        initialLoadout={currentLoadout}
+        onSave={saveLoadout}
+        onClose={() => setEditorVisible(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -339,6 +396,61 @@ const styles = StyleSheet.create({
   errorText: {
     color: theme.colors.danger,
     marginLeft: 6,
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  loadoutCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: theme.colors.secondary,
+  },
+  loadoutHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  loadoutTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.colors.textMain,
+  },
+  loadoutCount: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: theme.colors.secondary,
+  },
+  loadoutSlotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  loadoutSlot: {
+    flex: 1,
+    height: 58,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    marginHorizontal: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 2,
+  },
+  loadoutSlotText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginTop: 2,
+  },
+  editLoadoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    borderRadius: 10,
+    paddingVertical: 10,
+  },
+  editLoadoutBtnText: {
+    color: theme.colors.primary,
     fontSize: 14,
     fontWeight: 'bold',
   },

@@ -14,6 +14,9 @@ import {
   submitTimeout,
   getRoundDeadline,
   getRoundAnsweringStart,
+  publishRevealedLoadout,
+  startFirstRound,
+  cancelMatchOnRevealTimeout,
   ROUND_TIME_LIMIT_MS,
   ROUND_PRE_BATTLE_MS
 } from '../services/pvp/pvpBattleService';
@@ -26,6 +29,38 @@ import { Ionicons } from '@expo/vector-icons';
 import { ITEM_TYPES } from '../domain/pvp/pvpItems';
 import PvpActiveEffectBadge from '../components/pvp/PvpActiveEffectBadge';
 import { gameFeedback } from '../services/feedback/gameFeedback';
+import {
+  loadoutToCardList,
+  validatePvpLoadout,
+  getDefaultPvpLoadout
+} from '../domain/pvp/pvpLoadout';
+
+function getRevealSkillName(skill, t) {
+  switch (skill) {
+    case ITEM_TYPES.HEAL: return t('pvpItems.healName', 'Healing Potion');
+    case ITEM_TYPES.SHIELD: return t('pvpItems.shieldName', 'Shield');
+    case ITEM_TYPES.POWER: return t('pvpItems.powerName', 'Power Boost');
+    default: return skill;
+  }
+}
+
+function getRevealSkillColor(skill) {
+  switch (skill) {
+    case ITEM_TYPES.HEAL: return '#10B981';
+    case ITEM_TYPES.SHIELD: return '#3B82F6';
+    case ITEM_TYPES.POWER: return '#F59E0B';
+    default: return '#9CA3AF';
+  }
+}
+
+function getRevealSkillIcon(skill) {
+  switch (skill) {
+    case ITEM_TYPES.HEAL: return 'medkit';
+    case ITEM_TYPES.SHIELD: return 'shield';
+    case ITEM_TYPES.POWER: return 'flash';
+    default: return 'help-circle';
+  }
+}
 
 export async function executeHostDeadlineAutoResolve({
   roomId,
@@ -201,7 +236,7 @@ export function processSubmitAnswerError({
 }
 
 export default function PvpBattleScreen({ navigation }) {
-  const { roomId, room, isHost, user } = usePvpRoom();
+  const { roomId, room, isHost, user, currentLoadout, lockedLoadout } = usePvpRoom();
   const { t } = useTranslation();
 
   const [phase, setPhase] = useState('LOADING_MATCH');
@@ -225,6 +260,8 @@ export default function PvpBattleScreen({ navigation }) {
   const lastResultRoundRef = useRef(-1);
   const lastAlertedSecondRef = useRef(null);
   const submittedRoundsRef = useRef(new Set());
+  const publishedRevealRef = useRef(false);
+  const firstRoundTriggeredRef = useRef(false);
 
   useEffect(() => {
     initServerTimeOffset();
@@ -284,6 +321,71 @@ export default function PvpBattleScreen({ navigation }) {
   const activeShield = isRoundUnresolved && myItemUse?.itemId === ITEM_TYPES.SHIELD;
   const activePower = isRoundUnresolved && myItemUse?.itemId === ITEM_TYPES.POWER;
   const currentQuestion = questions?.[roundIndex];
+  const myDisplayName = room?.players?.[myUid]?.displayName || t('pvp.you');
+  const oppDisplayName = room?.players?.[opponentUid]?.displayName || t('pvp.opponent');
+
+  const revealedHost = matchState?.revealedLoadouts?.[hostUid];
+  const revealedGuest = matchState?.revealedLoadouts?.[guestUid];
+  const bothRevealed = Boolean(
+    revealedHost &&
+    revealedGuest &&
+    validatePvpLoadout(revealedHost) &&
+    validatePvpLoadout(revealedGuest)
+  );
+
+  const myRevealedDeck = myUid === hostUid ? revealedHost : revealedGuest;
+  const oppRevealedDeck = myUid === hostUid ? revealedGuest : revealedHost;
+
+  // Publish locked loadout upon entering LOADOUT_REVEAL
+  useEffect(() => {
+    if (matchPhase === 'LOADOUT_REVEAL' && roomId && myUid) {
+      if (!publishedRevealRef.current && !matchState?.revealedLoadouts?.[myUid]) {
+        publishedRevealRef.current = true;
+        const myDeck = lockedLoadout || currentLoadout || getDefaultPvpLoadout();
+        publishRevealedLoadout({
+          roomCode: roomId,
+          uid: myUid,
+          loadout: myDeck,
+        }).catch((err) => {
+          if (__DEV__) console.error('[PvP] Failed to publish loadout reveal:', err);
+        });
+      }
+    }
+  }, [matchPhase, roomId, myUid, lockedLoadout, currentLoadout, matchState?.revealedLoadouts]);
+
+  // Host starts first round ~3s after both reveals exist
+  useEffect(() => {
+    if (matchPhase === 'LOADOUT_REVEAL' && isHost && bothRevealed && !firstRoundTriggeredRef.current) {
+      firstRoundTriggeredRef.current = true;
+      const timer = setTimeout(async () => {
+        try {
+          await startFirstRound({ roomCode: roomId, hostUid, guestUid });
+        } catch (err) {
+          if (__DEV__) console.error('[PvP] Failed to start first round after reveal:', err);
+        }
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [matchPhase, isHost, bothRevealed, roomId, hostUid, guestUid]);
+
+  // Reveal liveness guard (10 seconds timeout)
+  useEffect(() => {
+    if (matchPhase === 'LOADOUT_REVEAL') {
+      const timeoutTimer = setTimeout(() => {
+        if (!bothRevealed) {
+          Alert.alert(
+            t('pvpLoadout.syncFailed', 'Skill loadout sync failed'),
+            t('pvpLoadout.syncFailedMessage', 'Failed to sync skill decks. Match cancelled.')
+          );
+          if (isHost && roomId) {
+            cancelMatchOnRevealTimeout({ roomCode: roomId, hostUid }).catch(() => {});
+          }
+          navigation.navigate('MainTabs', { screen: 'Arena' });
+        }
+      }, 10000);
+      return () => clearTimeout(timeoutTimer);
+    }
+  }, [matchPhase, bothRevealed, isHost, roomId, hostUid, navigation, t]);
 
   const roundDeadlineAt = getRoundDeadline(matchState?.roundStartedAt, roundIndex);
 
@@ -539,7 +641,7 @@ export default function PvpBattleScreen({ navigation }) {
   const isLocked = !hasLiveState || !currentQuestion || hasAnswerOrTimeout || isTimedOut ||
     isPreBattle || isLocalSubmitted || matchPhase !== 'ANSWERING' || isSubmitting || isItemPending || phase !== 'READY';
 
-  const isContentHidden = phase !== 'READY' || isPreBattle;
+  const isContentHidden = phase !== 'READY' || isPreBattle || matchPhase === 'LOADOUT_REVEAL';
 
   const hasUsedItem = !!myItemUse;
 
@@ -645,6 +747,69 @@ export default function PvpBattleScreen({ navigation }) {
     );
   }
 
+  if (matchPhase === 'LOADOUT_REVEAL') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.roomCodeBadge}>
+            <Text style={styles.roomCodeLabel}>{t('pvp.roomCode')}</Text>
+            <Text style={styles.roomCodeValue}>{room?.code || roomId}</Text>
+          </View>
+        </View>
+
+        <View style={styles.revealScreenContainer} testID="pvpLoadoutRevealOverlay">
+          <Text style={styles.revealTitle}>{t('pvpLoadout.battleRevealTitle', 'BATTLE LOADOUT')}</Text>
+
+          <View style={styles.revealColumnsContainer}>
+            <View style={styles.revealColumn} testID="revealLocalDeck">
+              <Text style={styles.revealPlayerName}>{t('pvp.you')} — {myDisplayName}</Text>
+              <View style={styles.revealCardsList}>
+                {myRevealedDeck ? (
+                  loadoutToCardList(myRevealedDeck).map((card, idx) => (
+                    <View key={`my-reveal-${idx}`} style={[styles.revealCardItem, { borderColor: getRevealSkillColor(card) }]}>
+                      <Ionicons name={getRevealSkillIcon(card)} size={16} color={getRevealSkillColor(card)} style={{ marginRight: 6 }} />
+                      <Text style={[styles.revealCardText, { color: getRevealSkillColor(card) }]}>{getRevealSkillName(card, t)}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.revealWaitingText}>{t('pvpLoadout.syncingLocal', '正在鎖定牌組...')}</Text>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.revealVsBadge}>
+              <Text style={styles.revealVsText}>VS</Text>
+            </View>
+
+            <View style={styles.revealColumn} testID="revealOpponentDeck">
+              <Text style={styles.revealPlayerName}>{oppDisplayName}</Text>
+              <View style={styles.revealCardsList}>
+                {oppRevealedDeck ? (
+                  loadoutToCardList(oppRevealedDeck).map((card, idx) => (
+                    <View key={`opp-reveal-${idx}`} style={[styles.revealCardItem, { borderColor: getRevealSkillColor(card) }]}>
+                      <Ionicons name={getRevealSkillIcon(card)} size={16} color={getRevealSkillColor(card)} style={{ marginRight: 6 }} />
+                      <Text style={[styles.revealCardText, { color: getRevealSkillColor(card) }]}>{getRevealSkillName(card, t)}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.revealWaitingText} testID="revealOpponentSyncing">
+                    {t('pvpLoadout.syncingOpponent', '正在同步對手牌組...')}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
+
+          {bothRevealed ? (
+            <Text style={styles.revealBottomText}>{t('pvpLoadout.startingBattle', '雙方牌組已就緒')}</Text>
+          ) : (
+            <Text style={styles.revealBottomText}>{t('pvpLoadout.waitingBothDecks', '正在同步牌組...')}</Text>
+          )}
+        </View>
+      </View>
+    );
+  }
+
   const getButtonStateStyle = (choiceId) => {
     const isSelected = myAnswer?.selectedChoiceId === choiceId;
 
@@ -684,43 +849,49 @@ export default function PvpBattleScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={[styles.playerStats, styles.localHudWrapper]}>
-          <PvpHealthBar
-            name={`${t('pvp.you')} (${myState?.score ?? 0})`}
-            hp={myState?.hp}
-          />
-          {isRoundUnresolved && myItemUse?.itemId === ITEM_TYPES.SHIELD && (
-            <PvpActiveEffectBadge
-              type="SHIELD"
-              label={t('pvp.shieldBadge')}
-              testID="localShieldBadge"
+        <View style={styles.topColumnsRow}>
+          <View style={[styles.playerStats, styles.localHudWrapper]}>
+            <PvpHealthBar
+              name={`${t('pvp.you')} (${myState?.score ?? 0})`}
+              hp={myState?.hp}
+              isOpponent={false}
             />
-          )}
-          {isRoundUnresolved && myItemUse?.itemId === ITEM_TYPES.POWER && (
-            <PvpActiveEffectBadge
-              type="POWER"
-              label={t('pvp.powerBadge')}
-              testID="localPowerBadge"
+            {isRoundUnresolved && myItemUse?.itemId === ITEM_TYPES.SHIELD && (
+              <PvpActiveEffectBadge
+                type="SHIELD"
+                label={t('pvp.shieldBadge')}
+                testID="localShieldBadge"
+              />
+            )}
+            {isRoundUnresolved && myItemUse?.itemId === ITEM_TYPES.POWER && (
+              <PvpActiveEffectBadge
+                type="POWER"
+                label={t('pvp.powerBadge')}
+                testID="localPowerBadge"
+              />
+            )}
+          </View>
+
+          <View style={styles.vsContainer}>
+            <Text style={styles.vsText}>VS</Text>
+          </View>
+
+          <View style={styles.playerStats}>
+            <PvpHealthBar
+              name={`${t('pvp.opponent')} (${oppState?.score ?? 0})`}
+              hp={oppState?.hp}
+              isOpponent={true}
             />
-          )}
+          </View>
         </View>
 
-        <View style={styles.vsContainer}>
-          <Text style={styles.vsText}>VS</Text>
+        <View style={styles.roundContainer}>
           <Text style={styles.roundText}>
             {t('pvp.round', {
               current: roundIndex + 1,
               total: totalQuestions,
             })}
           </Text>
-        </View>
-
-        <View style={styles.playerStats}>
-          <PvpHealthBar
-            name={`${t('pvp.opponent')} (${oppState?.score ?? 0})`}
-            hp={oppState?.hp}
-            isOpponent={true}
-          />
         </View>
       </View>
 
@@ -803,7 +974,7 @@ export default function PvpBattleScreen({ navigation }) {
             >
               <View style={styles.questionHeaderRow}>
                 <Text style={styles.questionLabel}>Question {roundIndex + 1}</Text>
-                {matchPhase === 'ANSWERING' && !hasAnswerOrTimeout && remainingSeconds !== null && (() => {
+                {matchPhase === 'ANSWERING' && !hasAnswerOrTimeout && remainingSeconds !== null && !isContentHidden && (() => {
                   const isUrgent = parseFloat(remainingSeconds) <= 2.0;
                   return (
                     <View style={[styles.timerBadge, isUrgent && styles.timerBadgeUrgent]} testID="pvpRoundTimerBadge">
@@ -820,20 +991,24 @@ export default function PvpBattleScreen({ navigation }) {
                   );
                 })()}
               </View>
-              <Text style={styles.questionText}>{currentQuestion.word}</Text>
+              {!isContentHidden && (
+                <>
+                  <Text style={styles.questionText}>{currentQuestion.word}</Text>
 
-              <View style={styles.choicesContainer}>
-                {currentQuestion.choices.map((choice) => (
-                  <TouchableOpacity
-                    key={choice.id}
-                    style={[styles.choiceButton, getButtonStateStyle(choice.id)]}
-                    onPress={() => handleChoice(choice.id)}
-                    disabled={isLocked}
-                  >
-                    <Text style={[styles.choiceText, getButtonTextStyle(choice.id)]}>{choice.text}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                  <View style={styles.choicesContainer}>
+                    {currentQuestion.choices.map((choice) => (
+                      <TouchableOpacity
+                        key={choice.id}
+                        style={[styles.choiceButton, getButtonStateStyle(choice.id)]}
+                        onPress={() => handleChoice(choice.id)}
+                        disabled={isLocked}
+                      >
+                        <Text style={[styles.choiceText, getButtonTextStyle(choice.id)]}>{choice.text}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
             </ScrollView>
           )
         )}
@@ -883,13 +1058,6 @@ export default function PvpBattleScreen({ navigation }) {
           </Text>
         </Animated.View>
       )}
-
-
-
-
-
-
-
     </View>
   );
 }
@@ -898,15 +1066,57 @@ const styles = StyleSheet.create({
   battleBody: { flex: 1, minHeight: 0 },
   container: { flex: 1, position: 'relative', backgroundColor: theme.colors.background },
   header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    padding: theme.spacing.medium, backgroundColor: theme.colors.card,
-    borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingTop: 50,
+    backgroundColor: theme.colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    paddingTop: 50,
+    paddingHorizontal: theme.spacing.medium,
+    paddingBottom: 8,
   },
-  playerStats: { flex: 1 },
+  topColumnsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  playerStats: {
+    flex: 1,
+    minWidth: 0,
+  },
   localHudWrapper: { position: 'relative' },
-  vsContainer: { paddingHorizontal: theme.spacing.medium, alignItems: 'center' },
-  vsText: { fontSize: 18, fontWeight: 'bold', color: theme.colors.secondary },
-  roundText: { fontSize: 12, color: theme.colors.textMuted, marginTop: 4 },
+  vsContainer: {
+    width: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  vsText: { fontSize: 16, fontWeight: 'bold', color: theme.colors.secondary || '#94A3B8', textAlign: 'center' },
+  roundContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+    width: '100%',
+  },
+  roundText: { fontSize: 12, color: theme.colors.textMuted, fontWeight: '600', textAlign: 'center' },
+  roomCodeBadge: {
+    alignSelf: 'center',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    backgroundColor: theme.colors.background,
+    borderRadius: 8,
+  },
+  roomCodeLabel: {
+    fontSize: 10,
+    color: theme.colors.textMuted,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  roomCodeValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+  },
   questionContainer: { flex: 1, padding: theme.spacing.large },
   questionHeaderRow: {
     flexDirection: 'row',
@@ -962,9 +1172,14 @@ const styles = StyleSheet.create({
   itemEffectText: { fontSize: 14, color: theme.colors.primary, fontStyle: 'italic', marginBottom: 4, textAlign: 'center' },
   textSuccess: { color: theme.colors.success },
   textDanger: { color: theme.colors.danger },
-  damageText: { fontSize: 16, color: theme.colors.secondary, marginTop: 12, fontWeight: '600', textAlign: 'center' },
-  countdownContainer: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
+  countdownContainer: { ...StyleSheet.absoluteFillObject, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
   countdownText: { fontSize: 120, fontWeight: 'bold', color: 'white', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 10 },
+  revealScreenContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
   speedPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -985,5 +1200,80 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: theme.colors.textMain,
+  },
+  revealOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.96)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    zIndex: 999,
+  },
+  revealTitle: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 2,
+    marginBottom: 32,
+  },
+  revealColumnsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 36,
+  },
+  revealColumn: {
+    flex: 1,
+    backgroundColor: theme.colors.card,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+  },
+  revealPlayerName: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: theme.colors.textMain,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  revealCardsList: {
+    width: '100%',
+  },
+  revealCardItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    marginBottom: 6,
+  },
+  revealCardText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  revealVsBadge: {
+    paddingHorizontal: 12,
+  },
+  revealVsText: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: theme.colors.textMuted,
+  },
+  revealWaitingText: {
+    color: theme.colors.textMuted,
+    fontSize: 13,
+    textAlign: 'center',
+    paddingVertical: 12,
+  },
+  revealBottomText: {
+    fontSize: 16,
+    color: theme.colors.secondary,
+    fontWeight: 'bold',
+    letterSpacing: 1,
   },
 });

@@ -227,5 +227,25 @@ export default {
     use: 'USE',
     disabledLocked: 'Answer already locked',
     disabledUsed: 'Item already used this round'
+  },
+  pvpLoadout: {
+    title: 'Battle Loadout',
+    edit: 'Edit Deck',
+    deckCount: 'Battle Deck {{count}} / {{total}}',
+    selectedCount: 'Selected {{count}} / {{total}}',
+    maxCopiesReached: 'Limit reached (max 2 copies)',
+    mustBeTotal: 'Deck must contain exactly {{total}} cards',
+    save: 'Save Deck',
+    cancel: 'Cancel',
+    yourDeck: 'Your Loadout',
+    battleRevealTitle: 'BATTLE LOADOUT',
+    preparingForBattle: 'Preparing for battle...',
+    syncFailed: 'Skill loadout sync failed',
+    syncFailedMessage: 'Failed to sync skill decks. Match cancelled.',
+    deckLocked: 'Ready (Deck Locked)',
+    syncingOpponent: 'Syncing opponent deck...',
+    syncingLocal: 'Locking deck...',
+    startingBattle: 'Battle commencing...',
+    waitingBothDecks: 'Syncing loadouts...'
   }
 };

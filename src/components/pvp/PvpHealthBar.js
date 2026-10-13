@@ -48,9 +48,21 @@ export default function PvpHealthBar({ name, hp, isOpponent = false, maxHp = 100
 
   return (
     <Animated.View style={[styles.container, { transform: [{ translateX: shakeAnimation }] }]}>
-      <View style={[styles.header, isOpponent && styles.headerOpponent]}>
-        <Text style={styles.nameText} numberOfLines={1}>{name}</Text>
-        <Text style={styles.hpText}>{clampedHp} / {maxHp}</Text>
+      <View style={[styles.metaContainer, isOpponent && styles.metaContainerOpponent]}>
+        <Text
+          style={[styles.nameText, isOpponent && styles.nameTextOpponent]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+          testID={isOpponent ? 'pvpOpponentName' : 'pvpPlayerName'}
+        >
+          {name}
+        </Text>
+        <Text
+          style={[styles.hpText, isOpponent && styles.hpTextOpponent]}
+          testID={isOpponent ? 'pvpOpponentHpText' : 'pvpPlayerHpText'}
+        >
+          {clampedHp} / {maxHp}
+        </Text>
       </View>
       <View style={styles.barBackground}>
         <Animated.View
@@ -69,38 +81,48 @@ export default function PvpHealthBar({ name, hp, isOpponent = false, maxHp = 100
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 4,
+    marginVertical: 2,
     width: '100%',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  metaContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
     marginBottom: 4,
+    width: '100%',
   },
-  headerOpponent: {
-    flexDirection: 'row-reverse',
+  metaContainerOpponent: {
+    alignItems: 'flex-end',
   },
   nameText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: theme.colors.textMain,
-    flex: 1,
+    width: '100%',
+    textAlign: 'left',
+  },
+  nameTextOpponent: {
+    textAlign: 'right',
   },
   hpText: {
-    fontSize: 14,
+    fontSize: 13,
     color: theme.colors.textMuted,
-    fontWeight: '600',
-    marginLeft: 8,
+    fontWeight: '700',
+    marginTop: 2,
+    width: '100%',
+    textAlign: 'left',
+  },
+  hpTextOpponent: {
+    textAlign: 'right',
   },
   barBackground: {
-    height: 12,
+    height: 10,
     backgroundColor: theme.colors.border,
-    borderRadius: 6,
+    borderRadius: 5,
     overflow: 'hidden',
+    width: '100%',
   },
   barFill: {
     height: '100%',
-    borderRadius: 6,
+    borderRadius: 5,
   },
 });

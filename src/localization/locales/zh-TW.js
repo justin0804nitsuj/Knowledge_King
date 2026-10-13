@@ -227,5 +227,25 @@ export default {
     use: '使用',
     disabledLocked: '已鎖定答案',
     disabledUsed: '本回合已使用過道具'
+  },
+  pvpLoadout: {
+    title: '技能準備區',
+    edit: '編輯牌組',
+    deckCount: '出戰牌組 {{count}} / {{total}}',
+    selectedCount: '已選 {{count}} / {{total}}',
+    maxCopiesReached: '已達上限 (最多 2 張)',
+    mustBeTotal: '牌組必須剛好 {{total}} 張',
+    save: '儲存牌組',
+    cancel: '取消',
+    yourDeck: '你的出戰牌組',
+    battleRevealTitle: 'BATTLE LOADOUT',
+    preparingForBattle: '準備戰鬥...',
+    syncFailed: '技能牌組同步失敗',
+    syncFailedMessage: '無法同步雙方牌組，對戰已取消',
+    deckLocked: '已準備 (牌組已鎖定)',
+    syncingOpponent: '正在同步對手牌組...',
+    syncingLocal: '正在鎖定牌組...',
+    startingBattle: '雙方牌組已就緒',
+    waitingBothDecks: '正在同步牌組...'
   }
 };

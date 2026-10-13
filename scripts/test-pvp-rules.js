@@ -887,6 +887,295 @@ async function run() {
         assert.equal(roomVal.matchState.players.hostUid.wrong, wrongAfterFirst);
       });
     });
+
+    // Phase 12A — PvP Skill Loadout & Battle Reveal Rules Tests
+    await test('Phase 12A: valid loadout reveal by player during LOADOUT_REVEAL -> ALLOWED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      delete room.matchState.roundStartedAt;
+      await seed(room);
+      await assertSucceeds(db('guest').ref(roomPath + '/matchState/revealedLoadouts/guestUid').set({
+        HEAL: 1,
+        SHIELD: 1,
+        POWER: 2,
+      }));
+    });
+
+    await test('Phase 12A: default loadout reveal (HEAL 2, SHIELD 1, POWER 1) -> ALLOWED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      delete room.matchState.roundStartedAt;
+      await seed(room);
+      await assertSucceeds(db('host').ref(roomPath + '/matchState/revealedLoadouts/hostUid').set({
+        HEAL: 2,
+        SHIELD: 1,
+        POWER: 1,
+      }));
+    });
+
+    await test('Phase 12A: player attempting to reveal opponent deck -> DENIED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      delete room.matchState.roundStartedAt;
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath + '/matchState/revealedLoadouts/hostUid').set({
+        HEAL: 2,
+        SHIELD: 1,
+        POWER: 1,
+      }));
+    });
+
+    await test('Phase 12A: outsider attempting to reveal deck -> DENIED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      delete room.matchState.roundStartedAt;
+      await seed(room);
+      await assertFails(db('outsider').ref(roomPath + '/matchState/revealedLoadouts/outsiderUid').set({
+        HEAL: 2,
+        SHIELD: 1,
+        POWER: 1,
+      }));
+    });
+
+    await test('Phase 12A: modifying revealed deck after initial publish -> DENIED (immutable)', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      delete room.matchState.roundStartedAt;
+      room.matchState.revealedLoadouts = {
+        guestUid: { HEAL: 2, SHIELD: 1, POWER: 1 }
+      };
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath + '/matchState/revealedLoadouts/guestUid').set({
+        HEAL: 1,
+        SHIELD: 1,
+        POWER: 2,
+      }));
+    });
+
+    await test('Phase 12A: deck with 3 copies of same skill -> DENIED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      delete room.matchState.roundStartedAt;
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath + '/matchState/revealedLoadouts/guestUid').set({
+        HEAL: 3,
+        SHIELD: 1,
+        POWER: 0,
+      }));
+    });
+
+    await test('Phase 12A: deck with fewer or more than 4 cards -> DENIED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      delete room.matchState.roundStartedAt;
+      await seed(room);
+      // 3 cards
+      await assertFails(db('guest').ref(roomPath + '/matchState/revealedLoadouts/guestUid').set({
+        HEAL: 1,
+        SHIELD: 1,
+        POWER: 1,
+      }));
+      // 5 cards
+      await assertFails(db('guest').ref(roomPath + '/matchState/revealedLoadouts/guestUid').set({
+        HEAL: 2,
+        SHIELD: 2,
+        POWER: 1,
+      }));
+    });
+
+    await test('Phase 12A: deck with negative or fractional or unknown skills -> DENIED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      delete room.matchState.roundStartedAt;
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath + '/matchState/revealedLoadouts/guestUid').set({
+        HEAL: -1,
+        SHIELD: 2,
+        POWER: 3,
+      }));
+      await assertFails(db('guest').ref(roomPath + '/matchState/revealedLoadouts/guestUid').set({
+        HEAL: 1.5,
+        SHIELD: 1.5,
+        POWER: 1,
+      }));
+      await assertFails(db('guest').ref(roomPath + '/matchState/revealedLoadouts/guestUid').set({
+        HEAL: 2,
+        SHIELD: 1,
+        POWER: 1,
+        EXTRA: 1,
+      }));
+    });
+
+    await test('Phase 12A: deck reveal outside LOADOUT_REVEAL phase -> DENIED', async room => {
+      room.matchState.phase = 'ANSWERING';
+      await seed(room);
+      await assertFails(db('guest').ref(roomPath + '/matchState/revealedLoadouts/guestUid').set({
+        HEAL: 2,
+        SHIELD: 1,
+        POWER: 1,
+      }));
+    });
+
+    await test('Phase 12A: Host advances phase from LOADOUT_REVEAL to ANSWERING with revealed inventory -> ALLOWED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      room.matchState.revealedLoadouts = {
+        hostUid: { HEAL: 1, SHIELD: 1, POWER: 2 },
+        guestUid: { HEAL: 2, SHIELD: 2, POWER: 0 }
+      };
+      await seed(room);
+      await assertSucceeds(db('host').ref(roomPath).update({
+        'matchState/phase': 'ANSWERING',
+        'matchState/roundStartedAt': Date.now(),
+        'matchState/players/hostUid/items/POWER/remaining': 2,
+        'matchState/players/hostUid/items/HEAL/remaining': 1,
+        'matchState/players/guestUid/items/POWER/remaining': 0,
+        'matchState/players/guestUid/items/SHIELD/remaining': 2,
+      }));
+    });
+
+    // ----- Phase 12A Regression Suite (A - J) for startFirstRound -----
+    await test('Phase 12A Regression A: Host + both valid reveals -> startFirstRound ALLOWED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      room.matchState.revealedLoadouts = {
+        hostUid: { HEAL: 2, SHIELD: 1, POWER: 1 },
+        guestUid: { HEAL: 2, SHIELD: 1, POWER: 1 }
+      };
+      await seed(room);
+      await serviceAction('host', service => service.startFirstRound({ roomCode: 'room1', hostUid: 'hostUid', guestUid: 'guestUid' }));
+      const snap = await db('host').ref(roomPath + '/matchState/phase').get();
+      assert.equal(snap.val(), 'ANSWERING');
+    });
+
+    await test('Phase 12A Regression B: Guest attempts startFirstRound -> DENIED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      room.matchState.revealedLoadouts = {
+        hostUid: { HEAL: 2, SHIELD: 1, POWER: 1 },
+        guestUid: { HEAL: 2, SHIELD: 1, POWER: 1 }
+      };
+      await seed(room);
+      await serviceAction('guest', async service => {
+        await assert.rejects(
+          service.startFirstRound({ roomCode: 'room1', hostUid: 'hostUid', guestUid: 'guestUid' }),
+          /permission_denied/
+        );
+      });
+    });
+
+    await test('Phase 12A Regression C: Only one reveal exists -> DENIED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      room.matchState.revealedLoadouts = {
+        hostUid: { HEAL: 2, SHIELD: 1, POWER: 1 },
+      };
+      await seed(room);
+      const result = await serviceAction('host', service => service.startFirstRound({ roomCode: 'room1', hostUid: 'hostUid', guestUid: 'guestUid' }));
+      assert.equal(result.committed, false);
+      await assertFails(db('host').ref(roomPath).update({
+        'matchState/phase': 'ANSWERING',
+        'matchState/roundStartedAt': Date.now(),
+      }));
+    });
+
+    await test('Phase 12A Regression D: Host inventory does not match Host reveal -> DENIED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      room.matchState.revealedLoadouts = {
+        hostUid: { HEAL: 1, SHIELD: 1, POWER: 2 },
+        guestUid: { HEAL: 2, SHIELD: 1, POWER: 1 }
+      };
+      await seed(room);
+      await assertFails(db('host').ref(roomPath).update({
+        'matchState/phase': 'ANSWERING',
+        'matchState/roundStartedAt': Date.now(),
+        'matchState/players/hostUid/items/HEAL/remaining': 2,
+        'matchState/players/hostUid/items/SHIELD/remaining': 1,
+        'matchState/players/hostUid/items/POWER/remaining': 2,
+        'matchState/players/guestUid/items/HEAL/remaining': 2,
+        'matchState/players/guestUid/items/SHIELD/remaining': 1,
+        'matchState/players/guestUid/items/POWER/remaining': 1,
+      }));
+    });
+
+    await test('Phase 12A Regression E: Guest inventory does not match Guest reveal -> DENIED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      room.matchState.revealedLoadouts = {
+        hostUid: { HEAL: 2, SHIELD: 1, POWER: 1 },
+        guestUid: { HEAL: 1, SHIELD: 2, POWER: 1 }
+      };
+      await seed(room);
+      await assertFails(db('host').ref(roomPath).update({
+        'matchState/phase': 'ANSWERING',
+        'matchState/roundStartedAt': Date.now(),
+        'matchState/players/hostUid/items/HEAL/remaining': 2,
+        'matchState/players/hostUid/items/SHIELD/remaining': 1,
+        'matchState/players/hostUid/items/POWER/remaining': 1,
+        'matchState/players/guestUid/items/HEAL/remaining': 2,
+        'matchState/players/guestUid/items/SHIELD/remaining': 2,
+        'matchState/players/guestUid/items/POWER/remaining': 1,
+      }));
+    });
+
+    await test('Phase 12A Regression F: POWER 3 in inventory -> DENIED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      room.matchState.revealedLoadouts = {
+        hostUid: { HEAL: 1, SHIELD: 1, POWER: 2 },
+        guestUid: { HEAL: 2, SHIELD: 1, POWER: 1 }
+      };
+      await seed(room);
+      await assertFails(db('host').ref(roomPath).update({
+        'matchState/phase': 'ANSWERING',
+        'matchState/roundStartedAt': Date.now(),
+        'matchState/players/hostUid/items/POWER/remaining': 3,
+      }));
+    });
+
+    await test('Phase 12A Regression G: deck with total != 4 during reveal -> DENIED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      await seed(room);
+      await assertFails(db('host').ref(roomPath + '/matchState/revealedLoadouts/hostUid').set({
+        HEAL: 2,
+        SHIELD: 2,
+        POWER: 1,
+      }));
+    });
+
+    await test('Phase 12A Regression H: outsider start -> DENIED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      room.matchState.revealedLoadouts = {
+        hostUid: { HEAL: 2, SHIELD: 1, POWER: 1 },
+        guestUid: { HEAL: 2, SHIELD: 1, POWER: 1 }
+      };
+      await seed(room);
+      await serviceAction('outsider', async service => {
+        await assert.rejects(
+          service.startFirstRound({ roomCode: 'room1', hostUid: 'hostUid', guestUid: 'guestUid' }),
+          /permission_denied/
+        );
+      });
+    });
+
+    await test('Phase 12A Regression I: attempt to mutate revealedLoadouts during startFirstRound -> DENIED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      room.matchState.revealedLoadouts = {
+        hostUid: { HEAL: 2, SHIELD: 1, POWER: 1 },
+        guestUid: { HEAL: 2, SHIELD: 1, POWER: 1 }
+      };
+      await seed(room);
+      await assertFails(db('host').ref(roomPath).update({
+        'matchState/phase': 'ANSWERING',
+        'matchState/roundStartedAt': Date.now(),
+        'matchState/revealedLoadouts/guestUid/POWER': 2,
+      }));
+    });
+
+    await test('Phase 12A Regression J: valid custom decks Host P2/S1/H1, Guest H2/S2/P0 -> ALLOWED', async room => {
+      room.matchState.phase = 'LOADOUT_REVEAL';
+      room.matchState.revealedLoadouts = {
+        hostUid: { HEAL: 1, SHIELD: 1, POWER: 2 },
+        guestUid: { HEAL: 2, SHIELD: 2, POWER: 0 }
+      };
+      await seed(room);
+      await serviceAction('host', service => service.startFirstRound({ roomCode: 'room1', hostUid: 'hostUid', guestUid: 'guestUid' }));
+      const snap = await db('host').ref(roomPath).get();
+      const val = snap.val();
+      assert.equal(val.matchState.phase, 'ANSWERING');
+      assert.equal(val.matchState.players.hostUid.items.POWER.remaining, 2);
+      assert.equal(val.matchState.players.hostUid.items.SHIELD.remaining, 1);
+      assert.equal(val.matchState.players.hostUid.items.HEAL.remaining, 1);
+      assert.equal(val.matchState.players.guestUid.items.POWER.remaining, 0);
+      assert.equal(val.matchState.players.guestUid.items.SHIELD.remaining, 2);
+      assert.equal(val.matchState.players.guestUid.items.HEAL.remaining, 2);
+    });
   } finally {
     console.log('Total: ' + (passed + failed) + '; Passed: ' + passed + '; Failed: ' + failed);
     await testEnv.cleanup();

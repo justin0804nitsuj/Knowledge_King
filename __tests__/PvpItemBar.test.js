@@ -110,5 +110,69 @@ describe('PvpItemBar UI Polish', () => {
     expect(getTexts(component.root)).not.toContain('USE');
     act(() => { component.unmount(); });
   });
+
+  test('E. HEAL remaining 2 + HP 100 -> count displays 2, Heal disabled', () => {
+    let component;
+    act(() => {
+      component = renderer.create(
+        <PvpItemBar items={defaultItems} hp={100} onUseItem={jest.fn()} disabled={false} />
+      );
+    });
+    const root = component.root;
+    const texts = getTexts(root);
+    expect(texts).toContain('×2');
+    const healButton = root.findByProps({ testID: 'pvpItemSlot_HEAL' });
+    expect(healButton.props.disabled).toBe(true);
+  });
+
+  test('F. HEAL remaining 2 + HP 80 -> count displays 2, Heal enabled', () => {
+    let component;
+    act(() => {
+      component = renderer.create(
+        <PvpItemBar items={defaultItems} hp={80} onUseItem={jest.fn()} disabled={false} />
+      );
+    });
+    const root = component.root;
+    const texts = getTexts(root);
+    expect(texts).toContain('×2');
+    const healButton = root.findByProps({ testID: 'pvpItemSlot_HEAL' });
+    expect(healButton.props.disabled).toBe(false);
+  });
+
+  test('I. HEAL remaining 0 -> disabled', () => {
+    const items = {
+      ...defaultItems,
+      [ITEM_TYPES.HEAL]: { remaining: 0 },
+    };
+    let component;
+    act(() => {
+      component = renderer.create(
+        <PvpItemBar items={items} hp={80} onUseItem={jest.fn()} disabled={false} />
+      );
+    });
+    const root = component.root;
+    const healButton = root.findByProps({ testID: 'pvpItemSlot_HEAL' });
+    expect(healButton.props.disabled).toBe(true);
+    expect(getTexts(root)).toContain('×0');
+  });
+
+  test('J. Shield / Power counts remain unchanged while Heal is interacted with', () => {
+    const customItems = {
+      [ITEM_TYPES.HEAL]: { remaining: 2 },
+      [ITEM_TYPES.SHIELD]: { remaining: 2 },
+      [ITEM_TYPES.POWER]: { remaining: 0 },
+    };
+    let component;
+    act(() => {
+      component = renderer.create(
+        <PvpItemBar items={customItems} hp={80} onUseItem={jest.fn()} disabled={false} />
+      );
+    });
+    const root = component.root;
+    const shieldCount = root.findByProps({ testID: 'pvpItemCount_SHIELD' });
+    const powerCount = root.findByProps({ testID: 'pvpItemCount_POWER' });
+    expect(shieldCount.props.children).toEqual(['×', 2]);
+    expect(powerCount.props.children).toEqual(['×', 0]);
+  });
 });
 
