@@ -14,3 +14,10 @@ web-build/
 
 # User-specific
 scratch/
+
+# Credentials & environment variables
+*.keystore
+.env
+.env.*
+*-credentials*.json
+*serviceAccount*.json
