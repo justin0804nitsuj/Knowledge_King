@@ -9,15 +9,15 @@
     "@react-navigation/bottom-tabs": "^7.20.0",
     "@react-navigation/native": "^7.5.0",
     "@react-navigation/native-stack": "^7.20.0",
-    "expo": "~57.0.27",
+    "expo": "~57.0.28",
     "expo-asset": "~57.0.19",
     "expo-audio": "~57.0.5",
     "expo-clipboard": "~57.0.2",
-    "expo-dev-client": "~57.0.19",
+    "expo-dev-client": "~57.0.20",
     "expo-font": "~57.0.4",
     "expo-haptics": "~57.0.3",
     "expo-localization": "~57.0.2",
-    "expo-splash-screen": "~57.0.9",
+    "expo-splash-screen": "~57.0.10",
     "expo-status-bar": "~57.0.1",
     "i18next": "^26.4.2",
     "react": "19.2.3",
@@ -42,6 +42,6 @@
     "@firebase/rules-unit-testing": "^5.0.2",
     "babel-preset-expo": "^57.0.14",
     "firebase": "^12.19.0",
-    "jest-expo": "^57.0.5"
+    "jest-expo": "~57.0.6"
   }
 }
