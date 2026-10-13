@@ -17075,12 +17075,12 @@
     "word": "typhoon",
     "partOfSpeech": "n.",
     "level": 2,
-    "fallbackMeaning": "臺風",
+    "fallbackMeaning": "颱風",
     "primaryDefinitions": [
       {
         "senseKey": "typhoon%1:19:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "臺風"
+        "meaningZhTW": "颱風"
       }
     ],
     "secondaryDefinitions": []
