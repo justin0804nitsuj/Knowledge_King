@@ -11,11 +11,11 @@ export const BATTLE_STATES = {
   DEFEAT: 'DEFEAT'
 };
 
-export function createInitialState(seed, level, levelWords) {
+export function createInitialState(seed, level, levelWords, config) {
   return {
     status: BATTLE_STATES.READY,
-    playerHp: BATTLE_CONSTANTS.PLAYER_START_HP,
-    opponentHp: BATTLE_CONSTANTS.OPPONENT_START_HP,
+    playerHp: config.playerHp,
+    opponentHp: config.enemyHp,
     score: 0,
     combo: 0,
     maxCombo: 0,
@@ -24,9 +24,13 @@ export function createInitialState(seed, level, levelWords) {
     wrongCount: 0,
     timeoutCount: 0,
     answeredTargetIds: [],
+    correctTargetIds: [],
+    wrongTargetIds: [],
+    timeoutTargetIds: [],
     
     currentQuestion: null,
     
+    _config: config,
     _rng: createSeededRandom(seed),
     _levelWords: levelWords,
     _level: level
@@ -87,14 +91,21 @@ export function answerQuestion(state, choiceId, timeRemainingMs) {
   let combo = state.combo;
   let maxCombo = state.maxCombo;
   
+  let correctTargetIds = [...state.correctTargetIds];
+  let wrongTargetIds = [...state.wrongTargetIds];
+  let timeoutTargetIds = [...state.timeoutTargetIds];
+
   if (isCorrect) {
-    opponentHp -= BATTLE_CONSTANTS.DAMAGE_PER_CORRECT;
-    score += calculateScore(true, timeRemainingMs, combo);
+    opponentHp -= state._config.damagePerCorrect;
+    score += calculateScore(true, timeRemainingMs, combo, state._config);
     combo += 1;
     if (combo > maxCombo) maxCombo = combo;
+    correctTargetIds.push(state.currentQuestion.targetId);
   } else {
-    playerHp -= isTimeout ? BATTLE_CONSTANTS.DAMAGE_PER_TIMEOUT : BATTLE_CONSTANTS.DAMAGE_PER_WRONG;
+    playerHp -= isTimeout ? state._config.damagePerTimeout : state._config.damagePerWrong;
     combo = 0;
+    if (isTimeout) timeoutTargetIds.push(state.currentQuestion.targetId);
+    else wrongTargetIds.push(state.currentQuestion.targetId);
   }
   
   let nextStatus = BATTLE_STATES.QUESTION_RESOLVED;
@@ -113,6 +124,9 @@ export function answerQuestion(state, choiceId, timeRemainingMs) {
     wrongCount: state.wrongCount + (!isCorrect && !isTimeout ? 1 : 0),
     timeoutCount: state.timeoutCount + (isTimeout ? 1 : 0),
     answeredTargetIds: [...state.answeredTargetIds, state.currentQuestion.targetId],
+    correctTargetIds,
+    wrongTargetIds,
+    timeoutTargetIds,
     currentQuestion: {
       ...state.currentQuestion,
       selectedChoiceId: choiceId,

@@ -1,12 +1,11 @@
-import { BATTLE_CONSTANTS } from './battleRules.js';
-
-export function calculateScore(isCorrect, timeRemainingMs, currentCombo) {
+export function calculateScore(isCorrect, timeRemainingMs, currentCombo, config) {
   if (!isCorrect) return 0;
   
-  let score = BATTLE_CONSTANTS.BASE_SCORE;
+  let score = config ? config.baseScore : 100;
+  let maxTimeMs = config ? config.timePerQuestionMs : 10000;
   
   // Time bonus (max +50)
-  const timeRatio = Math.max(0, Math.min(1, timeRemainingMs / BATTLE_CONSTANTS.TIME_PER_QUESTION_MS));
+  const timeRatio = Math.max(0, Math.min(1, timeRemainingMs / maxTimeMs));
   score += Math.floor(timeRatio * 50);
   
   // Combo bonus (+10 per combo, max 50)

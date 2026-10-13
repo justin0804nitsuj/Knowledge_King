@@ -1,25 +1,32 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { theme } from '../theme';
-import { createInitialState, nextQuestion, answerQuestion, BATTLE_STATES, BATTLE_CONSTANTS } from '../domain/game/battleEngine';
+import { createInitialState, nextQuestion, answerQuestion, BATTLE_STATES } from '../domain/game/battleEngine';
 import { getWordsByLevel } from '../domain/vocabulary/vocabularyRepository';
+import { getStageById } from '../domain/adventure/campaignConfig';
+import { useTranslation } from 'react-i18next';
 
 export default function BattleScreen({ route, navigation }) {
-  const { level } = route.params;
-  const [gameState, setGameState] = useState(null);
-  const [timerRemaining, setTimerRemaining] = useState(BATTLE_CONSTANTS.TIME_PER_QUESTION_MS);
+  const { t } = useTranslation();
+  const { stageId } = route.params;
+  const stage = getStageById(stageId);
   
-  // Need to hold onto a mutable ref for timer interval to clear it easily
+  const [gameState, setGameState] = useState(null);
+  const [timerRemaining, setTimerRemaining] = useState(stage ? stage.timePerQuestionMs : 10000);
+  
   const timerRef = useRef(null);
+  const battleIdRef = useRef(null);
 
   // Initialize Game
   useEffect(() => {
-    const seed = Date.now(); // random seed for this session
-    const words = getWordsByLevel(level);
-    let initialState = createInitialState(seed, level, words);
+    if (!stage) return;
+    const seed = Date.now(); // fresh seed per battle run
+    battleIdRef.current = `B-${stageId}-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+    const words = getWordsByLevel(stage.vocabularyLevel);
+    let initialState = createInitialState(seed, stage.vocabularyLevel, words, stage);
     initialState = nextQuestion(initialState);
     setGameState(initialState);
-  }, [level]);
+  }, [stageId]);
 
   // Timer tick
   useEffect(() => {
@@ -28,7 +35,7 @@ export default function BattleScreen({ route, navigation }) {
       return;
     }
 
-    setTimerRemaining(BATTLE_CONSTANTS.TIME_PER_QUESTION_MS);
+    setTimerRemaining(stage.timePerQuestionMs);
     
     timerRef.current = setInterval(() => {
       setTimerRemaining(prev => {
@@ -62,8 +69,9 @@ export default function BattleScreen({ route, navigation }) {
   const handleNext = () => {
     if (gameState.status === BATTLE_STATES.VICTORY || gameState.status === BATTLE_STATES.DEFEAT) {
       // Go to result
-      navigation.navigate('BattleResult', { 
-        level,
+      navigation.replace('BattleResult', { 
+        stageId,
+        battleId: battleIdRef.current,
         finalState: gameState
       });
     } else {
@@ -81,19 +89,19 @@ export default function BattleScreen({ route, navigation }) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.scoreText}>Score: {score}</Text>
-        <Text style={styles.scoreText}>Combo: {combo}</Text>
+        <Text style={styles.scoreText}>{t('battle.score')}: {score}</Text>
+        <Text style={styles.scoreText}>{t('battle.combo')}: {combo}</Text>
       </View>
 
       {/* HP Bars */}
       <View style={styles.hpContainer}>
         <View style={styles.hpBox}>
-          <Text style={styles.hpTitle}>Player</Text>
+          <Text style={styles.hpTitle}>{t('battle.player')}</Text>
           <Text style={styles.hpValue}>{playerHp} HP</Text>
         </View>
         <Text style={styles.vs}>VS</Text>
         <View style={styles.hpBox}>
-          <Text style={styles.hpTitle}>Gatekeeper</Text>
+          <Text style={styles.hpTitle}>{t('battle.gatekeeper')}</Text>
           <Text style={styles.hpValue}>{opponentHp} HP</Text>
         </View>
       </View>
@@ -101,7 +109,7 @@ export default function BattleScreen({ route, navigation }) {
       {/* Target Word */}
       {currentQuestion && (
         <View style={styles.questionContainer}>
-          <Text style={styles.questionNumber}>Question {questionNumber}</Text>
+          <Text style={styles.questionNumber}>{t('battle.questionNumber', { current: questionNumber })}</Text>
           <Text style={styles.targetWord}>{currentQuestion.word}</Text>
           <Text style={styles.posText}>({currentQuestion.partOfSpeech})</Text>
         </View>
@@ -110,7 +118,7 @@ export default function BattleScreen({ route, navigation }) {
       {/* Timer */}
       {status === BATTLE_STATES.QUESTION_ACTIVE && (
         <View style={styles.timerBarContainer}>
-          <View style={[styles.timerBarFill, { width: `${(timerRemaining / BATTLE_CONSTANTS.TIME_PER_QUESTION_MS) * 100}%` }]} />
+          <View style={[styles.timerBarFill, { width: `${(timerRemaining / stage.timePerQuestionMs) * 100}%` }]} />
         </View>
       )}
 
@@ -149,15 +157,15 @@ export default function BattleScreen({ route, navigation }) {
       {(status === BATTLE_STATES.QUESTION_RESOLVED || status === BATTLE_STATES.VICTORY || status === BATTLE_STATES.DEFEAT) && (
         <View style={styles.feedbackContainer}>
           {currentQuestion.isTimeout ? (
-            <Text style={[styles.feedbackText, { color: theme.colors.danger }]}>Timeout!</Text>
+            <Text style={[styles.feedbackText, { color: theme.colors.danger }]}>{t('battle.timeout')}</Text>
           ) : currentQuestion.isCorrect ? (
-            <Text style={[styles.feedbackText, { color: theme.colors.success }]}>Correct!</Text>
+            <Text style={[styles.feedbackText, { color: theme.colors.success }]}>{t('battle.correct')}</Text>
           ) : (
-            <Text style={[styles.feedbackText, { color: theme.colors.danger }]}>Wrong!</Text>
+            <Text style={[styles.feedbackText, { color: theme.colors.danger }]}>{t('battle.wrong')}</Text>
           )}
           <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
             <Text style={styles.nextBtnText}>
-              {status === BATTLE_STATES.QUESTION_RESOLVED ? "Next Question" : "View Results"}
+              {status === BATTLE_STATES.QUESTION_RESOLVED ? t('battle.nextQuestion') : t('battle.viewResults')}
             </Text>
           </TouchableOpacity>
         </View>

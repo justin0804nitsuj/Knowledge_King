@@ -1418,12 +1418,13 @@
     "word": "blouse",
     "partOfSpeech": "n.",
     "level": 3,
-    "fallbackMeaning": "寬松的上衣",
+    "fallbackMeaning": "寬鬆的上衣",
+    "preferredMeaning": "寬鬆的上衣",
     "primaryDefinitions": [
       {
         "senseKey": "blouse%1:06:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "寬松的上衣"
+        "meaningZhTW": "寬鬆的上衣"
       }
     ],
     "secondaryDefinitions": []
@@ -4693,12 +4694,13 @@
     "word": "dumpling",
     "partOfSpeech": "n.",
     "level": 3,
-    "fallbackMeaning": "面團布丁",
+    "fallbackMeaning": "麵團布丁",
+    "preferredMeaning": "麵團布丁",
     "primaryDefinitions": [
       {
         "senseKey": "dumpling%1:13:01::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "面團布丁"
+        "meaningZhTW": "麵團布丁"
       }
     ],
     "secondaryDefinitions": []
@@ -5803,12 +5805,13 @@
     "word": "flour",
     "partOfSpeech": "n.",
     "level": 3,
-    "fallbackMeaning": "面粉",
+    "fallbackMeaning": "麵粉",
+    "preferredMeaning": "麵粉",
     "primaryDefinitions": [
       {
         "senseKey": "flour%1:13:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "面粉"
+        "meaningZhTW": "麵粉"
       }
     ],
     "secondaryDefinitions": []
@@ -6558,7 +6561,8 @@
     "word": "hairdresser",
     "partOfSpeech": "n.",
     "level": 3,
-    "fallbackMeaning": "美發師",
+    "fallbackMeaning": "美髮師",
+    "preferredMeaning": "美髮師",
     "primaryDefinitions": [
       {
         "senseKey": "hairdresser%1:18:00::",
@@ -6828,12 +6832,13 @@
     "word": "hay",
     "partOfSpeech": "n.",
     "level": 3,
-    "fallbackMeaning": "幹草",
+    "fallbackMeaning": "乾草",
+    "preferredMeaning": "乾草",
     "primaryDefinitions": [
       {
         "senseKey": "hay%1:13:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "幹草"
+        "meaningZhTW": "乾草"
       }
     ],
     "secondaryDefinitions": []
@@ -8713,12 +8718,13 @@
     "word": "loaf",
     "partOfSpeech": "n.",
     "level": 3,
-    "fallbackMeaning": "一條面包",
+    "fallbackMeaning": "一條麵包",
+    "preferredMeaning": "一條麵包",
     "primaryDefinitions": [
       {
         "senseKey": "loaf%1:13:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "一條面包"
+        "meaningZhTW": "一條麵包"
       }
     ],
     "secondaryDefinitions": []
@@ -11121,12 +11127,13 @@
     "word": "pint",
     "partOfSpeech": "n.",
     "level": 3,
-    "fallbackMeaning": "品脫(幹量或液量的單位)",
+    "fallbackMeaning": "品脫(乾量或液量的單位)",
+    "preferredMeaning": "品脫(乾量或液量的單位)",
     "primaryDefinitions": [
       {
         "senseKey": "pint%1:23:02::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "品脫(幹量或液量的單位)"
+        "meaningZhTW": "品脫(乾量或液量的單位)"
       }
     ],
     "secondaryDefinitions": []
@@ -12336,12 +12343,13 @@
     "word": "relax",
     "partOfSpeech": "v.",
     "level": 3,
-    "fallbackMeaning": "放松",
+    "fallbackMeaning": "放鬆",
+    "preferredMeaning": "放鬆",
     "primaryDefinitions": [
       {
         "senseKey": "relax%2:29:00::",
         "partOfSpeech": "verb",
-        "meaningZhTW": "放松"
+        "meaningZhTW": "放鬆"
       }
     ],
     "secondaryDefinitions": []
@@ -12861,12 +12869,13 @@
     "word": "robe",
     "partOfSpeech": "n.",
     "level": 3,
-    "fallbackMeaning": "寬松長袍",
+    "fallbackMeaning": "寬鬆長袍",
+    "preferredMeaning": "寬鬆長袍",
     "primaryDefinitions": [
       {
         "senseKey": "robe%1:06:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "寬松長袍"
+        "meaningZhTW": "寬鬆長袍"
       }
     ],
     "secondaryDefinitions": []
@@ -14255,12 +14264,13 @@
     "word": "spaghetti",
     "partOfSpeech": "n.",
     "level": 3,
-    "fallbackMeaning": "意大利面條",
+    "fallbackMeaning": "意大利麵條",
+    "preferredMeaning": "意大利麵條",
     "primaryDefinitions": [
       {
         "senseKey": "spaghetti%1:13:01::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "意大利面條"
+        "meaningZhTW": "意大利麵條"
       }
     ],
     "secondaryDefinitions": []

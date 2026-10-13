@@ -4,26 +4,69 @@
  */
 export function getSemanticFingerprint(meaning) {
   if (!meaning) return '';
-  // Remove punctuation and whitespaces
   return meaning.replace(/[，、；;。.\s()（）]/g, '').trim();
 }
 
 /**
- * Determines the best Chinese display meaning for a word.
- * 1. Prefers the first valid primary definition.
- * 2. Falls back to fallbackMeaning.
+ * Extracts a normalized set of ALL useful learner meanings for a word.
+ * This prevents distractors that overlap strongly with the target.
  */
-export function getDisplayMeaning(wordObject) {
-  if (!wordObject) return '';
+export function getAllSemanticFingerprints(wordObject) {
+  const fps = new Set();
+  if (!wordObject) return fps;
 
   if (wordObject.primaryDefinitions && wordObject.primaryDefinitions.length > 0) {
     for (const def of wordObject.primaryDefinitions) {
       if (def.meaningZhTW) {
-        return def.meaningZhTW;
+        fps.add(getSemanticFingerprint(def.meaningZhTW));
       }
     }
   }
 
-  // Fallback
-  return wordObject.fallbackMeaning || '';
+  if (wordObject.fallbackMeaning) {
+    fps.add(getSemanticFingerprint(wordObject.fallbackMeaning));
+  }
+
+  // Also include secondary definitions if they exist (optional, but requested for comprehensive collision)
+  if (wordObject.secondaryDefinitions && wordObject.secondaryDefinitions.length > 0) {
+    for (const def of wordObject.secondaryDefinitions) {
+      if (def.meaningZhTW) {
+        fps.add(getSemanticFingerprint(def.meaningZhTW));
+      }
+    }
+  }
+  return fps;
+}
+
+/**
+ * Determines the best Chinese display meaning for a word.
+ * Priority:
+ * 1. explicit learner-priority (if available)
+ * 2. curated fallbackMeaning (school-list meaning)
+ * 3. resolved primary learner definition matching POS
+ * 4. safe fallback (first valid primary)
+ */
+export function getDisplayMeaning(wordObject) {
+  if (!wordObject) return '';
+
+  if (wordObject.preferredMeaning) return wordObject.preferredMeaning;
+
+  if (wordObject.fallbackMeaning) {
+    return wordObject.fallbackMeaning;
+  }
+
+  if (wordObject.primaryDefinitions && wordObject.primaryDefinitions.length > 0) {
+    if (wordObject.partOfSpeech) {
+      const posMatch = wordObject.primaryDefinitions.find(d => 
+        d.partOfSpeech && d.partOfSpeech.includes(wordObject.partOfSpeech)
+      );
+      if (posMatch && posMatch.meaningZhTW) return posMatch.meaningZhTW;
+    }
+    
+    for (const def of wordObject.primaryDefinitions) {
+      if (def.meaningZhTW) return def.meaningZhTW;
+    }
+  }
+
+  return '';
 }

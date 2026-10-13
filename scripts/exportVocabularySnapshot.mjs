@@ -10,6 +10,9 @@ const __dirname = path.dirname(__filename);
 import { WORDS } from 'file:///C:/Users/justi/.gemini/antigravity-ide/brain/6b2f30fc-a7fb-4397-8248-32a1bc01c21d/scratch/egg/src/data/words.js';
 import { getWordDefinitions } from 'file:///C:/Users/justi/.gemini/antigravity-ide/brain/6b2f30fc-a7fb-4397-8248-32a1bc01c21d/scratch/egg/src/data/wordDefinitions.js';
 
+const overridesPath = path.join(__dirname, 'vocabularyDisplayOverrides.json');
+const overrides = JSON.parse(fs.readFileSync(overridesPath, 'utf8'));
+
 const outputDir = path.join(__dirname, '../assets/vocabulary');
 
 if (!fs.existsSync(outputDir)) {
@@ -51,12 +54,52 @@ for (const w of WORDS) {
 
   if (!levels[lvl]) levels[lvl] = [];
   
+  const overrideMeaning = overrides[w.id];
+
+  if (overrideMeaning && w.meaning) {
+    const safeReplacements = {
+      "餅幹": "餅乾", "網絡": "網路", "出租車": "計程車", "服務器": "伺服器", "王後": "王后", "皇後": "皇后",
+      "打印機": "印表機", "鼠標": "滑鼠", "內存": "記憶體", "公交車": "公車", "U盤": "隨身碟",
+      "面包": "麵包", "幹淨": "乾淨", "幹的": "乾的", "頭發": "頭髮", "重復": "重複", "理發": "理髮",
+      "小面包": "小麵包", "幹衣": "乾衣", "面條": "麵條", "面團": "麵團", "關系": "關係", "答復": "答覆",
+      "面粉": "麵粉", "美發": "美髮", "幹草": "乾草", "一條面包": "一條麵包", "品脫(幹量": "品脫(乾量",
+      "放松": "放鬆", "寬松": "寬鬆", "意大利面": "義大利麵", "弄復雜": "弄複雜", "松緊": "鬆緊",
+      "葡萄幹": "葡萄乾", "松弛": "鬆弛", "復雜": "複雜", "生面團": "生麵團", "幹旱": "乾旱",
+      "復數": "複數", "來復槍": "來福槍", "假發": "假髮", "幹辣椒": "乾辣椒", "無性系": "複製 / 無性繁殖"
+    };
+
+    let isSafeNormalization = false;
+    let testMeaning = w.meaning;
+    for (const [bad, good] of Object.entries(safeReplacements)) {
+      if (testMeaning.includes(bad)) {
+        testMeaning = testMeaning.split(bad).join(good);
+      }
+    }
+    
+    if (testMeaning === overrideMeaning) {
+      isSafeNormalization = true;
+    }
+
+    if (isSafeNormalization) {
+      const normalize = (defs) => {
+        defs.forEach(d => {
+          if (d.meaningZhTW === w.meaning) {
+            d.meaningZhTW = overrideMeaning;
+          }
+        });
+      };
+      normalize(primary);
+      normalize(secondary);
+    }
+  }
+
   levels[lvl].push({
     id: w.id,
     word: w.word,
     partOfSpeech: w.partOfSpeech,
     level: Number(lvl),
-    fallbackMeaning: w.meaning || "",
+    fallbackMeaning: overrideMeaning || w.meaning || "",
+    preferredMeaning: overrideMeaning || undefined,
     primaryDefinitions: primary,
     secondaryDefinitions: secondary
   });

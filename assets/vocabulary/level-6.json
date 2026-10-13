@@ -1403,17 +1403,18 @@
     "word": "blond/blonde",
     "partOfSpeech": "n./adj.",
     "level": 6,
-    "fallbackMeaning": "(頭發)亞麻色的",
+    "fallbackMeaning": "(頭髮)亞麻色的",
+    "preferredMeaning": "(頭髮)亞麻色的",
     "primaryDefinitions": [
       {
         "senseKey": "blond%1:07:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "(頭發)亞麻色的"
+        "meaningZhTW": "(頭髮)亞麻色的"
       },
       {
         "senseKey": "blond%3:00:00::",
         "partOfSpeech": "adjective",
-        "meaningZhTW": "(頭發)亞麻色的"
+        "meaningZhTW": "(頭髮)亞麻色的"
       }
     ],
     "secondaryDefinitions": []
@@ -2367,12 +2368,13 @@
     "word": "chili",
     "partOfSpeech": "n.",
     "level": 6,
-    "fallbackMeaning": "幹辣椒",
+    "fallbackMeaning": "乾辣椒",
+    "preferredMeaning": "乾辣椒",
     "primaryDefinitions": [
       {
         "senseKey": "chili%1:13:01::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "幹辣椒"
+        "meaningZhTW": "乾辣椒"
       }
     ],
     "secondaryDefinitions": []
@@ -2552,7 +2554,8 @@
     "word": "clone",
     "partOfSpeech": "n./v.",
     "level": 6,
-    "fallbackMeaning": "無性系",
+    "fallbackMeaning": "複製 / 無性繁殖",
+    "preferredMeaning": "複製 / 無性繁殖",
     "primaryDefinitions": [
       {
         "senseKey": "clone%1:18:00::",
@@ -2562,12 +2565,12 @@
       {
         "senseKey": "clone%1:14:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "無性系"
+        "meaningZhTW": "複製 / 無性繁殖"
       },
       {
         "senseKey": "clone%2:36:00::",
         "partOfSpeech": "verb",
-        "meaningZhTW": "無性系"
+        "meaningZhTW": "複製 / 無性繁殖"
       }
     ],
     "secondaryDefinitions": []
@@ -3306,12 +3309,13 @@
     "word": "cracker",
     "partOfSpeech": "n.",
     "level": 6,
-    "fallbackMeaning": "餅幹",
+    "fallbackMeaning": "餅乾",
+    "preferredMeaning": "餅乾",
     "primaryDefinitions": [
       {
         "senseKey": "cracker%1:13:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "餅幹"
+        "meaningZhTW": "餅乾"
       }
     ],
     "secondaryDefinitions": []

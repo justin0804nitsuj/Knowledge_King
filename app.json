@@ -1,17 +1,54 @@
 {
   "expo": {
-    "name": "Knowledge_King",
+    "name": "Knowledge King",
     "slug": "Knowledge_King",
     "version": "1.0.0",
     "orientation": "portrait",
-
     "userInterfaceStyle": "light",
+    "backgroundColor": "#1E3A8A",
+    "locales": {
+      "zh-TW": "./locales/zh-TW.json",
+      "en": "./locales/en.json"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.justin.knowledgeking"
     },
+    "icon": "./assets/icon.png",
     "android": {
+      "package": "com.justin.knowledgeking",
+      "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1E3A8A",
+        "monochromeImage": "./assets/monochrome-icon.png"
+      }
     },
-    "web": {
+    "web": {},
+    "plugins": [
+      "react-native-nitro-google-signin",
+      "expo-localization",
+      "expo-font",
+      "expo-audio",
+      "expo-asset",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1E3A8A",
+          "image": "./assets/splash-icon.png",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#0F172A"
+          },
+          "imageWidth": 200
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "61705626-0364-423f-b0f7-3ab13d29dca6"
+      }
     }
   }
 }

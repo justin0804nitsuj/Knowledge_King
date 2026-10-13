@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "880103499727",
+    "firebase_url": "https://gsat-battle-992b8-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "gsat-battle-992b8",
+    "storage_bucket": "gsat-battle-992b8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:880103499727:android:0fb5c0f06a1022666c14ba",
+        "android_client_info": {
+          "package_name": "com.justin.knowledgeking"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "880103499727-t8j835tulk9kkr3qo6fta6665losbvfr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.justin.knowledgeking",
+            "certificate_hash": "b89fe7ee4c1b96f8065950ccbcee49fa057ce574"
+          }
+        },
+        {
+          "client_id": "880103499727-ord71qjb6mu6fk546eh74lo3rj1h1vkd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCAl-Lf46Oyg8WcuhDdugoJEkeexm40tl4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "880103499727-ord71qjb6mu6fk546eh74lo3rj1h1vkd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

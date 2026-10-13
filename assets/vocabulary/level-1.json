@@ -2056,7 +2056,8 @@
     "word": "bread",
     "partOfSpeech": "n.",
     "level": 1,
-    "fallbackMeaning": "面包",
+    "fallbackMeaning": "麵包",
+    "preferredMeaning": "麵包",
     "primaryDefinitions": [
       {
         "senseKey": "bread%1:13:00::",
@@ -3106,17 +3107,18 @@
     "word": "clean",
     "partOfSpeech": "adj./v./adv./n.",
     "level": 1,
-    "fallbackMeaning": "幹淨的",
+    "fallbackMeaning": "乾淨的",
+    "preferredMeaning": "乾淨的",
     "primaryDefinitions": [
       {
         "senseKey": "clean%3:00:01::",
         "partOfSpeech": "adjective",
-        "meaningZhTW": "幹淨的"
+        "meaningZhTW": "乾淨的"
       },
       {
         "senseKey": "clean%2:35:00::",
         "partOfSpeech": "verb",
-        "meaningZhTW": "幹淨的"
+        "meaningZhTW": "乾淨的"
       }
     ],
     "secondaryDefinitions": []
@@ -3517,12 +3519,13 @@
     "word": "cookie",
     "partOfSpeech": "n.",
     "level": 1,
-    "fallbackMeaning": "餅幹",
+    "fallbackMeaning": "餅乾",
+    "preferredMeaning": "餅乾",
     "primaryDefinitions": [
       {
         "senseKey": "cookie%1:13:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "餅幹"
+        "meaningZhTW": "餅乾"
       }
     ],
     "secondaryDefinitions": []
@@ -4653,17 +4656,18 @@
     "word": "dry",
     "partOfSpeech": "adj./v.",
     "level": 1,
-    "fallbackMeaning": "幹的",
+    "fallbackMeaning": "乾的",
+    "preferredMeaning": "乾的",
     "primaryDefinitions": [
       {
         "senseKey": "dry%3:00:01::",
         "partOfSpeech": "adjective",
-        "meaningZhTW": "幹的"
+        "meaningZhTW": "乾的"
       },
       {
         "senseKey": "dry%2:30:01::",
         "partOfSpeech": "verb",
-        "meaningZhTW": "幹的"
+        "meaningZhTW": "乾的"
       }
     ],
     "secondaryDefinitions": []
@@ -7077,12 +7081,13 @@
     "word": "hair",
     "partOfSpeech": "n.",
     "level": 1,
-    "fallbackMeaning": "頭發",
+    "fallbackMeaning": "頭髮",
+    "preferredMeaning": "頭髮",
     "primaryDefinitions": [
       {
         "senseKey": "hair%1:08:00::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "頭發"
+        "meaningZhTW": "頭髮"
       }
     ],
     "secondaryDefinitions": []
@@ -7597,7 +7602,8 @@
     "word": "hide",
     "partOfSpeech": "v.",
     "level": 1,
-    "fallbackMeaning": "獸皮",
+    "fallbackMeaning": "躲藏 / 隱藏",
+    "preferredMeaning": "躲藏 / 隱藏",
     "primaryDefinitions": [
       {
         "senseKey": "hide%2:39:00::",
@@ -13043,12 +13049,23 @@
     "word": "queen",
     "partOfSpeech": "n.",
     "level": 1,
-    "fallbackMeaning": "王後",
+    "fallbackMeaning": "女王；王后",
+    "preferredMeaning": "女王；王后",
     "primaryDefinitions": [
       {
         "senseKey": "queen%1:05:01::",
         "partOfSpeech": "noun",
-        "meaningZhTW": "王後"
+        "meaningZhTW": "女王"
+      },
+      {
+        "senseKey": "queen%1:18:00::",
+        "partOfSpeech": "noun",
+        "meaningZhTW": "王后"
+      },
+      {
+        "senseKey": "queen%1:18:01::",
+        "partOfSpeech": "noun",
+        "meaningZhTW": "蜂后"
       }
     ],
     "secondaryDefinitions": []
@@ -13448,12 +13465,13 @@
     "word": "repeat",
     "partOfSpeech": "v.",
     "level": 1,
-    "fallbackMeaning": "重復",
+    "fallbackMeaning": "重複",
+    "preferredMeaning": "重複",
     "primaryDefinitions": [
       {
         "senseKey": "repeat%2:32:00::",
         "partOfSpeech": "verb",
-        "meaningZhTW": "重復"
+        "meaningZhTW": "重複"
       }
     ],
     "secondaryDefinitions": []
@@ -16169,7 +16187,8 @@
     "word": "taxicab/taxi/cab",
     "partOfSpeech": "n.",
     "level": 1,
-    "fallbackMeaning": "出租車",
+    "fallbackMeaning": "計程車",
+    "preferredMeaning": "計程車",
     "primaryDefinitions": [
       {
         "senseKey": "taxicab%1:06:00::",
