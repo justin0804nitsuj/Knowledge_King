@@ -22,6 +22,77 @@
         }
       }
     },
+    "userProgress": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "!newData.exists() || (newData.hasChildren(['schemaVersion', 'revision', 'updatedAt', 'progression', 'campaign']) && newData.child('schemaVersion').val() === 1 && newData.child('revision').isNumber() && newData.child('revision').val() % 1 === 0 && newData.child('revision').val() >= 0 && newData.child('updatedAt').isNumber() && newData.child('updatedAt').val() <= now && (!data.exists() || newData.child('revision').val() >= data.child('revision').val()))",
+        "schemaVersion": {
+          ".validate": "newData.val() === 1"
+        },
+        "revision": {
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+        },
+        "updatedAt": {
+          ".validate": "newData.isNumber() && newData.val() <= now"
+        },
+        "appliedOps": {
+          "$deviceId": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0"
+          }
+        },
+        "progression": {
+          ".validate": "newData.hasChildren(['totalXp'])",
+          "totalXp": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "campaign": {
+          ".validate": "newData.hasChildren(['bestCombo'])",
+          "bestCombo": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0"
+          },
+          "clearedStages": {
+            "$stageId": {
+              ".validate": "newData.val() === true"
+            }
+          },
+          "stageStars": {
+            "$stageId": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 3"
+            }
+          },
+          "stageScores": {
+            "$stageId": {
+              ".validate": "newData.isNumber() && newData.val() >= 0"
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "uniqueClaims": {
+          "$claimId": {
+            ".validate": "newData.hasChildren(['claimedAt', 'deviceId'])",
+            "claimedAt": {
+              ".validate": "newData.isNumber() && newData.val() <= now"
+            },
+            "deviceId": {
+              ".validate": "newData.isString() && newData.val().length > 0"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
     "rooms": {
       "$roomId": {
         ".read": "auth != null",

@@ -169,3 +169,5 @@ export function validateUniqueClaim(claim) {
     xpReward: canonicalReward
   };
 }
+
+export const getCanonicalUniqueReward = resolveCanonicalClaimReward;
