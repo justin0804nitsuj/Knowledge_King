@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { subscribeToConnectionState, ConnectionState } from '../services/online/connectionService';
 import { syncOnlineProfile } from '../services/online/onlineProfileService';
+import { flushLiveProgress } from '../services/sync/liveProgressSync';
 import { useAuth, AuthState } from './AuthContext';
 
 const OnlineContext = createContext(null);
 
 export function OnlineProvider({ children }) {
-  const { status, user } = useAuth();
+  const { status, user, authReady, progressReady } = useAuth();
   const [connectionState, setConnectionState] = useState(ConnectionState.OFFLINE);
   
   // Ref to track if we have already successfully synced the profile for the current user session
@@ -35,6 +36,19 @@ export function OnlineProvider({ children }) {
       }
     }
   }, [status, user, connectionState]);
+
+  // Phase 5B: Flush live gameplay sync when online connection is established
+  useEffect(() => {
+    if (
+      connectionState === ConnectionState.ONLINE &&
+      status === AuthState.SIGNED_IN &&
+      authReady &&
+      progressReady &&
+      user?.uid
+    ) {
+      flushLiveProgress(`uid:${user.uid}`).catch(() => {});
+    }
+  }, [connectionState, status, authReady, progressReady, user]);
 
   const value = {
     connectionState,

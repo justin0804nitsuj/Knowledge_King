@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, onAuthStateChanged } from '../services/firebase/firebaseAuth';
 import { signInWithGoogle, signOut } from '../services/auth/googleSignIn';
 import { coordinateAccountProgress } from '../services/sync/accountProgressCoordinator';
+import { flushLiveProgress, getSyncStatus, subscribeSyncStatus } from '../services/sync/liveProgressSync';
 
 export const AuthState = {
   INITIALIZING: 'INITIALIZING',
@@ -17,6 +18,15 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [identity, setIdentity] = useState(null);
+  const [progressReady, setProgressReady] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(getSyncStatus());
+
+  useEffect(() => {
+    const unsubSync = subscribeSyncStatus((s) => {
+      setSyncStatus(s);
+    });
+    return () => unsubSync();
+  }, []);
 
   useEffect(() => {
     // Observer for Firebase Auth state
@@ -38,7 +48,12 @@ export function AuthProvider({ children }) {
             await coordinateAccountProgress(firebaseUser);
           } catch (err) {
             console.warn('[AuthContext] Account coordination warning:', err);
+          } finally {
+            setProgressReady(true);
           }
+
+          // Trigger live progress sync flush once account progress is ready
+          flushLiveProgress(resolvedIdentity).catch(() => {});
         } else {
           setUser(null);
           setIdentity('guest');
@@ -49,6 +64,8 @@ export function AuthProvider({ children }) {
             await coordinateAccountProgress(null);
           } catch (err) {
             console.warn('[AuthContext] Guest coordination warning:', err);
+          } finally {
+            setProgressReady(true);
           }
         }
       },
@@ -56,6 +73,7 @@ export function AuthProvider({ children }) {
         console.error('Firebase Auth state error:', error);
         setStatus(AuthState.ERROR);
         setAuthReady(true);
+        setProgressReady(true);
       }
     );
 
@@ -89,6 +107,9 @@ export function AuthProvider({ children }) {
     user,
     authReady,
     identity,
+    progressReady,
+    syncStatus,
+    flushLiveProgress: () => flushLiveProgress(identity),
     isSignedIn: status === AuthState.SIGNED_IN,
     isInitializing: status === AuthState.INITIALIZING,
     signInWithGoogle: handleSignIn,
@@ -104,7 +125,7 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === null) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;

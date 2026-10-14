@@ -197,3 +197,56 @@ export async function restoreCloudProgressToLocal(targetIdentity, cloudProgress)
 
   return { playerProgress, campaignProgress };
 }
+
+/**
+ * Saves scoped player progress for an identity.
+ *
+ * @param {string} targetIdentity
+ * @param {object} playerProgress
+ */
+export async function saveScopedPlayerProgress(targetIdentity, playerProgress) {
+  const normalizedIdentity = normalizeIdentity(targetIdentity);
+  const key = getScopedKey('playerProgress', normalizedIdentity);
+  await AsyncStorage.setItem(key, JSON.stringify(playerProgress));
+}
+
+/**
+ * Saves scoped campaign progress for an identity.
+ *
+ * @param {string} targetIdentity
+ * @param {object} campaignProgress
+ */
+export async function saveScopedCampaignProgress(targetIdentity, campaignProgress) {
+  const normalizedIdentity = normalizeIdentity(targetIdentity);
+  const key = getScopedKey('campaignProgress', normalizedIdentity);
+  await AsyncStorage.setItem(key, JSON.stringify(campaignProgress));
+}
+
+/**
+ * Reads the last synced snapshot for an identity.
+ *
+ * @param {string} targetIdentity
+ * @returns {Promise<object|null>}
+ */
+export async function getLastSyncedSnapshot(targetIdentity) {
+  const normalizedIdentity = normalizeIdentity(targetIdentity);
+  const key = getScopedKey('lastSyncedSnapshot', normalizedIdentity);
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Persists the last synced snapshot for an identity.
+ *
+ * @param {string} targetIdentity
+ * @param {object} snapshot
+ */
+export async function setLastSyncedSnapshot(targetIdentity, snapshot) {
+  const normalizedIdentity = normalizeIdentity(targetIdentity);
+  const key = getScopedKey('lastSyncedSnapshot', normalizedIdentity);
+  await AsyncStorage.setItem(key, JSON.stringify(snapshot));
+}

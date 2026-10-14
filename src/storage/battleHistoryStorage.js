@@ -1,12 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getActiveScopedKey, getScopedKey } from './storageIdentity';
 
-const STORAGE_KEY = '@KnowledgeKing:battleHistory';
 const CURRENT_SCHEMA_VERSION = 1;
 const MAX_HISTORY_SIZE = 100;
 
-export async function loadBattleHistory() {
+async function resolveKey(explicitIdentity) {
+  if (explicitIdentity) {
+    return getScopedKey('battleHistory', explicitIdentity);
+  }
+  return getActiveScopedKey('battleHistory');
+}
+
+export async function loadBattleHistory(explicitIdentity) {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    const key = await resolveKey(explicitIdentity);
+    const raw = await AsyncStorage.getItem(key);
     if (!raw) return createDefaultHistory();
     
     const data = JSON.parse(raw);
@@ -21,9 +29,10 @@ export async function loadBattleHistory() {
   }
 }
 
-export async function saveBattleHistory(history) {
+export async function saveBattleHistory(history, explicitIdentity) {
   try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+    const key = await resolveKey(explicitIdentity);
+    await AsyncStorage.setItem(key, JSON.stringify(history));
   } catch (err) {
     console.error('Failed to save battle history', err);
     throw err;

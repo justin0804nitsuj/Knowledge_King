@@ -247,7 +247,10 @@ export function reconcileProgressOnOpAck({
   const csCampaign = cloudSnapshot?.campaign || cloudSnapshotCampaign || {};
   const unsyncedCampaign = unsyncedProgress?.campaignProgress || localCurrentCampaign || {};
 
-  for (const st of csCampaign.clearedStages || []) {
+  const cloudClears = Array.isArray(csCampaign.clearedStages)
+    ? csCampaign.clearedStages
+    : Object.keys(csCampaign.clearedStages || {});
+  for (const st of cloudClears) {
     clearedStagesMap[st] = true;
   }
   const localClears = Array.isArray(unsyncedCampaign.clearedStages)
