@@ -9,6 +9,7 @@ import { createDefaultMistakes, recordMistakesFromBattle, processReviewResult, g
 import { BATTLE_STATES } from '../src/domain/game/battleEngine';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getStageById } from '../src/domain/adventure/campaignConfig';
+import { getScopedKey } from '../src/storage/storageIdentity';
 
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -98,17 +99,25 @@ describe('Player Progression Domain', () => {
   describe('Review Processing', () => {
     it('review processing does not throw and duplicate Review event remains idempotent', async () => {
       // Mock the storage to return default states
-      AsyncStorage.getItem
-        .mockResolvedValueOnce(JSON.stringify(createDefaultMistakes()))
-        .mockResolvedValueOnce(JSON.stringify(createDefaultPlayerProgress()));
+      AsyncStorage.getItem.mockImplementation(async (key) => {
+        if (key && key.includes('mistakes')) return JSON.stringify(createDefaultMistakes());
+        if (key && key.includes('playerProgress')) return JSON.stringify(createDefaultPlayerProgress());
+        return null;
+      });
 
       // First call
       await expect(processReviewAnswer('review-event-1', 'word1', true)).resolves.not.toThrow();
 
       // Second call with same event ID (idempotency check)
-      AsyncStorage.getItem
-        .mockResolvedValueOnce(JSON.stringify({ ...createDefaultMistakes(), processedEvents: ['review-event-1'] }))
-        .mockResolvedValueOnce(JSON.stringify({ ...createDefaultPlayerProgress(), processedEvents: ['review-event-1'] }));
+      AsyncStorage.getItem.mockImplementation(async (key) => {
+        if (key && key.includes('mistakes')) {
+          return JSON.stringify({ ...createDefaultMistakes(), processedEvents: ['review-event-1'] });
+        }
+        if (key && key.includes('playerProgress')) {
+          return JSON.stringify({ ...createDefaultPlayerProgress(), processedEvents: ['review-event-1'] });
+        }
+        return null;
+      });
 
       const { xpEarned } = await processReviewAnswer('review-event-1', 'word1', true);
       expect(xpEarned).toBe(0); // Because it was already processed
@@ -167,10 +176,14 @@ describe('Player Progression Domain', () => {
         timeoutTargetIds: []
       };
 
+      const playerKey = getScopedKey('playerProgress');
+      const mistakesKey = getScopedKey('mistakes');
+      const historyKey = getScopedKey('battleHistory');
+
       const res1 = await processBattleResult('battle_123', finalState, 'L1-S1');
       expect(res1.xpEarned).toBeGreaterThan(0);
       
-      const pAfterFirst = JSON.parse(mockStorage['@KnowledgeKing:playerProgress']);
+      const pAfterFirst = JSON.parse(mockStorage[playerKey]);
       const xpAfterFirst = pAfterFirst.totalXp;
       
       // Simulate app restart / remount calling the exact same event
@@ -178,39 +191,46 @@ describe('Player Progression Domain', () => {
       // Returns summary safely
       expect(res2.xpEarned).toBe(res1.xpEarned); 
       
-      const pAfterSecond = JSON.parse(mockStorage['@KnowledgeKing:playerProgress']);
+      const pAfterSecond = JSON.parse(mockStorage[playerKey]);
       // But XP should not be duplicated
       expect(pAfterSecond.totalXp).toBe(xpAfterFirst);
       
       // History should only have 1 record
-      const hAfterSecond = JSON.parse(mockStorage['@KnowledgeKing:battleHistory']);
+      const hAfterSecond = JSON.parse(mockStorage[historyKey]);
       expect(hAfterSecond.records.length).toBe(1);
     });
 
     it('processing the same review answer twice does not duplicate XP', async () => {
+      const playerKey = getScopedKey('playerProgress');
+      const mistakesKey = getScopedKey('mistakes');
+
       // Setup some mistakes
       const { recordMistakesFromBattle } = require('../src/storage/mistakeStorage');
       const { processReviewAnswer } = require('../src/domain/game/reviewProcessor');
 
       let mistakes = require('../src/storage/mistakeStorage').createDefaultMistakes();
       mistakes = await recordMistakesFromBattle(mistakes, [], ['word1'], [], 1);
-      mockStorage['@KnowledgeKing:mistakes'] = JSON.stringify(mistakes);
+      mockStorage[mistakesKey] = JSON.stringify(mistakes);
 
       const res1 = await processReviewAnswer('review_1', 'word1', true);
       expect(res1.xpEarned).toBeGreaterThan(0);
 
-      const pAfterFirst = JSON.parse(mockStorage['@KnowledgeKing:playerProgress']);
+      const pAfterFirst = JSON.parse(mockStorage[playerKey]);
       const xpAfterFirst = pAfterFirst.totalXp;
 
       const res2 = await processReviewAnswer('review_1', 'word1', true);
       // It returns 0 XP on duplicate processing
       expect(res2.xpEarned).toBe(0);
 
-      const pAfterSecond = JSON.parse(mockStorage['@KnowledgeKing:playerProgress']);
+      const pAfterSecond = JSON.parse(mockStorage[playerKey]);
       expect(pAfterSecond.totalXp).toBe(xpAfterFirst);
     });
 
     it('partial failure recovers cleanly and does not duplicate state', async () => {
+      const playerKey = getScopedKey('playerProgress');
+      const mistakesKey = getScopedKey('mistakes');
+      const historyKey = getScopedKey('battleHistory');
+
       const finalState = {
         status: BATTLE_STATES.VICTORY,
         correctCount: 4,
@@ -228,7 +248,7 @@ describe('Player Progression Domain', () => {
       let callCount = 0;
       const originalSetItem = AsyncStorage.setItem;
       AsyncStorage.setItem.mockImplementation(async (key, value) => {
-        if (key === '@KnowledgeKing:mistakes') {
+        if (key === mistakesKey || key.includes('mistakes')) {
           callCount++;
           if (callCount === 1) {
             throw new Error('Injected network/storage failure');
@@ -242,14 +262,14 @@ describe('Player Progression Domain', () => {
         .rejects
         .toThrow('Injected network/storage failure');
 
-      const pAfterFail = JSON.parse(mockStorage['@KnowledgeKing:playerProgress']);
+      const pAfterFail = JSON.parse(mockStorage[playerKey]);
       const xpAfterFail = pAfterFail.totalXp;
       expect(xpAfterFail).toBeGreaterThan(0); // XP succeeded
 
-      const mAfterFail = mockStorage['@KnowledgeKing:mistakes'];
+      const mAfterFail = mockStorage[mistakesKey];
       expect(mAfterFail).toBeUndefined(); // Mistake failed
 
-      const hAfterFail = mockStorage['@KnowledgeKing:battleHistory'];
+      const hAfterFail = mockStorage[historyKey];
       expect(hAfterFail).toBeUndefined(); // History failed because mistake threw
 
       // 2. Retry exact same battle
@@ -257,15 +277,15 @@ describe('Player Progression Domain', () => {
       expect(res.xpEarned).toBeGreaterThan(0);
 
       // Verify XP not duplicated
-      const pAfterRetry = JSON.parse(mockStorage['@KnowledgeKing:playerProgress']);
+      const pAfterRetry = JSON.parse(mockStorage[playerKey]);
       expect(pAfterRetry.totalXp).toBe(xpAfterFail);
 
       // Verify Mistake count correct
-      const mAfterRetry = JSON.parse(mockStorage['@KnowledgeKing:mistakes']);
+      const mAfterRetry = JSON.parse(mockStorage[mistakesKey]);
       expect(mAfterRetry.records['word-wrong'].wrongCount).toBe(1);
 
       // Verify history exactly once
-      const hAfterRetry = JSON.parse(mockStorage['@KnowledgeKing:battleHistory']);
+      const hAfterRetry = JSON.parse(mockStorage[historyKey]);
       expect(hAfterRetry.records.length).toBe(1);
     });
   });

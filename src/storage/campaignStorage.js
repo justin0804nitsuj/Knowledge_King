@@ -1,15 +1,23 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getActiveScopedKey, getScopedKey } from './storageIdentity';
 
-const STORAGE_KEY = '@KnowledgeKing:campaignProgress';
 const CURRENT_SCHEMA_VERSION = 1;
+
+async function resolveKey(explicitIdentity) {
+  if (explicitIdentity) {
+    return getScopedKey('campaignProgress', explicitIdentity);
+  }
+  return getActiveScopedKey('campaignProgress');
+}
 
 /**
  * Loads the campaign progress defensively.
  * Falls back to an empty initial state if missing or corrupted.
  */
-export async function loadCampaignProgress() {
+export async function loadCampaignProgress(explicitIdentity) {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    const key = await resolveKey(explicitIdentity);
+    const raw = await AsyncStorage.getItem(key);
     if (!raw) return createDefaultProgress();
     
     const data = JSON.parse(raw);
@@ -30,9 +38,10 @@ export async function loadCampaignProgress() {
 /**
  * Persists the campaign progress.
  */
-export async function saveCampaignProgress(progress) {
+export async function saveCampaignProgress(progress, explicitIdentity) {
   try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    const key = await resolveKey(explicitIdentity);
+    await AsyncStorage.setItem(key, JSON.stringify(progress));
   } catch (err) {
     console.error('Failed to save campaign progress', err);
     throw err;
@@ -54,8 +63,8 @@ function createDefaultProgress() {
 /**
  * Helper to record a battle result.
  */
-export async function recordStageResult(stageId, stars, score) {
-  const progress = await loadCampaignProgress();
+export async function recordStageResult(stageId, stars, score, explicitIdentity) {
+  const progress = await loadCampaignProgress(explicitIdentity);
   
   if (!progress.clearedStages.includes(stageId)) {
     progress.clearedStages.push(stageId);
@@ -71,10 +80,10 @@ export async function recordStageResult(stageId, stars, score) {
     progress.stageScores[stageId] = score;
   }
   
-  await saveCampaignProgress(progress);
+  await saveCampaignProgress(progress, explicitIdentity);
   return progress;
 }
 
-export async function resetCampaignProgress() {
-  await saveCampaignProgress(createDefaultProgress());
+export async function resetCampaignProgress(explicitIdentity) {
+  await saveCampaignProgress(createDefaultProgress(), explicitIdentity);
 }

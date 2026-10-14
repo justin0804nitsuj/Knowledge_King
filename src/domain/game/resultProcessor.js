@@ -6,6 +6,11 @@ import { calculateStars } from '../adventure/starRating';
 import { XP_REWARDS } from '../player/xpRewards';
 import { BATTLE_STATES } from './battleEngine';
 import { getStageById } from '../adventure/campaignConfig';
+import { getLocalDailyKey } from '../player/dailySystem';
+import { buildFirstClearClaimId, buildDailyMissionClaimId } from '../sync/uniqueRewards';
+import { addStagedRepeatableXp, addStagedUniqueClaim, addStagedCampaignProgress } from '../../storage/unsyncedProgressStorage';
+import { flushLiveProgress } from '../../services/sync/liveProgressSync';
+import { getActiveIdentity } from '../../storage/storageIdentity';
 
 /**
  * Coherently processes one completed battle result.
@@ -44,8 +49,37 @@ export async function processBattleResult(battleId, finalState, stageId) {
   }
 
   // 3. Player Progress & Daily
+  let repeatableBattleXp = 0;
+  const stagedClaims = [];
+  let campaignProgressDelta = null;
+  let isNewEvent = false;
+
   let playerProgress = await loadPlayerProgress();
   if (!hasProcessedEvent(playerProgress, battleId)) {
+    isNewEvent = true;
+
+    // Repeatable battle XP: answer XP + victory XP + perfect victory bonus
+    repeatableBattleXp = (finalState.correctCount * XP_REWARDS.CORRECT_ANSWER)
+      + (isVictory ? XP_REWARDS.VICTORY[stage.type] : 0)
+      + (isPerfect ? XP_REWARDS.PERFECT_VICTORY : 0);
+
+    // Unique claim: First Clear XP (strictly excluded from repeatableXpDelta)
+    if (isFirstClear) {
+      stagedClaims.push({
+        claimId: buildFirstClearClaimId(stageId),
+        xpReward: XP_REWARDS.FIRST_CLEAR[stage.type]
+      });
+    }
+
+    if (isVictory) {
+      campaignProgressDelta = {
+        clearedStages: [stageId],
+        stageStars: { [stageId]: earnedStars },
+        stageScores: { [stageId]: finalState.score },
+        bestCombo: finalState.maxCombo
+      };
+    }
+
     playerProgress = recordDailyActivity(playerProgress);
     playerProgress.totalXp += xpEarned;
     
@@ -71,6 +105,7 @@ export async function processBattleResult(battleId, finalState, stageId) {
 
     // Daily missions
     const dm = playerProgress.daily.missions;
+    const dateKey = playerProgress.daily.lastActiveDate || getLocalDailyKey();
     
     if (!dm.m1.claimed) {
       dm.m1.progress += finalState.questionNumber;
@@ -79,6 +114,10 @@ export async function processBattleResult(battleId, finalState, stageId) {
         playerProgress.totalXp += 30;
         st.totalXpEarned += 30;
         xpEarned += 30;
+        stagedClaims.push({
+          claimId: buildDailyMissionClaimId(dateKey, 'm1'),
+          xpReward: 30
+        });
       }
     }
 
@@ -89,6 +128,10 @@ export async function processBattleResult(battleId, finalState, stageId) {
         playerProgress.totalXp += 40;
         st.totalXpEarned += 40;
         xpEarned += 40;
+        stagedClaims.push({
+          claimId: buildDailyMissionClaimId(dateKey, 'm2'),
+          xpReward: 40
+        });
       }
     }
 
@@ -99,6 +142,10 @@ export async function processBattleResult(battleId, finalState, stageId) {
         playerProgress.totalXp += 50;
         st.totalXpEarned += 50;
         xpEarned += 50;
+        stagedClaims.push({
+          claimId: buildDailyMissionClaimId(dateKey, 'm3'),
+          xpReward: 50
+        });
       }
     }
 
@@ -146,6 +193,25 @@ export async function processBattleResult(battleId, finalState, stageId) {
   } else {
     // If it already existed, use the persisted xpEarned for display consistency
     xpEarned = existingRecord.xpEarned;
+  }
+
+  // 6. Stage Sync Metadata & Dispatch Background Sync (Local-First)
+  if (isNewEvent) {
+    try {
+      const activeIdentity = await getActiveIdentity();
+      if (repeatableBattleXp > 0) {
+        await addStagedRepeatableXp(activeIdentity, repeatableBattleXp);
+      }
+      for (const claim of stagedClaims) {
+        await addStagedUniqueClaim(activeIdentity, claim);
+      }
+      if (campaignProgressDelta) {
+        await addStagedCampaignProgress(activeIdentity, campaignProgressDelta);
+      }
+      flushLiveProgress(activeIdentity).catch(() => {});
+    } catch (syncStageErr) {
+      console.warn('[ResultProcessor] Failed to stage sync metadata:', syncStageErr);
+    }
   }
 
   return {

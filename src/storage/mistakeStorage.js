@@ -1,11 +1,19 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getActiveScopedKey, getScopedKey } from './storageIdentity';
 
-const STORAGE_KEY = '@KnowledgeKing:mistakes';
 const CURRENT_SCHEMA_VERSION = 1;
 
-export async function loadMistakes() {
+async function resolveKey(explicitIdentity) {
+  if (explicitIdentity) {
+    return getScopedKey('mistakes', explicitIdentity);
+  }
+  return getActiveScopedKey('mistakes');
+}
+
+export async function loadMistakes(explicitIdentity) {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    const key = await resolveKey(explicitIdentity);
+    const raw = await AsyncStorage.getItem(key);
     if (!raw) return createDefaultMistakes();
     
     const data = JSON.parse(raw);
@@ -20,9 +28,10 @@ export async function loadMistakes() {
   }
 }
 
-export async function saveMistakes(mistakes) {
+export async function saveMistakes(mistakes, explicitIdentity) {
   try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(mistakes));
+    const key = await resolveKey(explicitIdentity);
+    await AsyncStorage.setItem(key, JSON.stringify(mistakes));
   } catch (err) {
     console.error('Failed to save mistakes', err);
     throw err;

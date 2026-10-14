@@ -82,6 +82,14 @@ for (const [level, info] of Object.entries(manifest.levels)) {
       console.error(`Regression: queen is ${w.fallbackMeaning}, expected 女王；王后`);
       errors++;
     }
+    if (w.word === 'typhoon' && w.fallbackMeaning !== '颱風') {
+      console.error(`Regression: typhoon is ${w.fallbackMeaning}, expected 颱風`);
+      errors++;
+    }
+    if (w.word === 'encourage(ment)' && w.fallbackMeaning !== '鼓勵') {
+      console.error(`Regression: encourage(ment) is ${w.fallbackMeaning}, expected 鼓勵`);
+      errors++;
+    }
     totalWordsChecked++;
   }
 }

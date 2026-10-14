@@ -1,12 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocalDailyKey } from '../domain/player/dailySystem';
+import { getActiveScopedKey, getScopedKey } from './storageIdentity';
 
-const STORAGE_KEY = '@KnowledgeKing:playerProgress';
 const CURRENT_SCHEMA_VERSION = 1;
 
-export async function loadPlayerProgress() {
+async function resolveKey(explicitIdentity) {
+  if (explicitIdentity) {
+    return getScopedKey('playerProgress', explicitIdentity);
+  }
+  return getActiveScopedKey('playerProgress');
+}
+
+export async function loadPlayerProgress(explicitIdentity) {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    const key = await resolveKey(explicitIdentity);
+    const raw = await AsyncStorage.getItem(key);
     if (!raw) return createDefaultPlayerProgress();
     
     let data = JSON.parse(raw);
@@ -29,9 +37,10 @@ export async function loadPlayerProgress() {
   }
 }
 
-export async function savePlayerProgress(progress) {
+export async function savePlayerProgress(progress, explicitIdentity) {
   try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    const key = await resolveKey(explicitIdentity);
+    await AsyncStorage.setItem(key, JSON.stringify(progress));
   } catch (err) {
     console.error('Failed to save player progress', err);
     throw err;

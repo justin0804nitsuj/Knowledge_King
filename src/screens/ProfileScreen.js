@@ -18,7 +18,7 @@ export default function ProfileScreen({ navigation }) {
   const [currentLang, setCurrentLang] = useState(LANGUAGE_PREF.SYSTEM);
   const [soundEffects, setSoundEffects] = useState(true);
   const [haptics, setHaptics] = useState(true);
-  const { user, isSignedIn, signInWithGoogle, signOut, isInitializing } = useAuth();
+  const { user, isSignedIn, signInWithGoogle, signOut, isInitializing, syncStatus } = useAuth();
   const { t } = useTranslation();
   
   useFocusEffect(
@@ -111,6 +111,15 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.headerInfo}>
           <Text style={styles.playerName}>{isSignedIn ? user?.displayName : t('profile.guestPlayer')}</Text>
           {isSignedIn && <Text style={styles.playerEmail}>{user?.email}</Text>}
+          {isSignedIn ? (
+            <Text style={[styles.syncStatusText, { color: getSyncStatusColor(syncStatus) }]}>
+              {getSyncStatusLabel(syncStatus)}
+            </Text>
+          ) : (
+            <Text style={[styles.syncStatusText, { color: '#888888' }]}>
+              Offline — saved on device
+            </Text>
+          )}
           <Text style={styles.playerXp}>{t('home.xp')}: {playerInfo.totalXp}</Text>
           <Text style={styles.playerStreak}>{t('home.streak')}: {playerInfo.daily.streak}</Text>
         </View>
@@ -434,5 +443,41 @@ const styles = StyleSheet.create({
   resetBtnText: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  syncStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+    marginBottom: 4,
   }
 });
+
+function getSyncStatusLabel(status) {
+  switch (status) {
+    case 'synced':
+      return 'Cloud Sync: Synced';
+    case 'syncing':
+      return 'Cloud Sync: Syncing...';
+    case 'offline':
+      return 'Offline — saved on device';
+    case 'error':
+      return 'Sync error — will retry';
+    default:
+      return 'Saved on device';
+  }
+}
+
+function getSyncStatusColor(status) {
+  switch (status) {
+    case 'synced':
+      return '#22c55e'; // green
+    case 'syncing':
+      return '#3b82f6'; // blue
+    case 'offline':
+      return '#eab308'; // yellow/amber
+    case 'error':
+      return '#ef4444'; // red
+    default:
+      return '#888888';
+  }
+}
