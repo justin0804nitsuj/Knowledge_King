@@ -25,8 +25,8 @@
     "userProgress": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid",
-        ".validate": "!newData.exists() || (newData.hasChildren(['schemaVersion', 'revision', 'updatedAt', 'progression', 'campaign']) && newData.child('schemaVersion').val() === 1 && newData.child('revision').isNumber() && newData.child('revision').val() % 1 === 0 && newData.child('revision').val() >= 0 && newData.child('updatedAt').isNumber() && newData.child('updatedAt').val() <= now && (!data.exists() || newData.child('revision').val() >= data.child('revision').val()))",
+        ".write": "auth != null && auth.uid === $uid && (!data.child('uniqueClaims').exists() || newData.child('uniqueClaims').exists())",
+        ".validate": "!newData.exists() || (newData.hasChildren(['schemaVersion', 'revision', 'updatedAt', 'progression', 'campaign']) && newData.child('schemaVersion').val() === 1 && newData.child('revision').isNumber() && newData.child('revision').val() % 1 === 0 && newData.child('revision').val() >= 0 && newData.child('updatedAt').isNumber() && newData.child('updatedAt').val() <= now && (!data.exists() || newData.child('revision').val() >= data.child('revision').val()) && (!data.child('uniqueClaims').exists() || newData.child('uniqueClaims').exists()))",
         "schemaVersion": {
           ".validate": "newData.val() === 1"
         },
@@ -38,7 +38,7 @@
         },
         "appliedOps": {
           "$deviceId": {
-            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0"
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0 && (!data.exists() || newData.val() >= data.val())"
           }
         },
         "progression": {
@@ -75,8 +75,9 @@
           }
         },
         "uniqueClaims": {
+          ".validate": "!data.exists() || newData.exists()",
           "$claimId": {
-            ".validate": "newData.hasChildren(['claimedAt', 'deviceId'])",
+            ".validate": "newData.hasChildren(['claimedAt', 'deviceId']) && (!data.exists() || (data.child('claimedAt').val() === newData.child('claimedAt').val() && data.child('deviceId').val() === newData.child('deviceId').val()))",
             "claimedAt": {
               ".validate": "newData.isNumber() && newData.val() <= now"
             },

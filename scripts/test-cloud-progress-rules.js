@@ -65,6 +65,7 @@ async function run() {
 
     // B. Authenticated owner can write valid own userProgress
     await test('B. Authenticated owner can write valid own userProgress', async () => {
+      await seed('userProgress/user123', null);
       await assertSucceeds(db('user123').ref('userProgress/user123').set(validPayload()));
     });
 
@@ -162,6 +163,86 @@ async function run() {
     await test('P. Other authenticated player can read public users profile', async () => {
       await seed('users/user123', { displayName: 'Player One' });
       await assertSucceeds(db('user456').ref('users/user123').get());
+    });
+
+    // Q. appliedOps/deviceId cannot decrease
+    await test('Q. appliedOps/deviceId cannot decrease', async () => {
+      const initial = validPayload();
+      initial.appliedOps['dev-uuid-1'] = 5;
+      await seed('userProgress/user123', initial);
+
+      const rollback = validPayload();
+      rollback.appliedOps['dev-uuid-1'] = 4;
+      await assertFails(db('user123').ref('userProgress/user123').set(rollback));
+    });
+
+    // R. appliedOps must be positive integer
+    await test('R1. appliedOps 0 rejected', async () => {
+      const payload = validPayload();
+      payload.appliedOps['dev-uuid-1'] = 0;
+      await assertFails(db('user123').ref('userProgress/user123').set(payload));
+    });
+
+    await test('R2. appliedOps negative integer rejected', async () => {
+      const payload = validPayload();
+      payload.appliedOps['dev-uuid-1'] = -2;
+      await assertFails(db('user123').ref('userProgress/user123').set(payload));
+    });
+
+    await test('R3. appliedOps non-integer rejected', async () => {
+      const payload = validPayload();
+      payload.appliedOps['dev-uuid-1'] = 1.5;
+      await assertFails(db('user123').ref('userProgress/user123').set(payload));
+    });
+
+    // S. existing uniqueClaims cannot be deleted
+    await test('S1. Deleting uniqueClaims tree is rejected', async () => {
+      const initial = validPayload();
+      await seed('userProgress/user123', initial);
+
+      await assertFails(db('user123').ref('userProgress/user123/uniqueClaims').remove());
+    });
+
+    await test('S2. Overwriting userProgress with deleted uniqueClaims is rejected', async () => {
+      const initial = validPayload();
+      await seed('userProgress/user123', initial);
+
+      const payload = validPayload();
+      delete payload.uniqueClaims;
+      await assertFails(db('user123').ref('userProgress/user123').set(payload));
+    });
+
+    // T. existing uniqueClaims cannot be rewritten
+    await test('T1. Rewriting existing uniqueClaim deviceId is rejected', async () => {
+      const initial = validPayload();
+      initial.uniqueClaims['firstClear:L1-S1'] = {
+        claimedAt: 1000,
+        deviceId: 'original-device'
+      };
+      await seed('userProgress/user123', initial);
+
+      const rewrite = validPayload();
+      rewrite.uniqueClaims['firstClear:L1-S1'] = {
+        claimedAt: 1000,
+        deviceId: 'tampered-device'
+      };
+      await assertFails(db('user123').ref('userProgress/user123').set(rewrite));
+    });
+
+    await test('T2. Rewriting existing uniqueClaim claimedAt timestamp is rejected', async () => {
+      const initial = validPayload();
+      initial.uniqueClaims['firstClear:L1-S1'] = {
+        claimedAt: 1000,
+        deviceId: 'original-device'
+      };
+      await seed('userProgress/user123', initial);
+
+      const rewrite = validPayload();
+      rewrite.uniqueClaims['firstClear:L1-S1'] = {
+        claimedAt: 2000,
+        deviceId: 'original-device'
+      };
+      await assertFails(db('user123').ref('userProgress/user123').set(rewrite));
     });
 
     console.log(`\nResults: ${passed} passed, ${failed} failed`);
