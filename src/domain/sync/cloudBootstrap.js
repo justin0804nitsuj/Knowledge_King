@@ -96,11 +96,19 @@ export function buildBootstrapSnapshot(localPlayerProgress = {}, localCampaignPr
 
   // 3. Reconstruct provable unique claims without adding XP
   const uniqueClaims = {};
+  const excludedClaimIds = new Set(
+    Array.isArray(options.excludedClaimIds)
+      ? options.excludedClaimIds
+      : (options.excludedClaimIds instanceof Set ? Array.from(options.excludedClaimIds) : [])
+  );
 
   // A. Reconstruct firstClear claims for all cleared stages
   for (const stageId of Object.keys(clearedStages)) {
     try {
       const claimId = buildFirstClearClaimId(stageId);
+      if (excludedClaimIds.has(claimId)) {
+        continue;
+      }
       uniqueClaims[claimId] = {
         claimedAt: now,
         deviceId
@@ -119,6 +127,9 @@ export function buildBootstrapSnapshot(localPlayerProgress = {}, localCampaignPr
       if (missionData && missionData.claimed === true) {
         try {
           const claimId = buildDailyMissionClaimId(lastActiveDate, missionId);
+          if (excludedClaimIds.has(claimId)) {
+            continue;
+          }
           uniqueClaims[claimId] = {
             claimedAt: now,
             deviceId

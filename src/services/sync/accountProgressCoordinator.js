@@ -56,6 +56,9 @@ export function extractHistoricalProgress(localPlayer = {}, localCampaign = {}, 
   let stagedRepeatableXp = 0;
   let stagedClaimsXp = 0;
   const stagedClearedStagesSet = new Set();
+  const stagedClaimIds = new Set();
+  const stagedDailyMissions = new Set();
+  let stagedBestCombo = 0;
 
   if (unsynced && typeof unsynced === 'object') {
     if (Number.isInteger(unsynced.repeatableXpDelta) && unsynced.repeatableXpDelta > 0) {
@@ -66,8 +69,16 @@ export function extractHistoricalProgress(localPlayer = {}, localCampaign = {}, 
         if (claim && Number.isInteger(claim.xpReward) && claim.xpReward > 0) {
           stagedClaimsXp += claim.xpReward;
         }
-        if (claim?.claimId?.startsWith('firstClear:')) {
-          stagedClearedStagesSet.add(claim.claimId.slice('firstClear:'.length));
+        if (claim?.claimId) {
+          stagedClaimIds.add(claim.claimId);
+          if (claim.claimId.startsWith('firstClear:')) {
+            stagedClearedStagesSet.add(claim.claimId.slice('firstClear:'.length));
+          } else if (claim.claimId.startsWith('daily:')) {
+            const parts = claim.claimId.split(':');
+            if (parts.length >= 3 && parts[2]) {
+              stagedDailyMissions.add(parts[2]);
+            }
+          }
         }
       }
     }
@@ -75,8 +86,12 @@ export function extractHistoricalProgress(localPlayer = {}, localCampaign = {}, 
       for (const st of unsynced.campaignProgress.clearedStages) {
         if (typeof st === 'string' && st.trim()) {
           stagedClearedStagesSet.add(st.trim());
+          stagedClaimIds.add(`firstClear:${st.trim()}`);
         }
       }
+    }
+    if (Number.isInteger(unsynced.campaignProgress?.bestCombo) && unsynced.campaignProgress.bestCombo > 0) {
+      stagedBestCombo = Math.max(stagedBestCombo, unsynced.campaignProgress.bestCombo);
     }
   }
 
@@ -89,8 +104,16 @@ export function extractHistoricalProgress(localPlayer = {}, localCampaign = {}, 
         if (claim && Number.isInteger(claim.xpReward) && claim.xpReward > 0) {
           stagedClaimsXp += claim.xpReward;
         }
-        if (claim?.claimId?.startsWith('firstClear:')) {
-          stagedClearedStagesSet.add(claim.claimId.slice('firstClear:'.length));
+        if (claim?.claimId) {
+          stagedClaimIds.add(claim.claimId);
+          if (claim.claimId.startsWith('firstClear:')) {
+            stagedClearedStagesSet.add(claim.claimId.slice('firstClear:'.length));
+          } else if (claim.claimId.startsWith('daily:')) {
+            const parts = claim.claimId.split(':');
+            if (parts.length >= 3 && parts[2]) {
+              stagedDailyMissions.add(parts[2]);
+            }
+          }
         }
       }
     }
@@ -98,8 +121,12 @@ export function extractHistoricalProgress(localPlayer = {}, localCampaign = {}, 
       for (const st of pendingOp.campaignProgress.clearedStages) {
         if (typeof st === 'string' && st.trim()) {
           stagedClearedStagesSet.add(st.trim());
+          stagedClaimIds.add(`firstClear:${st.trim()}`);
         }
       }
+    }
+    if (Number.isInteger(pendingOp.campaignProgress?.bestCombo) && pendingOp.campaignProgress.bestCombo > 0) {
+      stagedBestCombo = Math.max(stagedBestCombo, pendingOp.campaignProgress.bestCombo);
     }
   }
 
@@ -118,20 +145,72 @@ export function extractHistoricalProgress(localPlayer = {}, localCampaign = {}, 
     delete historicalStars[st];
     delete historicalScores[st];
   }
+  if (unsynced?.campaignProgress?.stageStars) {
+    for (const st of Object.keys(unsynced.campaignProgress.stageStars)) {
+      delete historicalStars[st];
+    }
+  }
+  if (unsynced?.campaignProgress?.stageScores) {
+    for (const st of Object.keys(unsynced.campaignProgress.stageScores)) {
+      delete historicalScores[st];
+    }
+  }
+  if (pendingOp?.campaignProgress?.stageStars) {
+    for (const st of Object.keys(pendingOp.campaignProgress.stageStars)) {
+      delete historicalStars[st];
+    }
+  }
+  if (pendingOp?.campaignProgress?.stageScores) {
+    for (const st of Object.keys(pendingOp.campaignProgress.stageScores)) {
+      delete historicalScores[st];
+    }
+  }
+
+  let historicalBestCombo = Number.isInteger(localCampaign?.bestCombo) ? localCampaign.bestCombo : 0;
+  if (stagedBestCombo > 0 && stagedBestCombo >= historicalBestCombo) {
+    historicalBestCombo = 0;
+  }
+
+  const historicalDaily = localPlayer.daily
+    ? JSON.parse(JSON.stringify(localPlayer.daily))
+    : undefined;
+
+  if (historicalDaily?.missions) {
+    for (const mId of stagedDailyMissions) {
+      if (historicalDaily.missions[mId]) {
+        historicalDaily.missions[mId] = {
+          ...historicalDaily.missions[mId],
+          claimed: false
+        };
+      }
+    }
+  }
+
+  const historicalStats = { ...(localPlayer.stats || {}) };
+  if (stagedBestCombo > 0 && stagedBestCombo >= (historicalStats.bestCombo || 0)) {
+    historicalStats.bestCombo = 0;
+  }
 
   const historicalPlayer = {
     ...localPlayer,
-    totalXp: historicalTotalXp
+    totalXp: historicalTotalXp,
+    daily: historicalDaily,
+    stats: historicalStats
   };
 
   const historicalCampaign = {
     ...localCampaign,
     clearedStages: historicalClearedStages,
     stageStars: historicalStars,
-    stageScores: historicalScores
+    stageScores: historicalScores,
+    bestCombo: historicalBestCombo
   };
 
-  return { historicalPlayer, historicalCampaign };
+  return {
+    historicalPlayer,
+    historicalCampaign,
+    stagedClaimIds: Array.from(stagedClaimIds)
+  };
 }
 
 /**
@@ -223,12 +302,15 @@ export async function coordinateAccountProgress(firebaseUser, options = {}) {
     cloudSyncSuccess = false;
   } else if (cloudProgress === null) {
     // Cloud is missing: bootstrap cloud from local snapshot
-    // Phase 5B.1: derive historical progress if offline gameplay was staged
+    // Phase 5B.1 & 5B.2: derive historical progress if offline gameplay was staged
     const unsynced = await getUnsyncedProgress(targetIdentity);
     const pendingOp = await getPendingSyncOp(targetIdentity);
-    const { historicalPlayer, historicalCampaign } = extractHistoricalProgress(localPlayer, localCampaign, unsynced, pendingOp);
+    const { historicalPlayer, historicalCampaign, stagedClaimIds } = extractHistoricalProgress(localPlayer, localCampaign, unsynced, pendingOp);
 
-    const localSnapshot = buildBootstrapSnapshot(historicalPlayer, historicalCampaign, options);
+    const localSnapshot = buildBootstrapSnapshot(historicalPlayer, historicalCampaign, {
+      ...options,
+      excludedClaimIds: stagedClaimIds
+    });
     try {
       const res = await bootstrapCloudProgress(uid, localSnapshot);
       finalCloudProgress = res.snapshot || localSnapshot;
@@ -258,9 +340,12 @@ export async function coordinateAccountProgress(firebaseUser, options = {}) {
     // Both exist: reconcile local with cloud
     const unsynced = await getUnsyncedProgress(targetIdentity);
     const pendingOp = await getPendingSyncOp(targetIdentity);
-    const { historicalPlayer, historicalCampaign } = extractHistoricalProgress(localPlayer, localCampaign, unsynced, pendingOp);
+    const { historicalPlayer, historicalCampaign, stagedClaimIds } = extractHistoricalProgress(localPlayer, localCampaign, unsynced, pendingOp);
 
-    const localSnapshot = buildBootstrapSnapshot(historicalPlayer, historicalCampaign, options);
+    const localSnapshot = buildBootstrapSnapshot(historicalPlayer, historicalCampaign, {
+      ...options,
+      excludedClaimIds: stagedClaimIds
+    });
     try {
       const res = await bootstrapCloudProgress(uid, localSnapshot);
       finalCloudProgress = res.snapshot || cloudProgress;

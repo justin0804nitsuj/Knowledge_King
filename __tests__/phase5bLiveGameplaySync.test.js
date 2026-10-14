@@ -3,6 +3,7 @@ import { processBattleResult } from '../src/domain/game/resultProcessor';
 import { processReviewAnswer } from '../src/domain/game/reviewProcessor';
 import { BATTLE_STATES } from '../src/domain/game/battleEngine';
 import { XP_REWARDS } from '../src/domain/player/xpRewards';
+import { getLocalDailyKey } from '../src/domain/player/dailySystem';
 import { getStageById } from '../src/domain/adventure/campaignConfig';
 import {
   getActiveIdentity,
@@ -217,12 +218,13 @@ describe('Phase 5B — Live Gameplay Sync Integration', () => {
   describe('2. Daily Reward Integration', () => {
     test('daily mission completion stages deterministic unique claim excluded from repeatable delta', async () => {
       mockNetworkOnline = false;
+      const today = getLocalDailyKey();
 
       // Setup progress close to mission 1 threshold (19 questions)
       const p = {
         ...createDefaultPlayerProgress(),
         daily: {
-          lastActiveDate: '2026-10-14',
+          lastActiveDate: today,
           streak: 1,
           missions: {
             m1: { progress: 19, claimed: false },
@@ -254,9 +256,10 @@ describe('Phase 5B — Live Gameplay Sync Integration', () => {
       expect(pending.repeatableXpDelta).toBe(1 * XP_REWARDS.CORRECT_ANSWER);
 
       // Unique claim exists with canonical daily format
-      const dailyClaim = pending.uniqueClaims.find((c) => c.claimId === 'daily:2026-10-14:m1');
+      const expectedClaimId = `daily:${today}:m1`;
+      const dailyClaim = pending.uniqueClaims.find((c) => c.claimId === expectedClaimId);
       expect(dailyClaim).toBeDefined();
-      expect(dailyClaim.claimId).toBe('daily:2026-10-14:m1');
+      expect(dailyClaim.claimId).toBe(expectedClaimId);
       expect(dailyClaim.xpReward).toBe(30);
     });
   });
