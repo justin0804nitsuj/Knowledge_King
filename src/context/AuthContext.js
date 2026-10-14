@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, onAuthStateChanged } from '../services/firebase/firebaseAuth';
 import { signInWithGoogle, signOut } from '../services/auth/googleSignIn';
 import { coordinateAccountProgress } from '../services/sync/accountProgressCoordinator';
-import { flushLiveProgress, getSyncStatus, subscribeSyncStatus } from '../services/sync/liveProgressSync';
+import { flushLiveProgress, getSyncStatus, subscribeSyncStatus, setCloudSyncReady } from '../services/sync/liveProgressSync';
 
 export const AuthState = {
   INITIALIZING: 'INITIALIZING',
@@ -19,6 +19,7 @@ export function AuthProvider({ children }) {
   const [authReady, setAuthReady] = useState(false);
   const [identity, setIdentity] = useState(null);
   const [progressReady, setProgressReady] = useState(false);
+  const [cloudSyncReady, setCloudSyncReadyState] = useState(false);
   const [syncStatus, setSyncStatus] = useState(getSyncStatus());
 
   useEffect(() => {
@@ -43,22 +44,32 @@ export function AuthProvider({ children }) {
           setIdentity(resolvedIdentity);
           setStatus(AuthState.SIGNED_IN);
           setAuthReady(true);
+          // Reset cloud sync readiness for new identity/session
+          setCloudSyncReadyState(false);
 
+          let coordResult = null;
           try {
-            await coordinateAccountProgress(firebaseUser);
+            coordResult = await coordinateAccountProgress(firebaseUser);
           } catch (err) {
             console.warn('[AuthContext] Account coordination warning:', err);
           } finally {
             setProgressReady(true);
           }
 
-          // Trigger live progress sync flush once account progress is ready
-          flushLiveProgress(resolvedIdentity).catch(() => {});
+          if (coordResult && coordResult.cloudSyncSuccess) {
+            setCloudSyncReadyState(true);
+            // Trigger live progress sync flush once cloud progress is confirmed ready
+            flushLiveProgress(resolvedIdentity).catch(() => {});
+          }
         } else {
           setUser(null);
           setIdentity('guest');
           setStatus(AuthState.SIGNED_OUT);
           setAuthReady(true);
+          setCloudSyncReadyState(false);
+          if (typeof setCloudSyncReady === 'function') {
+            setCloudSyncReady('guest', false);
+          }
 
           try {
             await coordinateAccountProgress(null);
@@ -73,6 +84,7 @@ export function AuthProvider({ children }) {
         console.error('Firebase Auth state error:', error);
         setStatus(AuthState.ERROR);
         setAuthReady(true);
+        setCloudSyncReadyState(false);
         setProgressReady(true);
       }
     );
@@ -94,6 +106,10 @@ export function AuthProvider({ children }) {
 
   const handleSignOut = async () => {
     try {
+      setCloudSyncReadyState(false);
+      if (identity && typeof setCloudSyncReady === 'function') {
+        setCloudSyncReady(identity, false);
+      }
       await signOut();
       // The onAuthStateChanged listener will handle success and set status to SIGNED_OUT
     } catch (error) {
@@ -108,6 +124,7 @@ export function AuthProvider({ children }) {
     authReady,
     identity,
     progressReady,
+    cloudSyncReady,
     syncStatus,
     flushLiveProgress: () => flushLiveProgress(identity),
     isSignedIn: status === AuthState.SIGNED_IN,

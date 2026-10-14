@@ -26,7 +26,9 @@ jest.mock('../src/services/sync/accountProgressCoordinator', () => ({
 jest.mock('../src/services/sync/liveProgressSync', () => ({
   flushLiveProgress: jest.fn().mockResolvedValue({ status: 'synced' }),
   getSyncStatus: jest.fn(() => 'idle'),
-  subscribeSyncStatus: jest.fn(() => () => {})
+  subscribeSyncStatus: jest.fn(() => () => {}),
+  isCloudSyncReady: jest.fn(() => false),
+  setCloudSyncReady: jest.fn()
 }));
 
 function TestConsumer({ onContext }) {

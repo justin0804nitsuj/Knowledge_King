@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { subscribeToConnectionState, ConnectionState } from '../services/online/connectionService';
 import { syncOnlineProfile } from '../services/online/onlineProfileService';
-import { flushLiveProgress } from '../services/sync/liveProgressSync';
+import { flushLiveProgress, isCloudSyncReady } from '../services/sync/liveProgressSync';
+import { coordinateAccountProgress } from '../services/sync/accountProgressCoordinator';
 import { useAuth, AuthState } from './AuthContext';
 
 const OnlineContext = createContext(null);
@@ -37,17 +38,47 @@ export function OnlineProvider({ children }) {
     }
   }, [status, user, connectionState]);
 
-  // Phase 5B: Flush live gameplay sync when online connection is established
+  // Phase 5B.1: Flush live gameplay sync when online connection is established
   useEffect(() => {
-    if (
-      connectionState === ConnectionState.ONLINE &&
-      status === AuthState.SIGNED_IN &&
-      authReady &&
-      progressReady &&
-      user?.uid
-    ) {
-      flushLiveProgress(`uid:${user.uid}`).catch(() => {});
+    let isCancelled = false;
+
+    async function handleOnlineSync() {
+      if (
+        connectionState === ConnectionState.ONLINE &&
+        status === AuthState.SIGNED_IN &&
+        authReady &&
+        progressReady &&
+        user?.uid
+      ) {
+        const targetIdentity = `uid:${user.uid}`;
+
+        // Conceptual ordering:
+        // ONLINE -> authReady? -> progressReady? -> cloudSyncReady?
+        if (!isCloudSyncReady(targetIdentity)) {
+          try {
+            const coordRes = await coordinateAccountProgress(user);
+            if (isCancelled) return;
+            if (!coordRes || !coordRes.cloudSyncSuccess) {
+              // Bootstrap/restore failed again: keep local gameplay available,
+              // leave staged progress untouched, DO NOT transmit live SyncOps
+              return;
+            }
+          } catch (err) {
+            console.warn('[OnlineContext] Coordinator retry failed on reconnect:', err);
+            return;
+          }
+        }
+
+        if (isCancelled) return;
+        flushLiveProgress(targetIdentity).catch(() => {});
+      }
     }
+
+    handleOnlineSync();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [connectionState, status, authReady, progressReady, user]);
 
   const value = {

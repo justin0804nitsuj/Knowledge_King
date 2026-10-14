@@ -25,7 +25,8 @@ import {
   flushLiveProgress,
   getSyncStatus,
   SYNC_STATUS,
-  _resetLiveSyncStateForTests
+  _resetLiveSyncStateForTests,
+  setCloudSyncReady
 } from '../src/services/sync/liveProgressSync';
 import {
   applySyncOperation
@@ -97,6 +98,7 @@ describe('Phase 5B — Live Gameplay Sync Integration', () => {
     _resetLiveSyncStateForTests();
     _resetCachedDeviceIdForTests();
     await setActiveIdentity(TEST_IDENTITY);
+    setCloudSyncReady(TEST_IDENTITY, true);
   });
 
   describe('1. Battle Result Sync Classification & Staging', () => {
@@ -403,6 +405,7 @@ describe('Phase 5B — Live Gameplay Sync Integration', () => {
     test('account switching never leaks Account A pending operation to Account B', async () => {
       // Account A creates pending op
       await setActiveIdentity('uid:AccountA');
+      setCloudSyncReady('uid:AccountA', true);
       await addStagedRepeatableXp('uid:AccountA', 100);
       const devId = await getDeviceId();
       const opA = await createPendingSyncOpFromStaged({ identity: 'uid:AccountA', deviceId: devId });
@@ -410,6 +413,7 @@ describe('Phase 5B — Live Gameplay Sync Integration', () => {
 
       // Account A signs out, Account B signs in
       await setActiveIdentity('uid:AccountB');
+      setCloudSyncReady('uid:AccountB', true);
       // Account B has no pending op
       const pendingB = await getPendingSyncOp('uid:AccountB');
       expect(pendingB).toBeNull();

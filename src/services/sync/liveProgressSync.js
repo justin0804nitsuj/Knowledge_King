@@ -43,6 +43,46 @@ export const SYNC_STATUS = Object.freeze({
 let currentSyncStatus = SYNC_STATUS.IDLE;
 const statusListeners = new Set();
 const inFlightFlushes = new Set();
+const cloudSyncReadyIdentities = new Set();
+
+/**
+ * Checks if cloud progress bootstrap/restore has succeeded for the given identity in this session.
+ * Guest always returns false.
+ *
+ * @param {string} identity
+ * @returns {boolean}
+ */
+export function isCloudSyncReady(identity) {
+  if (!identity) return false;
+  const normalized = normalizeIdentity(identity);
+  if (normalized === GUEST_IDENTITY) return false;
+  return cloudSyncReadyIdentities.has(normalized);
+}
+
+/**
+ * Sets cloud sync readiness for the given identity.
+ * Guest is ignored.
+ *
+ * @param {string} identity
+ * @param {boolean} isReady
+ */
+export function setCloudSyncReady(identity, isReady) {
+  if (!identity) return;
+  const normalized = normalizeIdentity(identity);
+  if (normalized === GUEST_IDENTITY) return;
+  if (isReady) {
+    cloudSyncReadyIdentities.add(normalized);
+  } else {
+    cloudSyncReadyIdentities.delete(normalized);
+  }
+}
+
+/**
+ * Resets all cloud sync readiness across all identities.
+ */
+export function resetAllCloudSyncReady() {
+  cloudSyncReadyIdentities.clear();
+}
 
 export function getSyncStatus() {
   return currentSyncStatus;
@@ -73,7 +113,7 @@ function updateSyncStatus(newStatus) {
  * Non-blocking, safe to invoke from background triggers or game loop handlers.
  *
  * @param {string} [explicitIdentity] - Optional target identity (defaults to activeIdentity)
- * @returns {Promise<{ status: string, error?: any }>}
+ * @returns {Promise<{ status: string, reason?: string, error?: any }>}
  */
 export async function flushLiveProgress(explicitIdentity) {
   let targetIdentity;
@@ -89,7 +129,12 @@ export async function flushLiveProgress(explicitIdentity) {
     return { status: 'skipped_guest' };
   }
 
-  // 2. Prevent duplicate concurrent flushes for the same identity
+  // 2. Defensive service-level guard: identity must have completed bootstrap/restore
+  if (!isCloudSyncReady(targetIdentity)) {
+    return { status: 'skipped_not_ready', reason: 'CLOUD_SYNC_NOT_READY' };
+  }
+
+  // 3. Prevent duplicate concurrent flushes for the same identity
   if (inFlightFlushes.has(targetIdentity)) {
     return { status: 'already_in_flight' };
   }
@@ -200,4 +245,5 @@ export function _resetLiveSyncStateForTests() {
   currentSyncStatus = SYNC_STATUS.IDLE;
   statusListeners.clear();
   inFlightFlushes.clear();
+  cloudSyncReadyIdentities.clear();
 }
