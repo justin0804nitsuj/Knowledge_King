@@ -45,7 +45,8 @@ export const ACCOUNT_DATA_CATEGORIES = Object.freeze([
   'battleHistory',
   'syncSeq',
   'pendingSyncOp',
-  'lastSyncedSnapshot'
+  'lastSyncedSnapshot',
+  'unsyncedProgress'
 ]);
 
 /**

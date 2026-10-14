@@ -10,9 +10,17 @@ import {
   validateSyncOperation,
   canAdoptLegacySave
 } from '../domain/sync/syncOperation';
+import {
+  getUnsyncedProgress,
+  saveUnsyncedProgress
+} from './unsyncedProgressStorage';
+import {
+  drainStagedItems,
+  isUnsyncedEmpty
+} from '../domain/sync/unsyncedProgress';
 
 /**
- * CLOUD PROFILE SYNC V0.1 — SYNC OUTBOX STORAGE (PHASE 3)
+ * CLOUD PROFILE SYNC V0.1 — SYNC OUTBOX STORAGE (PHASE 3 / 3.5)
  * 
  * CORE OUTBOX INVARIANTS:
  * 
@@ -33,7 +41,12 @@ import {
  *    Local sync sequence is incremented and stored to ensure sequences are never reused,
  *    even across app crashes or unexpected kills.
  * 
- * 6. Legacy Adoption Guardrail:
+ * 6. Staged Accumulator Drain:
+ *    When constructing a pending op from the local staging accumulator, the enqueued
+ *    items are safely drained from unsyncedProgress so new gameplay can accumulate
+ *    separately without polluting the pending batch.
+ *
+ * 7. Legacy Adoption Guardrail:
  *    A global record (@KnowledgeKing:legacyAdoptedByIdentity) tracks which account
  *    first adopted the pre-sync legacy storage, preventing multi-account claiming.
  */
@@ -86,8 +99,67 @@ export async function hasPendingSyncOp(identity) {
 }
 
 /**
+ * Creates, validates, and persists a new SyncOperation by snapshotting the staged
+ * unsynced accumulator. Enforces crash-safety, single pending op invariant, and
+ * staging accumulator drain.
+ *
+ * @param {object} params
+ * @param {string} params.identity - Account identity
+ * @param {string} params.deviceId - Stable installation device ID
+ * @returns {Promise<object|null>} The persisted SyncOperation, or null if no unsynced changes exist.
+ */
+export async function createPendingSyncOpFromStaged({ identity, deviceId }) {
+  const normalizedIdentity = normalizeIdentity(identity);
+
+  // Invariant 1: Check if an unresolved pending op already exists
+  const existing = await getPendingSyncOp(normalizedIdentity);
+  if (existing && !existing.error) {
+    throw new Error(
+      `[SyncOutbox] Cannot create SyncOp: pending operation "${existing.opId}" already exists and must be confirmed first`
+    );
+  }
+
+  // Read current staged unsynced progress (crash-reconciled on read)
+  const unsynced = await getUnsyncedProgress(normalizedIdentity);
+  if (isUnsyncedEmpty(unsynced)) {
+    return null;
+  }
+
+  // Invariant 5: Determine and reserve safe next sequence
+  const currentSeq = await getLocalSyncSeq(normalizedIdentity);
+  const nextSeq = currentSeq + 1;
+  await setLocalSyncSeq(normalizedIdentity, nextSeq);
+
+  // Construct deterministic SyncOp from staged accumulator
+  const op = createSyncOperation({
+    deviceId,
+    seq: nextSeq,
+    createdAt: Date.now(),
+    repeatableXpDelta: unsynced.repeatableXpDelta,
+    uniqueClaims: Object.values(unsynced.uniqueClaims),
+    campaignProgress: {
+      clearedStages: Object.keys(unsynced.campaignProgress.clearedStages || {}),
+      stageStars: unsynced.campaignProgress.stageStars || {},
+      stageScores: unsynced.campaignProgress.stageScores || {},
+      bestCombo: unsynced.campaignProgress.bestCombo || 0
+    }
+  });
+
+  // Crash-Safe Transition:
+  // 1. Persist pendingSyncOp first to ensure no data is lost
+  const key = getScopedKey('pendingSyncOp', normalizedIdentity);
+  await AsyncStorage.setItem(key, JSON.stringify(op));
+
+  // 2. Drain the staged items from the accumulator and record lastEnqueuedOpId
+  const drained = drainStagedItems(unsynced, op);
+  await saveUnsyncedProgress(normalizedIdentity, drained);
+
+  return op;
+}
+
+/**
  * Creates, validates, and persists a new SyncOperation to the outbox.
- * Enforces sequence reservation and single pending op invariant.
+ * Supports explicit parameters for direct caller / backward compatibility.
  * 
  * @param {object} params
  * @param {string} params.identity - Account identity

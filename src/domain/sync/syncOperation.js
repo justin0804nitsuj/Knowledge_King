@@ -184,62 +184,103 @@ export function createSyncOperation({
 /**
  * Pure contract helper: Demonstrates and guarantees that gameplay progress
  * earned locally AFTER a pending SyncOp was constructed is strictly preserved
- * when that op receives cloud acknowledgement.
+ * when that op receives cloud acknowledgement, while removing rejected/duplicate
+ * unique claims without polluting repeatable XP.
  * 
- * Invariants:
- * - Post-op local XP earnings = localCurrentTotalXp - localBaselineTotalXpAtOpCreation
- * - Reconciled local total XP = cloudSnapshotTotalXp + postOpEarnedXp
- * - Cloud unique reward deduplication is respected without erasing post-op progress.
+ * Reconciled Total XP formula:
+ * Reconciled = Authoritative Cloud Total XP
+ *            + Repeatable XP staged AFTER the op (unsyncedProgress.repeatableXpDelta)
+ *            + Unresolved unique claim XP staged AFTER the op (claims in unsyncedProgress not in cloudSnapshot.uniqueClaims)
  * 
  * @param {object} params
- * @param {number} params.localCurrentTotalXp - Current local total XP (including post-op earnings)
- * @param {number} params.localBaselineTotalXpAtOpCreation - Local total XP when the op was built
- * @param {number} params.cloudSnapshotTotalXp - Authoritative total XP reported by cloud after op commit
+ * @param {object} [params.cloudSnapshot] - Authoritative cloud state { progression: { totalXp }, uniqueClaims, campaign }
+ * @param {object} [params.unsyncedProgress] - Local staging accumulator with progress earned AFTER op creation
+ * @param {number} [params.cloudSnapshotTotalXp] - Fallback total XP from cloud
+ * @param {number} [params.localCurrentTotalXp] - Fallback total XP for legacy callers
+ * @param {number} [params.localBaselineTotalXpAtOpCreation] - Fallback baseline for legacy callers
  * @param {object} [params.localCurrentCampaign] - Current local campaign state
  * @param {object} [params.cloudSnapshotCampaign] - Cloud snapshot campaign state
  * @returns {object} Reconciled local progression preserving post-op earnings
  */
 export function reconcileProgressOnOpAck({
+  cloudSnapshot,
+  unsyncedProgress,
+  cloudSnapshotTotalXp,
   localCurrentTotalXp,
   localBaselineTotalXpAtOpCreation,
-  cloudSnapshotTotalXp,
   localCurrentCampaign = {},
   cloudSnapshotCampaign = {}
 }) {
-  const postOpEarnedXp = Math.max(0, (localCurrentTotalXp || 0) - (localBaselineTotalXpAtOpCreation || 0));
-  const reconciledTotalXp = (cloudSnapshotTotalXp || 0) + postOpEarnedXp;
+  const authoritativeCloudXp =
+    cloudSnapshot?.progression?.totalXp !== undefined
+      ? cloudSnapshot.progression.totalXp
+      : (cloudSnapshotTotalXp || 0);
+
+  let postOpEarnedRepeatableXp = 0;
+  let postOpUnresolvedUniqueXp = 0;
+  const acknowledgedUniqueClaims = cloudSnapshot?.uniqueClaims || {};
+
+  if (unsyncedProgress && typeof unsyncedProgress === 'object') {
+    // 1. Repeatable XP staged AFTER the acknowledged operation
+    postOpEarnedRepeatableXp = Number.isInteger(unsyncedProgress.repeatableXpDelta)
+      ? Math.max(0, unsyncedProgress.repeatableXpDelta)
+      : 0;
+
+    // 2. Optimistic unique claims staged AFTER the acknowledged operation
+    // Only add if NOT already claimed in cloud!
+    if (unsyncedProgress.uniqueClaims && typeof unsyncedProgress.uniqueClaims === 'object') {
+      for (const [claimId, claim] of Object.entries(unsyncedProgress.uniqueClaims)) {
+        if (!acknowledgedUniqueClaims[claimId]) {
+          postOpUnresolvedUniqueXp += (claim?.xpReward || 0);
+        }
+      }
+    }
+  } else if (localCurrentTotalXp !== undefined && localBaselineTotalXpAtOpCreation !== undefined) {
+    // Fallback for earlier tests where unsyncedProgress was not supplied
+    postOpEarnedRepeatableXp = Math.max(0, localCurrentTotalXp - localBaselineTotalXpAtOpCreation);
+  }
+
+  const reconciledTotalXp = authoritativeCloudXp + postOpEarnedRepeatableXp + postOpUnresolvedUniqueXp;
 
   // Union campaign cleared stages
   const clearedStagesMap = {};
-  for (const st of cloudSnapshotCampaign.clearedStages || []) {
+  const csCampaign = cloudSnapshot?.campaign || cloudSnapshotCampaign || {};
+  const unsyncedCampaign = unsyncedProgress?.campaignProgress || localCurrentCampaign || {};
+
+  for (const st of csCampaign.clearedStages || []) {
     clearedStagesMap[st] = true;
   }
-  for (const st of localCurrentCampaign.clearedStages || []) {
+  const localClears = Array.isArray(unsyncedCampaign.clearedStages)
+    ? unsyncedCampaign.clearedStages
+    : Object.keys(unsyncedCampaign.clearedStages || {});
+  for (const st of localClears) {
     clearedStagesMap[st] = true;
   }
   const clearedStages = Object.keys(clearedStagesMap);
 
   // High-water stars
-  const stageStars = { ...(cloudSnapshotCampaign.stageStars || {}) };
-  for (const [st, stars] of Object.entries(localCurrentCampaign.stageStars || {})) {
+  const stageStars = { ...(csCampaign.stageStars || {}) };
+  for (const [st, stars] of Object.entries(unsyncedCampaign.stageStars || {})) {
     stageStars[st] = Math.max(stageStars[st] || 0, stars);
   }
 
   // High-water scores
-  const stageScores = { ...(cloudSnapshotCampaign.stageScores || {}) };
-  for (const [st, score] of Object.entries(localCurrentCampaign.stageScores || {})) {
+  const stageScores = { ...(csCampaign.stageScores || {}) };
+  for (const [st, score] of Object.entries(unsyncedCampaign.stageScores || {})) {
     stageScores[st] = Math.max(stageScores[st] || 0, score);
   }
 
   const bestCombo = Math.max(
-    cloudSnapshotCampaign.bestCombo || 0,
-    localCurrentCampaign.bestCombo || 0
+    csCampaign.bestCombo || 0,
+    unsyncedCampaign.bestCombo || 0
   );
 
   return {
     progression: {
       totalXp: reconciledTotalXp,
-      postOpEarnedXp
+      postOpEarnedXp: postOpEarnedRepeatableXp + postOpUnresolvedUniqueXp,
+      postOpEarnedRepeatableXp,
+      postOpUnresolvedUniqueXp
     },
     campaign: {
       clearedStages,
