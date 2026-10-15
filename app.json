@@ -2,7 +2,7 @@
   "expo": {
     "name": "Knowledge King",
     "slug": "Knowledge_King",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "backgroundColor": "#1E3A8A",
@@ -17,7 +17,7 @@
     "icon": "./assets/icon.png",
     "android": {
       "package": "com.justin.knowledgeking",
-      "versionCode": 2,
+      "versionCode": 3,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
