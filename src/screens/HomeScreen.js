@@ -7,6 +7,7 @@ import { getPlayerLevelInfo } from '../domain/player/levelSystem';
 import { loadMistakes, getActiveMistakes } from '../storage/mistakeStorage';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { claimDailyMission } from '../domain/player/dailySystem';
 
 export default function HomeScreen({ navigation }) {
   const [playerInfo, setPlayerInfo] = useState(null);
@@ -34,6 +35,20 @@ export default function HomeScreen({ navigation }) {
 
   const { level, xpIntoCurrentLevel, xpRequiredForNextLevel, progressRatio } = getPlayerLevelInfo(playerInfo.totalXp);
   const { streak, missions } = playerInfo.daily;
+
+  const handleClaim = async (missionId) => {
+    try {
+      const res = await claimDailyMission(missionId);
+      if (res.playerProgress) {
+        setPlayerInfo(res.playerProgress);
+      } else {
+        const p = await loadPlayerProgress();
+        setPlayerInfo(p);
+      }
+    } catch (err) {
+      console.warn('Failed to claim daily mission:', err);
+    }
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -75,6 +90,7 @@ export default function HomeScreen({ navigation }) {
           target={20} 
           claimed={missions.m1.claimed} 
           reward="+30 XP" 
+          onClaim={() => handleClaim('m1')}
         />
         <MissionRow 
           title={t('dailyMissions.win2')}
@@ -82,6 +98,7 @@ export default function HomeScreen({ navigation }) {
           target={2} 
           claimed={missions.m2.claimed} 
           reward="+40 XP" 
+          onClaim={() => handleClaim('m2')}
         />
         <MissionRow 
           title={t('dailyMissions.perfectVictory')}
@@ -89,22 +106,36 @@ export default function HomeScreen({ navigation }) {
           target={1} 
           claimed={missions.m3.claimed} 
           reward="+50 XP" 
+          onClaim={() => handleClaim('m3')}
         />
       </View>
     </ScrollView>
   );
 }
 
-function MissionRow({ title, progress, target, claimed, reward }) {
-  const isDone = claimed || progress >= target;
+function MissionRow({ title, progress, target, claimed, reward, onClaim }) {
+  const isTargetMet = progress >= target;
+  const isDone = claimed || isTargetMet;
   return (
     <View style={styles.missionRow}>
       <View style={styles.missionInfo}>
         <Text style={[styles.missionTitle, isDone && styles.missionDone]}>{title}</Text>
-        <Text style={styles.missionProgress}>{isDone ? 'COMPLETED' : `${progress} / ${target}`}</Text>
+        <Text style={styles.missionProgress}>{claimed ? 'COMPLETED' : `${Math.min(progress, target)} / ${target}`}</Text>
       </View>
       <View style={styles.missionReward}>
-        <Text style={styles.rewardText}>{isDone ? '✓' : reward}</Text>
+        {claimed ? (
+          <Text style={styles.rewardText}>✓</Text>
+        ) : isTargetMet && onClaim ? (
+          <TouchableOpacity
+            style={styles.claimBtn}
+            onPress={onClaim}
+            accessibilityRole="button"
+          >
+            <Text style={styles.claimBtnText}>{reward}</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={styles.rewardPendingText}>{reward}</Text>
+        )}
       </View>
     </View>
   );
@@ -232,5 +263,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: theme.colors.success,
+  },
+  rewardPendingText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: theme.colors.textMuted,
+  },
+  claimBtn: {
+    backgroundColor: theme.colors.success || '#10B981',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  claimBtnText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 14,
   }
 });

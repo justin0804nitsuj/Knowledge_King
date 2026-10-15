@@ -24,10 +24,15 @@ export async function loadPlayerProgress(explicitIdentity) {
       return createDefaultPlayerProgress();
     }
     
+    if (!data.daily) {
+      data.daily = createDefaultPlayerProgress().daily;
+    }
+
     // Check if day rolled over
     const today = getLocalDailyKey();
     if (data.daily.lastActiveDate !== today) {
       data = processDayRollover(data, today);
+      await AsyncStorage.setItem(key, JSON.stringify(data));
     }
     
     return data;
@@ -80,7 +85,10 @@ export function createDefaultPlayerProgress() {
   };
 }
 
-function processDayRollover(data, today) {
+export function processDayRollover(data, today) {
+  if (!data.daily) {
+    data.daily = createDefaultPlayerProgress().daily;
+  }
   const lastDateStr = data.daily.streakLastIncrementedDate;
   if (lastDateStr) {
     const lastDate = new Date(lastDateStr);
@@ -94,7 +102,7 @@ function processDayRollover(data, today) {
     }
   }
 
-  // Reset missions
+  // Reset missions only on actual day rollover
   data.daily.lastActiveDate = today;
   data.daily.missions = {
     m1: { progress: 0, claimed: false },
@@ -107,6 +115,9 @@ function processDayRollover(data, today) {
 
 export function recordDailyActivity(progress) {
   const today = getLocalDailyKey();
+  if (!progress.daily) {
+    progress.daily = createDefaultPlayerProgress().daily;
+  }
   if (progress.daily.lastActiveDate !== today) {
     progress = processDayRollover(progress, today);
   }

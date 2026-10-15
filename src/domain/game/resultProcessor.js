@@ -11,6 +11,7 @@ import { buildFirstClearClaimId, buildDailyMissionClaimId } from '../sync/unique
 import { addStagedRepeatableXp, addStagedUniqueClaim, addStagedCampaignProgress } from '../../storage/unsyncedProgressStorage';
 import { flushLiveProgress } from '../../services/sync/liveProgressSync';
 import { getActiveIdentity } from '../../storage/storageIdentity';
+import { getLastSyncedSnapshot } from '../../services/sync/cloudRestoreAdapter';
 
 /**
  * Coherently processes one completed battle result.
@@ -107,7 +108,18 @@ export async function processBattleResult(battleId, finalState, stageId) {
     const dm = playerProgress.daily.missions;
     const dateKey = playerProgress.daily.lastActiveDate || getLocalDailyKey();
     
-    if (!dm.m1.claimed) {
+    // Check acknowledged cloud claims
+    const activeIdentity = await getActiveIdentity();
+    const lastSnapshot = await getLastSyncedSnapshot(activeIdentity);
+    const cloudClaims = lastSnapshot?.uniqueClaims || {};
+    for (const missionKey of ['m1', 'm2', 'm3']) {
+      const cId = buildDailyMissionClaimId(dateKey, missionKey);
+      if (cloudClaims[cId] && dm[missionKey]) {
+        dm[missionKey].claimed = true;
+      }
+    }
+
+    if (dm.m1 && dm.m1.claimed !== true) {
       dm.m1.progress += finalState.questionNumber;
       if (dm.m1.progress >= 20) {
         dm.m1.claimed = true;
@@ -121,7 +133,7 @@ export async function processBattleResult(battleId, finalState, stageId) {
       }
     }
 
-    if (!dm.m2.claimed && isVictory) {
+    if (dm.m2 && dm.m2.claimed !== true && isVictory) {
       dm.m2.progress += 1;
       if (dm.m2.progress >= 2) {
         dm.m2.claimed = true;
@@ -135,7 +147,7 @@ export async function processBattleResult(battleId, finalState, stageId) {
       }
     }
 
-    if (!dm.m3.claimed && isPerfect) {
+    if (dm.m3 && dm.m3.claimed !== true && isPerfect) {
       dm.m3.progress += 1;
       if (dm.m3.progress >= 1) {
         dm.m3.claimed = true;
@@ -203,7 +215,7 @@ export async function processBattleResult(battleId, finalState, stageId) {
         await addStagedRepeatableXp(activeIdentity, repeatableBattleXp);
       }
       for (const claim of stagedClaims) {
-        await addStagedUniqueClaim(activeIdentity, claim);
+        await addStagedUniqueClaim(activeIdentity, claim, { idempotent: true });
       }
       if (campaignProgressDelta) {
         await addStagedCampaignProgress(activeIdentity, campaignProgressDelta);

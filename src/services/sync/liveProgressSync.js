@@ -12,6 +12,8 @@ import {
   saveScopedCampaignProgress,
   setLastSyncedSnapshot
 } from './cloudRestoreAdapter';
+import { DAILY_MISSIONS, getLocalDailyKey } from '../../domain/player/dailySystem';
+import { createDefaultPlayerProgress } from '../../storage/playerProgressStorage';
 
 /**
  * CLOUD PROFILE SYNC V0.1 — LIVE GAMEPLAY SYNC DISPATCHER (PHASE 5B)
@@ -207,9 +209,25 @@ export async function flushLiveProgress(explicitIdentity) {
         localCurrentCampaign: localCampaign
       });
 
+      const today = getLocalDailyKey();
+      const updatedDaily = localPlayer.daily
+        ? JSON.parse(JSON.stringify(localPlayer.daily))
+        : createDefaultPlayerProgress().daily;
+      if (updatedDaily.missions) {
+        for (const missionDef of Object.values(DAILY_MISSIONS)) {
+          const claimId = `daily:${today}:${missionDef.id}`;
+          if (cloudResult.snapshot?.uniqueClaims?.[claimId]) {
+            if (updatedDaily.missions[missionDef.id]) {
+              updatedDaily.missions[missionDef.id].claimed = true;
+            }
+          }
+        }
+      }
+
       const updatedPlayer = {
         ...localPlayer,
-        totalXp: reconciled.progression.totalXp
+        totalXp: reconciled.progression.totalXp,
+        daily: updatedDaily
       };
 
       const updatedCampaign = {

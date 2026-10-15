@@ -8,6 +8,7 @@ import {
   stageCampaignProgress,
   drainStagedItems
 } from '../domain/sync/unsyncedProgress';
+import { validateUniqueClaim } from '../domain/sync/uniqueRewards';
 import { validateSyncOperation } from '../domain/sync/syncOperation';
 import { withSyncMutationLock } from './syncLock';
 
@@ -163,11 +164,47 @@ export async function addStagedRepeatableXp(identity, xpDelta) {
  * @param {{ claimId: string, xpReward?: number }} claim
  * @returns {Promise<object>} Updated unsynced progress
  */
-export async function addStagedUniqueClaim(identity, claim) {
+export async function addStagedUniqueClaim(identity, claim, options = {}) {
   return withSyncMutationLock(identity, async () => {
     const normalizedIdentity = normalizeIdentity(identity);
+    const validated = validateUniqueClaim(claim);
     const current = await _getUnsyncedProgressInternal(normalizedIdentity);
-    const updated = stageUniqueClaim(current, claim);
+
+    const isIdempotentEligible = options.idempotent || validated.claimId.startsWith('daily:');
+
+    // 1. Check current unsynced accumulator
+    if (current.uniqueClaims[validated.claimId]) {
+      if (isIdempotentEligible) {
+        return current;
+      }
+      throw new Error(`[UnsyncedProgress] Duplicate staged unique claim: "${validated.claimId}"`);
+    }
+
+    // 2. Check pendingSyncOp
+    const pendingOp = await getRawPendingOp(normalizedIdentity);
+    if (pendingOp && Array.isArray(pendingOp.uniqueClaims)) {
+      if (pendingOp.uniqueClaims.some(c => c.claimId === validated.claimId)) {
+        if (isIdempotentEligible) {
+          return current;
+        }
+      }
+    }
+
+    // 3. Check lastSyncedSnapshot (cloud acknowledged unique claims)
+    const snapshotKey = getScopedKey('lastSyncedSnapshot', normalizedIdentity);
+    try {
+      const rawSnapshot = await AsyncStorage.getItem(snapshotKey);
+      if (rawSnapshot) {
+        const snapshot = JSON.parse(rawSnapshot);
+        if (snapshot?.uniqueClaims && snapshot.uniqueClaims[validated.claimId]) {
+          if (isIdempotentEligible) {
+            return current;
+          }
+        }
+      }
+    } catch (_) {}
+
+    const updated = stageUniqueClaim(current, validated);
     return _saveUnsyncedProgressInternal(normalizedIdentity, updated);
   });
 }
