@@ -57,7 +57,12 @@ export default function RogueHomeScreen() {
   };
 
   const handleContinueRun = () => {
-    if (activeRun?.pendingReward && activeRun.pendingReward.type === 'RELIC_DRAFT') {
+    if (
+      activeRun?.status === ROGUE_RUN_STATUS.VICTORY ||
+      activeRun?.status === ROGUE_RUN_STATUS.DEFEAT
+    ) {
+      navigation.navigate('RogueResult');
+    } else if (activeRun?.pendingReward && activeRun.pendingReward.type === 'RELIC_DRAFT') {
       navigation.navigate('RogueRelicReward');
     } else if (activeRun?.encounter && activeRun.encounter.status === 'ACTIVE') {
       navigation.navigate('RogueBattle');
@@ -206,6 +211,18 @@ export default function RogueHomeScreen() {
               <Text style={styles.priorRunText}>
                 Prior Run: {activeRun.status} (Seed: #{activeRun.seed})
               </Text>
+              {(activeRun.status === ROGUE_RUN_STATUS.VICTORY ||
+                activeRun.status === ROGUE_RUN_STATUS.DEFEAT) && (
+                <TouchableOpacity
+                  style={styles.viewSummaryBtn}
+                  onPress={() => navigation.navigate('RogueResult')}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.viewSummaryBtnText}>
+                    {t('rogue.result.viewSummaryBtn', 'View Results')}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
@@ -448,5 +465,32 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontSize: 12,
     marginBottom: 4,
+  },
+  priorRunBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0F172A',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  priorRunText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  viewSummaryBtn: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  viewSummaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

@@ -82,10 +82,17 @@ export const ENEMY_ARCHETYPES = Object.freeze({
     baseDamage: 20,
     heavyDamage: 30,
     guardMitigation: 10,
+    phaseThreshold: 40,
     intentPattern: Object.freeze([
       Object.freeze({ type: INTENT_TYPES.ATTACK, value: 20 }),
       Object.freeze({ type: INTENT_TYPES.GUARD, value: 10 }),
       Object.freeze({ type: INTENT_TYPES.HEAVY_ATTACK, value: 30 }),
+    ]),
+    phase2IntentPattern: Object.freeze([
+      Object.freeze({ type: INTENT_TYPES.HEAVY_ATTACK, value: 30 }),
+      Object.freeze({ type: INTENT_TYPES.ATTACK, value: 20 }),
+      Object.freeze({ type: INTENT_TYPES.HEAVY_ATTACK, value: 30 }),
+      Object.freeze({ type: INTENT_TYPES.GUARD, value: 10 }),
     ]),
   }),
 });
@@ -106,9 +113,12 @@ export function getArchetype(archetypeId) {
  *
  * @param {object|string} archetypeOrId
  * @param {number} turn - Turn number (>= 1)
+ * @param {object} [options]
+ * @param {number} [options.bossPhase=1] - Current Boss phase (1 or 2)
+ * @param {number|null} [options.phase2StartTurn=null] - Turn when Phase 2 began
  * @returns {{ type: string, value: number }}
  */
-export function getIntentForTurn(archetypeOrId, turn = 1) {
+export function getIntentForTurn(archetypeOrId, turn = 1, options = {}) {
   const archetype =
     typeof archetypeOrId === 'string' ? getArchetype(archetypeOrId) : archetypeOrId;
 
@@ -117,8 +127,23 @@ export function getIntentForTurn(archetypeOrId, turn = 1) {
   }
 
   const safeTurn = Math.max(1, Math.floor(turn));
-  const patternIndex = (safeTurn - 1) % archetype.intentPattern.length;
-  const intent = archetype.intentPattern[patternIndex];
+  const { bossPhase = 1, phase2StartTurn = null } = options;
+
+  let pattern = archetype.intentPattern;
+  let patternIndex = (safeTurn - 1) % pattern.length;
+
+  if (
+    archetype.id === ARCHETYPE_IDS.OVERLORD &&
+    bossPhase === 2 &&
+    Array.isArray(archetype.phase2IntentPattern) &&
+    archetype.phase2IntentPattern.length > 0
+  ) {
+    pattern = archetype.phase2IntentPattern;
+    const phaseTurn = phase2StartTurn ? Math.max(1, safeTurn - phase2StartTurn + 1) : safeTurn;
+    patternIndex = (phaseTurn - 1) % pattern.length;
+  }
+
+  const intent = pattern[patternIndex];
 
   return {
     type: intent.type,

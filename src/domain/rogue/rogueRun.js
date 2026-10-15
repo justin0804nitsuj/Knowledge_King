@@ -78,6 +78,7 @@ export function createRogueRun({
       wrongAnswers: 0,
       nodesVisited: 1,
     },
+    finalSummary: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -288,7 +289,7 @@ export function resolveCombatVictory(run, finalEncounter) {
   const updatedRelics = finalEncounter?.relics || run.relics || [];
   const updatedRelicState = finalEncounter?.runRelicState || run.relicState || {};
 
-  return {
+  const updatedRun = {
     ...run,
     status: isBossNode ? ROGUE_RUN_STATUS.VICTORY : ROGUE_RUN_STATUS.ACTIVE,
     currentNodeResolved: isNodeResolved,
@@ -311,6 +312,12 @@ export function resolveCombatVictory(run, finalEncounter) {
     },
     updatedAt: Date.now(),
   };
+
+  if (isBossNode) {
+    updatedRun.finalSummary = run.finalSummary || createRunSummary(updatedRun, ROGUE_RUN_STATUS.VICTORY);
+  }
+
+  return updatedRun;
 }
 
 /**
@@ -326,7 +333,7 @@ export function resolveCombatDefeat(run, finalEncounter) {
     throw new Error('[RogueRun] Invalid run state');
   }
 
-  return {
+  const updatedRun = {
     ...run,
     status: ROGUE_RUN_STATUS.DEFEAT,
     currentNodeResolved: false,
@@ -345,6 +352,10 @@ export function resolveCombatDefeat(run, finalEncounter) {
     },
     updatedAt: Date.now(),
   };
+
+  updatedRun.finalSummary = run.finalSummary || createRunSummary(updatedRun, ROGUE_RUN_STATUS.DEFEAT);
+
+  return updatedRun;
 }
 
 /**
@@ -392,6 +403,47 @@ export function abandonRogueRun(run) {
 }
 
 /**
+ * Creates a stable deterministic run summary snapshot for finished runs.
+ *
+ * @param {object} run
+ * @param {string} [result] - 'VICTORY' | 'DEFEAT'
+ * @returns {object} Final run summary
+ */
+export function createRunSummary(run, result) {
+  if (!run || typeof run !== 'object') {
+    return null;
+  }
+  if (run.finalSummary) {
+    return run.finalSummary;
+  }
+
+  const statusResult = result || run.status || ROGUE_RUN_STATUS.DEFEAT;
+  const correct = run.runStats?.correctAnswers || 0;
+  const wrong = run.runStats?.wrongAnswers || 0;
+  const total = correct + wrong;
+  const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+  const visitedCount = run.route?.visitedNodeIds?.length || run.runStats?.nodesVisited || 1;
+  const cursesRemaining = Array.isArray(run.cursedWords)
+    ? run.cursedWords.filter((c) => c && c.stacks > 0).length
+    : 0;
+
+  return {
+    result: statusResult,
+    seed: run.seed,
+    finalHp: Math.max(0, run.player?.hp ?? 0),
+    maxHp: run.player?.maxHp || 100,
+    nodesVisited: visitedCount,
+    battlesWon: run.runStats?.battlesWon || 0,
+    correctAnswers: correct,
+    wrongAnswers: wrong,
+    accuracy,
+    relics: [...(run.relics || [])],
+    cursesRemaining,
+    completedAt: Date.now(),
+  };
+}
+
+/**
  * Marks a run as defeated.
  *
  * @param {object} run
@@ -401,7 +453,7 @@ export function defeatRogueRun(run) {
   if (!run || typeof run !== 'object') {
     throw new Error('[RogueRun] Invalid run state');
   }
-  return {
+  const updatedRun = {
     ...run,
     status: ROGUE_RUN_STATUS.DEFEAT,
     player: {
@@ -410,6 +462,8 @@ export function defeatRogueRun(run) {
     },
     updatedAt: Date.now(),
   };
+  updatedRun.finalSummary = run.finalSummary || createRunSummary(updatedRun, ROGUE_RUN_STATUS.DEFEAT);
+  return updatedRun;
 }
 
 /**
@@ -422,12 +476,14 @@ export function completeRogueRun(run) {
   if (!run || typeof run !== 'object') {
     throw new Error('[RogueRun] Invalid run state');
   }
-  return {
+  const updatedRun = {
     ...run,
     status: ROGUE_RUN_STATUS.VICTORY,
     currentNodeResolved: true,
     updatedAt: Date.now(),
   };
+  updatedRun.finalSummary = run.finalSummary || createRunSummary(updatedRun, ROGUE_RUN_STATUS.VICTORY);
+  return updatedRun;
 }
 
 /**

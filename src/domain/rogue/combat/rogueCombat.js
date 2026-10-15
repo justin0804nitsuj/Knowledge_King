@@ -123,12 +123,23 @@ export function createEncounter({
     cursedWords: initialCursedWords,
   });
 
+  const isBoss =
+    assignedArchetypeId === ARCHETYPE_IDS.OVERLORD || nodeType === 'BOSS';
+  const initialBossPhase = isBoss ? 1 : undefined;
+  const initialPhase2StartTurn = isBoss ? null : undefined;
+
   return {
     schemaVersion: CURRENT_ENCOUNTER_SCHEMA_VERSION,
     encounterId,
     nodeId,
     nodeType,
     archetypeId: archetype.id,
+    ...(isBoss
+      ? {
+          bossPhase: initialBossPhase,
+          phase2StartTurn: initialPhase2StartTurn,
+        }
+      : {}),
     status: ENCOUNTER_STATUS.ACTIVE,
     turn: 1,
     player: {
@@ -489,6 +500,23 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
   };
 
   const nextResolvedTokens = [...encounter.resolvedQuestionTokens, token];
+  const nextTurn = encounter.turn + 1;
+
+  // 7. Boss Phase Progression
+  const isBoss =
+    encounter.archetypeId === ARCHETYPE_IDS.OVERLORD ||
+    encounter.nodeType === 'BOSS';
+  let nextBossPhase = encounter.bossPhase !== undefined ? encounter.bossPhase : (isBoss ? (encounter.enemy?.hp <= 40 ? 2 : 1) : null);
+  let nextPhase2StartTurn = encounter.phase2StartTurn || null;
+  let bossPhaseTransition = false;
+
+  if (isBoss && nextStatus === ENCOUNTER_STATUS.ACTIVE) {
+    if (nextBossPhase === 1 && newEnemyHp <= 40) {
+      nextBossPhase = 2;
+      nextPhase2StartTurn = nextTurn;
+      bossPhaseTransition = true;
+    }
+  }
 
   const resolution = {
     token,
@@ -505,16 +533,24 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
     inkHeal,
     glassQuillBonus,
     secondChanceTriggered,
+    ...(isBoss
+      ? {
+          bossPhase: nextBossPhase,
+          bossPhaseTransition,
+        }
+      : {}),
   };
 
   // 8. Next Turn Generation (Intent + Question for turn + 1)
   let nextQuestion = encounter.question;
-  const nextTurn = encounter.turn + 1;
   let nextIntent = currentIntent;
 
   if (nextStatus === ENCOUNTER_STATUS.ACTIVE) {
-    // Derive next intent deterministically from (archetype, nextTurn)
-    nextIntent = getIntentForTurn(archetype, nextTurn);
+    // Derive next intent deterministically from (archetype, nextTurn, { bossPhase, phase2StartTurn })
+    nextIntent = getIntentForTurn(archetype, nextTurn, {
+      bossPhase: nextBossPhase,
+      phase2StartTurn: nextPhase2StartTurn,
+    });
 
     if (options.nextQuestion) {
       nextQuestion = options.nextQuestion;
@@ -537,6 +573,12 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
     ...encounter,
     status: nextStatus,
     turn: nextStatus === ENCOUNTER_STATUS.ACTIVE ? nextTurn : encounter.turn,
+    ...(isBoss
+      ? {
+          bossPhase: nextBossPhase,
+          phase2StartTurn: nextPhase2StartTurn,
+        }
+      : {}),
     player: {
       ...encounter.player,
       hp: currentPlayerHp,

@@ -140,9 +140,21 @@ export default function RogueBattleScreen() {
       {/* Enemy Card */}
       <View style={styles.enemyCard}>
         <View style={styles.entityHeader}>
-          <Text style={styles.enemyName}>
-            {encounter.enemy.nameKey ? t(encounter.enemy.nameKey, encounter.enemy.name) : encounter.enemy.name}
-          </Text>
+          <View>
+            <Text style={styles.enemyName}>
+              {encounter.nodeType === 'BOSS' ? '👑 ' : ''}
+              {encounter.enemy.nameKey ? t(encounter.enemy.nameKey, encounter.enemy.name) : encounter.enemy.name}
+            </Text>
+            {(encounter.nodeType === 'BOSS' || encounter.archetypeId === 'OVERLORD') && (
+              <View style={styles.phaseBadge}>
+                <Text style={styles.phaseBadgeText}>
+                  {encounter.bossPhase === 2
+                    ? t('rogue.boss.phase2', 'Phase 2')
+                    : t('rogue.boss.phase1', 'Phase 1')}
+                </Text>
+              </View>
+            )}
+          </View>
           {(() => {
             const intentDisplay = getIntentDisplay(encounter.enemy.intent, t);
             return (
@@ -167,6 +179,15 @@ export default function RogueBattleScreen() {
           Enemy HP: {enemyHp} / {enemyMaxHp}
         </Text>
       </View>
+
+      {/* Boss Phase 2 Transition Banner */}
+      {feedback?.bossPhaseTransition && (
+        <View style={styles.bossPhaseTransitionBanner}>
+          <Text style={styles.bossPhaseTransitionText}>
+            ⚡ {t('rogue.boss.phase2Banner', 'The Overlord enters Phase 2!')}
+          </Text>
+        </View>
+      )}
 
       {/* Combat Resolution Feedback Ribbon */}
       {feedback && (
@@ -263,6 +284,16 @@ export default function RogueBattleScreen() {
                 🏺 Claim Relic Reward
               </Text>
             </TouchableOpacity>
+          ) : encounter.nodeType === 'BOSS' || run?.status === 'VICTORY' ? (
+            <TouchableOpacity
+              style={styles.primaryActionBtn}
+              onPress={() => navigation.navigate('RogueResult')}
+              accessibilityRole="button"
+            >
+              <Text style={styles.primaryActionBtnText}>
+                🏆 {t('rogue.result.viewSummaryBtn', 'View Expedition Summary')}
+              </Text>
+            </TouchableOpacity>
           ) : (
             <TouchableOpacity
               style={styles.primaryActionBtn}
@@ -286,11 +317,11 @@ export default function RogueBattleScreen() {
           </Text>
           <TouchableOpacity
             style={styles.defeatActionBtn}
-            onPress={handleReturnToHome}
+            onPress={() => navigation.navigate('RogueResult')}
             accessibilityRole="button"
           >
             <Text style={styles.primaryActionBtnText}>
-              Return to Expedition Menu
+              💀 {t('rogue.result.viewSummaryBtn', 'View Expedition Summary')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -364,6 +395,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#FCA5A5',
+  },
+  phaseBadge: {
+    backgroundColor: '#7C2D12',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: '#EA580C',
+  },
+  phaseBadgeText: {
+    color: '#FFEDD5',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  bossPhaseTransitionBanner: {
+    backgroundColor: '#7C2D12',
+    borderWidth: 1.5,
+    borderColor: '#F97316',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  bossPhaseTransitionText: {
+    color: '#FED7AA',
+    fontSize: 14,
+    fontWeight: '800',
+    textAlign: 'center',
   },
   playerName: {
     fontSize: 16,

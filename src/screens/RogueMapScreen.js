@@ -43,6 +43,13 @@ export default function RogueMapScreen() {
         ]);
         return;
       }
+      if (
+        active.status === ROGUE_RUN_STATUS.VICTORY ||
+        active.status === ROGUE_RUN_STATUS.DEFEAT
+      ) {
+        navigation.navigate('RogueResult');
+        return;
+      }
       setRun(active);
     } catch (err) {
       console.warn('[RogueMapScreen] Error loading run:', err);

@@ -22,6 +22,7 @@ import {
   canAdvanceToNode,
   getSelectableNextNodes,
   isRunActive,
+  ROGUE_RUN_STATUS,
 } from '../../domain/rogue/rogueRun';
 import {
   resolveEncounterTurn,
@@ -135,6 +136,15 @@ export async function submitCombatAnswer({
   const currentRun = await loadActiveRogueRun(explicitIdentity);
   if (!currentRun) {
     throw new Error('[RogueRunService] No active run found');
+  }
+
+  if (currentRun.status !== ROGUE_RUN_STATUS.ACTIVE) {
+    return {
+      run: currentRun,
+      encounter: currentRun.encounter,
+      resolved: false,
+      reason: 'RUN_NOT_ACTIVE',
+    };
   }
 
   const encounter = currentRun.encounter;
@@ -257,6 +267,14 @@ export async function selectRelicReward({
     throw new Error('[RogueRunService] No active run found');
   }
 
+  if (currentRun.status !== ROGUE_RUN_STATUS.ACTIVE) {
+    return {
+      run: currentRun,
+      success: false,
+      reason: 'RUN_NOT_ACTIVE',
+    };
+  }
+
   const { run: updatedRun, success, reason, alreadyClaimed } = claimRelicReward(
     currentRun,
     { rewardId, relicId }
@@ -294,6 +312,14 @@ export async function submitRestAction({
   const currentRun = await loadActiveRogueRun(explicitIdentity);
   if (!currentRun) {
     throw new Error('[RogueRunService] No active run found');
+  }
+
+  if (currentRun.status !== ROGUE_RUN_STATUS.ACTIVE) {
+    return {
+      run: currentRun,
+      success: false,
+      reason: 'RUN_NOT_ACTIVE',
+    };
   }
 
   const interactionId = currentRun.pendingInteraction?.interactionId;
@@ -335,6 +361,14 @@ export async function submitEventAction({
   const currentRun = await loadActiveRogueRun(explicitIdentity);
   if (!currentRun) {
     throw new Error('[RogueRunService] No active run found');
+  }
+
+  if (currentRun.status !== ROGUE_RUN_STATUS.ACTIVE) {
+    return {
+      run: currentRun,
+      success: false,
+      reason: 'RUN_NOT_ACTIVE',
+    };
   }
 
   const interactionId = currentRun.pendingInteraction?.interactionId;
