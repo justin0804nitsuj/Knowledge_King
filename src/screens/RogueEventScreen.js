@@ -41,6 +41,14 @@ export default function RogueEventScreen() {
       }
 
       if (
+        activeRun.status === 'VICTORY' ||
+        activeRun.status === 'DEFEAT'
+      ) {
+        navigation.navigate('RogueResult');
+        return;
+      }
+
+      if (
         !activeRun.pendingInteraction ||
         activeRun.pendingInteraction.type !== 'EVENT'
       ) {

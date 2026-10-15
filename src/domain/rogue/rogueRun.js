@@ -418,25 +418,29 @@ export function createRunSummary(run, result) {
   }
 
   const statusResult = result || run.status || ROGUE_RUN_STATUS.DEFEAT;
-  const correct = run.runStats?.correctAnswers || 0;
-  const wrong = run.runStats?.wrongAnswers || 0;
+  const correct = Math.max(0, run.runStats?.correctAnswers || 0);
+  const wrong = Math.max(0, run.runStats?.wrongAnswers || 0);
   const total = correct + wrong;
-  const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+  const safeAccuracy = total > 0 ? Math.min(100, Math.max(0, Math.round((correct / total) * 100))) : 0;
   const visitedCount = run.route?.visitedNodeIds?.length || run.runStats?.nodesVisited || 1;
   const cursesRemaining = Array.isArray(run.cursedWords)
     ? run.cursedWords.filter((c) => c && c.stacks > 0).length
     : 0;
 
+  const playerHp = run.player?.hp ?? 0;
+  const playerMaxHp = run.player?.maxHp || 100;
+  const finalHp = statusResult === ROGUE_RUN_STATUS.DEFEAT ? 0 : Math.max(0, Math.min(playerHp, playerMaxHp));
+
   return {
     result: statusResult,
     seed: run.seed,
-    finalHp: Math.max(0, run.player?.hp ?? 0),
-    maxHp: run.player?.maxHp || 100,
+    finalHp,
+    maxHp: playerMaxHp,
     nodesVisited: visitedCount,
-    battlesWon: run.runStats?.battlesWon || 0,
+    battlesWon: Math.max(0, run.runStats?.battlesWon || 0),
     correctAnswers: correct,
     wrongAnswers: wrong,
-    accuracy,
+    accuracy: safeAccuracy,
     relics: [...(run.relics || [])],
     cursesRemaining,
     completedAt: Date.now(),

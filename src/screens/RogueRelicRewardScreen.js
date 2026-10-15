@@ -42,6 +42,14 @@ export default function RogueRelicRewardScreen() {
         return;
       }
 
+      if (
+        activeRun.status === 'VICTORY' ||
+        activeRun.status === 'DEFEAT'
+      ) {
+        navigation.navigate('RogueResult');
+        return;
+      }
+
       if (!activeRun.pendingReward || activeRun.pendingReward.type !== 'RELIC_DRAFT') {
         navigation.navigate('RogueMap');
         return;
