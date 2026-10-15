@@ -12,6 +12,13 @@ import JoinRoomScreen from './src/screens/JoinRoomScreen';
 import WaitingRoomScreen from './src/screens/WaitingRoomScreen';
 import PvpBattleScreen from './src/screens/PvpBattleScreen';
 import PvpResultScreen from './src/screens/PvpResultScreen';
+import RogueHomeScreen from './src/screens/RogueHomeScreen';
+import RogueMapScreen from './src/screens/RogueMapScreen';
+import RogueBattleScreen from './src/screens/RogueBattleScreen';
+import RogueRelicRewardScreen from './src/screens/RogueRelicRewardScreen';
+import RogueRestScreen from './src/screens/RogueRestScreen';
+import RogueEventScreen from './src/screens/RogueEventScreen';
+import RogueResultScreen from './src/screens/RogueResultScreen';
 import { AuthProvider } from './src/context/AuthContext';
 import { OnlineProvider } from './src/context/OnlineContext';
 import { PvpRoomProvider } from './src/context/PvpRoomContext';
@@ -55,6 +62,13 @@ export default function App() {
                   <Stack.Screen name="WaitingRoom" component={WaitingRoomScreen} />
                   <Stack.Screen name="PvpBattle" component={PvpBattleScreen} />
                   <Stack.Screen name="PvpResult" component={PvpResultScreen} />
+                  <Stack.Screen name="RogueHome" component={RogueHomeScreen} />
+                  <Stack.Screen name="RogueMap" component={RogueMapScreen} />
+                  <Stack.Screen name="RogueBattle" component={RogueBattleScreen} />
+                  <Stack.Screen name="RogueRelicReward" component={RogueRelicRewardScreen} />
+                  <Stack.Screen name="RogueRest" component={RogueRestScreen} />
+                  <Stack.Screen name="RogueEvent" component={RogueEventScreen} />
+                  <Stack.Screen name="RogueResult" component={RogueResultScreen} />
                 </Stack.Navigator>
               </NavigationContainer>
             </PvpRoomProvider>

@@ -80,6 +80,17 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
+      {/* Rogue Expedition */}
+      <View style={[styles.actionRow, { marginTop: -8 }]}>
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: '#7C3AED' }]}
+          onPress={() => navigation.navigate('RogueHome')}
+          accessibilityRole="button"
+        >
+          <Text style={styles.actionBtnText}>⚔️ {t('home.rogueExpedition', 'Rogue Expedition')}</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Daily Missions */}
       <View style={styles.missionsCard}>
         <Text style={styles.sectionTitle}>{t('home.dailyMissions')}</Text>

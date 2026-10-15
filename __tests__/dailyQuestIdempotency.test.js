@@ -316,15 +316,15 @@ describe('Daily Quest Idempotency & Lifecycle Invariants (Phase 5B.3)', () => {
   // J. next calendar date -> mission resets normally -> new date claim can be earned once
   it('J. next calendar date -> mission resets normally -> new date claim can be earned once', async () => {
     let p = createDefaultPlayerProgress();
-    p.daily.lastActiveDate = '2026-10-14';
+    p.daily.lastActiveDate = '2020-01-01';
     p.daily.missions.m1.progress = 20;
     p.daily.missions.m1.claimed = true;
     p.totalXp = 500;
     await savePlayerProgress(p, TEST_IDENTITY);
 
-    // Rollover to next date '2026-10-15'
-    const rolledOver = processDayRollover(p, '2026-10-15');
-    expect(rolledOver.daily.lastActiveDate).toBe('2026-10-15');
+    // Rollover to next date TODAY
+    const rolledOver = processDayRollover(p, TODAY);
+    expect(rolledOver.daily.lastActiveDate).toBe(TODAY);
     expect(rolledOver.daily.missions.m1.claimed).toBe(false);
     expect(rolledOver.daily.missions.m1.progress).toBe(0);
 
@@ -332,7 +332,7 @@ describe('Daily Quest Idempotency & Lifecycle Invariants (Phase 5B.3)', () => {
     rolledOver.daily.missions.m1.progress = 20;
     await savePlayerProgress(rolledOver, TEST_IDENTITY);
 
-    const claimRes = await claimDailyMission('m1', { identity: TEST_IDENTITY, dateKey: '2026-10-15' });
+    const claimRes = await claimDailyMission('m1', { identity: TEST_IDENTITY, dateKey: TODAY });
     expect(claimRes.success).toBe(true);
     expect(claimRes.xpAwarded).toBe(30);
 
