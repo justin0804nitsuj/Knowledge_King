@@ -140,12 +140,19 @@ export default function RogueBattleScreen() {
       {/* Enemy Card */}
       <View style={styles.enemyCard}>
         <View style={styles.entityHeader}>
-          <Text style={styles.enemyName}>{encounter.enemy.name}</Text>
-          <View style={styles.intentBadge}>
-            <Text style={styles.intentText}>
-              ⚔️ Intent: Attack {encounter.enemy.intent?.value || encounter.enemy.baseDamage}
-            </Text>
-          </View>
+          <Text style={styles.enemyName}>
+            {encounter.enemy.nameKey ? t(encounter.enemy.nameKey, encounter.enemy.name) : encounter.enemy.name}
+          </Text>
+          {(() => {
+            const intentDisplay = getIntentDisplay(encounter.enemy.intent, t);
+            return (
+              <View style={[styles.intentBadge, intentDisplay.badgeStyle]}>
+                <Text style={[styles.intentText, intentDisplay.textStyle]}>
+                  {intentDisplay.icon} {intentDisplay.label}
+                </Text>
+              </View>
+            );
+          })()}
         </View>
 
         <View style={styles.hpBarBg}>
@@ -173,14 +180,7 @@ export default function RogueBattleScreen() {
             {feedback.correct ? '✅ CORRECT ANSWER!' : '❌ INCORRECT ANSWER'}
           </Text>
           <Text style={styles.feedbackDesc}>
-            {feedback.correct
-              ? `You dealt ${feedback.playerDamage} damage to the enemy.`
-              : 'You dealt 0 damage.'}
-            {feedback.enemyDamage > 0
-              ? ` Enemy struck back for ${feedback.enemyDamage} damage!`
-              : isVictory
-              ? ' Enemy defeated before striking back!'
-              : ''}
+            {getFeedbackDescription(feedback, isVictory, t)}
           </Text>
         </View>
       )}
@@ -502,4 +502,107 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
   },
+  intentAttackBadge: {
+    backgroundColor: '#7F1D1D',
+  },
+  intentAttackText: {
+    color: '#FCA5A5',
+  },
+  intentHeavyBadge: {
+    backgroundColor: '#991B1B',
+    borderWidth: 1,
+    borderColor: '#F87171',
+  },
+  intentHeavyText: {
+    color: '#FEE2E2',
+    fontWeight: '800',
+  },
+  intentGuardBadge: {
+    backgroundColor: '#1E3A8A',
+    borderWidth: 1,
+    borderColor: '#60A5FA',
+  },
+  intentGuardText: {
+    color: '#BFDBFE',
+    fontWeight: '700',
+  },
 });
+
+function getIntentDisplay(intent, t) {
+  if (!intent) {
+    return {
+      icon: '⚔️',
+      label: `${t('rogue.intents.attack', 'Attack')} 10`,
+      badgeStyle: styles.intentAttackBadge,
+      textStyle: styles.intentAttackText,
+    };
+  }
+
+  switch (intent.type) {
+    case 'HEAVY_ATTACK':
+      return {
+        icon: '💥',
+        label: `${t('rogue.intents.heavyAttack', 'Heavy Attack')} ${intent.value}`,
+        badgeStyle: styles.intentHeavyBadge,
+        textStyle: styles.intentHeavyText,
+      };
+    case 'GUARD':
+      return {
+        icon: '🛡️',
+        label: `${t('rogue.intents.guard', 'Guard')} ${intent.value}`,
+        badgeStyle: styles.intentGuardBadge,
+        textStyle: styles.intentGuardText,
+      };
+    case 'ATTACK':
+    default:
+      return {
+        icon: '⚔️',
+        label: `${t('rogue.intents.attack', 'Attack')} ${intent.value}`,
+        badgeStyle: styles.intentAttackBadge,
+        textStyle: styles.intentAttackText,
+      };
+  }
+}
+
+function getFeedbackDescription(feedback, isVictory, t) {
+  const parts = [];
+
+  if (feedback.guardMitigated > 0) {
+    parts.push(
+      t('rogue.feedback.guardMitigated', 'Enemy Guard absorbed {{amount}} damage! Dealt {{dealt}} damage.', {
+        amount: feedback.guardMitigated,
+        dealt: feedback.playerDamage,
+      })
+    );
+  } else if (feedback.correct) {
+    parts.push(
+      t('rogue.feedback.playerDealt', 'You dealt {{damage}} damage.', {
+        damage: feedback.playerDamage,
+      })
+    );
+  } else {
+    parts.push(t('rogue.feedback.playerWrong', 'You dealt 0 damage.'));
+  }
+
+  if (feedback.enemyDamage > 0) {
+    if (feedback.executedIntent?.type === 'HEAVY_ATTACK') {
+      parts.push(
+        t('rogue.feedback.enemyHeavyAttack', 'Enemy used Heavy Attack for {{damage}} damage!', {
+          damage: feedback.enemyDamage,
+        })
+      );
+    } else {
+      parts.push(
+        t('rogue.feedback.enemyAttacked', 'Enemy attacked for {{damage}} damage.', {
+          damage: feedback.enemyDamage,
+        })
+      );
+    }
+  } else if (feedback.executedIntent?.type === 'GUARD') {
+    parts.push(t('rogue.feedback.enemyGuarded', 'Enemy guarded (no attack this turn).'));
+  } else if (isVictory) {
+    parts.push(t('rogue.feedback.enemyDefeated', 'Enemy defeated before striking back!'));
+  }
+
+  return parts.join(' ');
+}

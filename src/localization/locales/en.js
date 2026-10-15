@@ -280,5 +280,37 @@ export default {
     runCompleted: 'Expedition Completed',
     runDefeated: 'Expedition Defeated',
     backToHome: 'Back to Home',
+    archetypes: {
+      scout: {
+        name: 'Labyrinth Scout',
+        desc: 'A swift, aggressive minion that attacks reliably every turn.',
+      },
+      brute: {
+        name: 'Ironjaw Brute',
+        desc: 'A hulking warrior that alternates between regular and crushing heavy attacks.',
+      },
+      sentinel: {
+        name: 'Stone Sentinel',
+        desc: 'An armored guardian that alternates between fortified defense and swift attacks.',
+      },
+      overlord: {
+        name: 'Labyrinth Overlord',
+        desc: 'The master of the labyrinth. Rotates attack, guard, and devastating heavy attacks.',
+      },
+    },
+    intents: {
+      attack: 'Attack',
+      heavyAttack: 'Heavy Attack',
+      guard: 'Guard',
+    },
+    feedback: {
+      playerDealt: 'You dealt {{damage}} damage.',
+      playerWrong: 'You dealt 0 damage.',
+      guardMitigated: 'Enemy Guard absorbed {{amount}} damage! Dealt {{dealt}} damage.',
+      enemyAttacked: 'Enemy attacked for {{damage}} damage.',
+      enemyHeavyAttack: 'Enemy used Heavy Attack for {{damage}} damage!',
+      enemyGuarded: 'Enemy guarded (no attack this turn).',
+      enemyDefeated: 'Enemy defeated before striking back!',
+    },
   }
 };

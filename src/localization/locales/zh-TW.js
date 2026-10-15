@@ -280,5 +280,37 @@ export default {
     runCompleted: '遠征成功',
     runDefeated: '遠征失敗',
     backToHome: '返回主頁',
+    archetypes: {
+      scout: {
+        name: '迷宮斥候',
+        desc: '行動敏捷的嘍囉，每回合穩定發動攻擊。',
+      },
+      brute: {
+        name: '鐵顎蠻兵',
+        desc: '身形魁梧的戰士，交替使用普通攻擊與沉重重擊。',
+      },
+      sentinel: {
+        name: '巨石守衛',
+        desc: '重裝防禦者，交替使用堅固防禦與反擊。',
+      },
+      overlord: {
+        name: '迷宮領主',
+        desc: '迷宮的主宰，循環使用攻擊、防禦與毀滅性重擊。',
+      },
+    },
+    intents: {
+      attack: '攻擊',
+      heavyAttack: '重擊',
+      guard: '防禦',
+    },
+    feedback: {
+      playerDealt: '你造成了 {{damage}} 點傷害。',
+      playerWrong: '你造成了 0 點傷害。',
+      guardMitigated: '敵方防禦抵消了 {{amount}} 點傷害！實際造成 {{dealt}} 點傷害。',
+      enemyAttacked: '敵方發動攻擊，造成 {{damage}} 點傷害。',
+      enemyHeavyAttack: '敵方發動重擊，造成 {{damage}} 點致命傷害！',
+      enemyGuarded: '敵方採取防禦姿態（本回合不發動攻擊）。',
+      enemyDefeated: '敵方在反擊前已被擊敗！',
+    },
   }
 };

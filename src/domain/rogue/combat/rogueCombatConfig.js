@@ -1,47 +1,38 @@
 /**
  * ROGUE EXPEDITION V0.1 — COMBAT CONFIGURATION & DIFFICULTY MAPPING
  *
- * Centralizes all combat constants, enemy baseline templates,
- * and vocabulary difficulty mapping for Phase R2.
+ * Centralizes combat balance constants, archetype exports,
+ * and vocabulary difficulty mapping.
  */
+
+import {
+  INTENT_TYPES,
+  ARCHETYPE_IDS,
+  ENEMY_ARCHETYPES,
+  selectArchetypeForNode,
+  getArchetype,
+  getIntentForTurn,
+} from './enemyArchetypes';
+
+export {
+  INTENT_TYPES,
+  ARCHETYPE_IDS,
+  ENEMY_ARCHETYPES,
+  selectArchetypeForNode,
+  getArchetype,
+  getIntentForTurn,
+};
 
 export const ROGUE_COMBAT_CONSTANTS = Object.freeze({
   PLAYER_MAX_HP: 100,
   PLAYER_ATTACK_DAMAGE: 20,
   PLAYER_WRONG_DAMAGE: 0,
-
-  /**
-   * Data-driven enemy templates for Phase R2 foundation.
-   */
-  ENEMIES: Object.freeze({
-    BATTLE: Object.freeze({
-      enemyId: 'enemy_scout',
-      name: 'Labyrinth Scout',
-      hp: 40,
-      maxHp: 40,
-      baseDamage: 10,
-    }),
-    ELITE: Object.freeze({
-      enemyId: 'enemy_sentinel',
-      name: 'Iron Sentinel',
-      hp: 60,
-      maxHp: 60,
-      baseDamage: 15,
-    }),
-    BOSS: Object.freeze({
-      enemyId: 'enemy_overlord',
-      name: 'Labyrinth Overlord',
-      hp: 80,
-      maxHp: 80,
-      baseDamage: 20,
-    }),
-  }),
 });
 
 /**
  * Maps a map node and run context to a vocabulary difficulty level (1-6).
  *
- * R2 Foundation Mapping:
+ * Foundation Mapping:
  * - Row 0-1 (Early Floors): Level 1
  * - Row 2-3 (Mid Floors & Elites): Level 2
  * - Row 4+ (Boss Floor): Level 3
@@ -64,19 +55,26 @@ export function getRogueQuestionDifficulty(node, run) {
 }
 
 /**
- * Returns the enemy configuration for a given node type.
+ * Returns the enemy configuration for a given node type and seed/nodeId context.
  *
  * @param {string} nodeType - 'BATTLE' | 'ELITE' | 'BOSS'
- * @returns {object} Enemy template clone
+ * @param {number|string} [seed]
+ * @param {string} [nodeId]
+ * @returns {object} Enemy template with initial turn 1 intent
  */
-export function getEnemyConfigForNodeType(nodeType) {
-  const template =
-    ROGUE_COMBAT_CONSTANTS.ENEMIES[nodeType] || ROGUE_COMBAT_CONSTANTS.ENEMIES.BATTLE;
+export function getEnemyConfigForNodeType(nodeType, seed = 0, nodeId = 'node-0') {
+  const archetypeId = selectArchetypeForNode(nodeType, seed, nodeId);
+  const archetype = getArchetype(archetypeId) || ENEMY_ARCHETYPES[ARCHETYPE_IDS.SCOUT];
+  const initialIntent = getIntentForTurn(archetype, 1);
+
   return {
-    ...template,
-    intent: {
-      type: 'ATTACK',
-      value: template.baseDamage,
-    },
+    enemyId: `enemy_${archetype.id.toLowerCase()}`,
+    archetypeId: archetype.id,
+    nameKey: archetype.nameKey,
+    name: archetype.defaultName,
+    hp: archetype.hp,
+    maxHp: archetype.maxHp,
+    baseDamage: archetype.baseDamage,
+    intent: initialIntent,
   };
 }
