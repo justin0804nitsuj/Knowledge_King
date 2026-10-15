@@ -363,5 +363,43 @@ export default {
         desc: '每次遠征僅限一次，承受致命傷害時保留 1 點生命值。',
       },
     },
+    rest: {
+      title: '休憩營地',
+      desc: '此處是一片靜謐的避難所，可稍事包紮傷口或淨化纏身的單字詛咒。',
+      recoverTitle: '休養生息',
+      recoverDesc: '包紮傷口，恢復最多 30 點生命值。',
+      cleanseTitle: '淨化詛咒',
+      cleanseTarget: '淨化「{{word}}」的 1 層詛咒（目前等級 {{level}}）。',
+      noCurses: '無詛咒',
+      cleanseDisabledDesc: '目前沒有受到詛咒的單字可供淨化。',
+      unresolvedNotice: '位於 {{nodeId}} 的休憩營地尚未完成互動',
+      resumeBtn: '前往營地',
+    },
+    events: {
+      title: '奇遇事件',
+      leave: '安然離去',
+      noEffect: '不作任何處置繼續前行',
+      cleanseHighest: '淨化 1 層詛咒',
+      requiresCurse: '需要身上帶有詛咒單字方可進行',
+      notEnoughHp: '生命值不足以支付代價（生命值必須大於 {{cost}}）',
+      unresolvedNotice: '位於 {{nodeId}} 的奇遇事件尚未完成互動',
+      resumeBtn: '深入探查',
+      healingSpring: {
+        name: '療癒之泉',
+        desc: '古老石砌廢墟之中，一汪澄澈的泉水泛著柔和微光。',
+        drink: '飲用泉水（+25 生命值）',
+      },
+      forgottenShrine: {
+        name: '荒蕪神龕',
+        desc: '一座覆滿青苔的古樸祭壇，靜靜供奉著先民的語文之靈。',
+        cleanse: '在祭壇前虔心祈禱（淨化 1 層詛咒）',
+        rest: '於中庭休憩片刻（+10 生命值）',
+      },
+      cursedArchive: {
+        name: '詛咒禁卷館',
+        desc: '一排排被封印的禁忌古籍正發出低語，閱讀者將付出靈魂灼燒的代價。',
+        study: '研讀禁忌篇章（-10 生命值，淨化 1 層詛咒）',
+      },
+    },
   }
 };

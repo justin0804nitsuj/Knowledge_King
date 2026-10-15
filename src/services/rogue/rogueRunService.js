@@ -28,6 +28,8 @@ import {
   ENCOUNTER_STATUS,
 } from '../../domain/rogue/combat/rogueCombat';
 import { claimRelicReward } from '../../domain/rogue/relic/relicDraft';
+import { resolveRestInteraction } from '../../domain/rogue/rest/restResolver';
+import { resolveEventInteraction } from '../../domain/rogue/event/eventResolver';
 import {
   loadActiveRogueRun,
   saveActiveRogueRun,
@@ -274,5 +276,87 @@ export async function selectRelicReward({
     run: updatedRun,
     success: true,
     alreadyClaimed: Boolean(alreadyClaimed),
+  };
+}
+
+/**
+ * Submits a choice for a pending REST node interaction (RECOVER or CLEANSE).
+ *
+ * @param {object} params
+ * @param {string} params.actionType - 'RECOVER' or 'CLEANSE'
+ * @param {string|object} [params.explicitIdentity]
+ * @returns {Promise<{ run: object, success: boolean, reason?: string, alreadyResolved?: boolean, outcome?: object }>}
+ */
+export async function submitRestAction({
+  actionType,
+  explicitIdentity,
+} = {}) {
+  const currentRun = await loadActiveRogueRun(explicitIdentity);
+  if (!currentRun) {
+    throw new Error('[RogueRunService] No active run found');
+  }
+
+  const interactionId = currentRun.pendingInteraction?.interactionId;
+  const { run: updatedRun, success, reason, alreadyResolved, outcome } = resolveRestInteraction(
+    currentRun,
+    { interactionId, actionType }
+  );
+
+  if (!success) {
+    return {
+      run: currentRun,
+      success: false,
+      reason,
+    };
+  }
+
+  await saveActiveRogueRun(updatedRun, explicitIdentity);
+
+  return {
+    run: updatedRun,
+    success: true,
+    alreadyResolved: Boolean(alreadyResolved),
+    outcome,
+  };
+}
+
+/**
+ * Submits an option choice for a pending EVENT node interaction.
+ *
+ * @param {object} params
+ * @param {string} params.optionId - Chosen event option identifier
+ * @param {string|object} [params.explicitIdentity]
+ * @returns {Promise<{ run: object, success: boolean, reason?: string, alreadyResolved?: boolean, outcome?: object }>}
+ */
+export async function submitEventAction({
+  optionId,
+  explicitIdentity,
+} = {}) {
+  const currentRun = await loadActiveRogueRun(explicitIdentity);
+  if (!currentRun) {
+    throw new Error('[RogueRunService] No active run found');
+  }
+
+  const interactionId = currentRun.pendingInteraction?.interactionId;
+  const { run: updatedRun, success, reason, alreadyResolved, outcome } = resolveEventInteraction(
+    currentRun,
+    { interactionId, optionId }
+  );
+
+  if (!success) {
+    return {
+      run: currentRun,
+      success: false,
+      reason,
+    };
+  }
+
+  await saveActiveRogueRun(updatedRun, explicitIdentity);
+
+  return {
+    run: updatedRun,
+    success: true,
+    alreadyResolved: Boolean(alreadyResolved),
+    outcome,
   };
 }

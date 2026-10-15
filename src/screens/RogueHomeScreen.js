@@ -61,6 +61,14 @@ export default function RogueHomeScreen() {
       navigation.navigate('RogueRelicReward');
     } else if (activeRun?.encounter && activeRun.encounter.status === 'ACTIVE') {
       navigation.navigate('RogueBattle');
+    } else if (activeRun?.pendingInteraction && !activeRun.pendingInteraction.resolved) {
+      if (activeRun.pendingInteraction.type === 'REST') {
+        navigation.navigate('RogueRest');
+      } else if (activeRun.pendingInteraction.type === 'EVENT') {
+        navigation.navigate('RogueEvent');
+      } else {
+        navigation.navigate('RogueMap');
+      }
     } else {
       navigation.navigate('RogueMap');
     }

@@ -11,6 +11,7 @@
 import { generateRogueMap, ROGUE_NODE_TYPES } from './mapGenerator';
 import { createEncounter, ENCOUNTER_STATUS } from './combat/rogueCombat';
 import { generateRelicDraft, claimRelicReward } from './relic/relicDraft';
+import { selectEventForNode } from './event/eventRegistry';
 
 export const CURRENT_ROGUE_SCHEMA_VERSION = 1;
 
@@ -69,6 +70,7 @@ export function createRogueRun({
     relics: [],
     relicState: {},
     pendingReward: null,
+    pendingInteraction: null,
     cursedWords: [],
     runStats: {
       battlesWon: 0,
@@ -90,6 +92,7 @@ export function createRogueRun({
 export function isCurrentNodeResolved(run) {
   if (!run || typeof run !== 'object') return false;
   if (run.pendingReward) return false;
+  if (run.pendingInteraction && !run.pendingInteraction.resolved) return false;
   return run.currentNodeResolved !== false;
 }
 
@@ -182,6 +185,7 @@ export function advanceRunNode(run, targetNodeId, options = {}) {
   const nextVisited = Array.from(new Set([...(run.route.visitedNodeIds || []), targetNodeId]));
 
   let encounter = null;
+  let pendingInteraction = null;
   let isResolved = true;
 
   if (isCombatNode) {
@@ -197,6 +201,29 @@ export function advanceRunNode(run, targetNodeId, options = {}) {
       relicState: run.relicState,
       run,
     });
+  } else if (targetNode.type === ROGUE_NODE_TYPES.REST) {
+    isResolved = false;
+    pendingInteraction = {
+      interactionId: `rest_${targetNodeId}_${run.seed}`,
+      nodeId: targetNodeId,
+      type: 'REST',
+      options: ['RECOVER', 'CLEANSE'],
+      resolved: false,
+    };
+  } else if (targetNode.type === ROGUE_NODE_TYPES.EVENT) {
+    isResolved = false;
+    const selectedEvent = selectEventForNode({
+      seed: run.seed,
+      nodeId: targetNodeId,
+    });
+    pendingInteraction = {
+      interactionId: `event_${targetNodeId}_${run.seed}_${selectedEvent.id}`,
+      nodeId: targetNodeId,
+      type: 'EVENT',
+      eventId: selectedEvent.id,
+      options: selectedEvent.options.map((o) => o.id),
+      resolved: false,
+    };
   }
 
   return {
@@ -204,6 +231,7 @@ export function advanceRunNode(run, targetNodeId, options = {}) {
     currentNodeId: targetNodeId,
     currentNodeResolved: isResolved,
     encounter,
+    pendingInteraction,
     route: {
       ...run.route,
       visitedNodeIds: nextVisited,

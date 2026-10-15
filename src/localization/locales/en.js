@@ -363,5 +363,43 @@ export default {
         desc: 'Once per expedition, surviving lethal damage leaves you at 1 HP instead.',
       },
     },
+    rest: {
+      title: 'Rest Site',
+      desc: 'A quiet sanctuary to tend wounds or cleanse lingering verbal curses.',
+      recoverTitle: 'Recover',
+      recoverDesc: 'Tend to your wounds and restore up to 30 HP.',
+      cleanseTitle: 'Cleanse',
+      cleanseTarget: 'Reduce 1 curse stack from "{{word}}" (Level {{level}}).',
+      noCurses: 'No Curses',
+      cleanseDisabledDesc: 'You have no cursed words to cleanse.',
+      unresolvedNotice: 'Unresolved Rest Site at {{nodeId}}',
+      resumeBtn: 'Rest',
+    },
+    events: {
+      title: 'Mystery Event',
+      leave: 'Leave without effect',
+      noEffect: 'Continue without effect',
+      cleanseHighest: 'Cleanse 1 Curse level',
+      requiresCurse: 'Requires an active Curse',
+      notEnoughHp: 'Cannot afford HP cost (HP must be > {{cost}})',
+      unresolvedNotice: 'Unresolved Event at {{nodeId}}',
+      resumeBtn: 'Investigate',
+      healingSpring: {
+        name: 'Healing Spring',
+        desc: 'A tranquil pool of crystalline water glows softly amidst ancient stone ruins.',
+        drink: 'Drink from the spring (+25 HP)',
+      },
+      forgottenShrine: {
+        name: 'Forgotten Shrine',
+        desc: 'A moss-covered altar dedicated to ancient wordcraft offers quiet sanctuary.',
+        cleanse: 'Offer prayer at altar (Cleanse 1 Curse level)',
+        rest: 'Rest in the courtyard (+10 HP)',
+      },
+      cursedArchive: {
+        name: 'Cursed Archive',
+        desc: 'Rows of forbidden grimoires whisper secrets that burn the reader’s soul.',
+        study: 'Study forbidden pages (-10 HP, Cleanse 1 Curse level)',
+      },
+    },
   }
 };

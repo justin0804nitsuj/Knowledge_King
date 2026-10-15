@@ -85,6 +85,10 @@ export default function RogueMapScreen() {
 
       if (isCombat) {
         navigation.navigate('RogueBattle');
+      } else if (targetNode?.type === ROGUE_NODE_TYPES.REST) {
+        navigation.navigate('RogueRest');
+      } else if (targetNode?.type === ROGUE_NODE_TYPES.EVENT) {
+        navigation.navigate('RogueEvent');
       } else if (updated.status === ROGUE_RUN_STATUS.VICTORY) {
         setStatusMessage('🏆 Reached Boss! Expedition Complete!');
       } else {
@@ -249,6 +253,50 @@ export default function RogueMapScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Pending REST Interaction Banner */}
+      {run.pendingInteraction &&
+        !run.pendingInteraction.resolved &&
+        run.pendingInteraction.type === 'REST' && (
+          <View style={styles.pendingRestBanner}>
+            <Text style={styles.pendingRestText}>
+              🌿 {t('rogue.rest.unresolvedNotice', 'Unresolved Rest Site at {{nodeId}}', {
+                nodeId: run.currentNodeId,
+              })}
+            </Text>
+            <TouchableOpacity
+              style={styles.resumeRestBtn}
+              onPress={() => navigation.navigate('RogueRest')}
+              accessibilityRole="button"
+            >
+              <Text style={styles.resumeRestBtnText}>
+                {t('rogue.rest.resumeBtn', 'Rest')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+      {/* Pending EVENT Interaction Banner */}
+      {run.pendingInteraction &&
+        !run.pendingInteraction.resolved &&
+        run.pendingInteraction.type === 'EVENT' && (
+          <View style={styles.pendingEventBanner}>
+            <Text style={styles.pendingEventText}>
+              ❓ {t('rogue.events.unresolvedNotice', 'Unresolved Event at {{nodeId}}', {
+                nodeId: run.currentNodeId,
+              })}
+            </Text>
+            <TouchableOpacity
+              style={styles.resumeEventBtn}
+              onPress={() => navigation.navigate('RogueEvent')}
+              accessibilityRole="button"
+            >
+              <Text style={styles.resumeEventBtnText}>
+                {t('rogue.events.resumeBtn', 'Investigate')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
       {/* Status Notice */}
       {statusMessage ? (
@@ -611,6 +659,62 @@ const styles = StyleSheet.create({
   },
   claimRewardBtnText: {
     color: '#0F172A',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  pendingRestBanner: {
+    backgroundColor: '#064E3B',
+    borderWidth: 1,
+    borderColor: '#10B981',
+    borderRadius: 10,
+    padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  pendingRestText: {
+    color: '#A7F3D0',
+    fontSize: 12,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  resumeRestBtn: {
+    backgroundColor: '#10B981',
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  resumeRestBtnText: {
+    color: '#064E3B',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  pendingEventBanner: {
+    backgroundColor: '#4C1D95',
+    borderWidth: 1,
+    borderColor: '#8B5CF6',
+    borderRadius: 10,
+    padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  pendingEventText: {
+    color: '#DDD6FE',
+    fontSize: 12,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  resumeEventBtn: {
+    backgroundColor: '#8B5CF6',
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  resumeEventBtnText: {
+    color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 12,
   },
