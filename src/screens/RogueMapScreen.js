@@ -209,6 +209,13 @@ export default function RogueMapScreen() {
             ☠️ {run.cursedWords?.length || 0}
           </Text>
         </View>
+        <View style={styles.ribbonDivider} />
+        <View style={styles.ribbonItem}>
+          <Text style={styles.ribbonLabel}>{t('rogue.relics.relicsCountLabel', 'RELICS')}</Text>
+          <Text style={styles.ribbonValue}>
+            🏺 {run.relics?.length || 0}
+          </Text>
+        </View>
       </View>
 
       {/* Unresolved Encounter Banner */}
@@ -223,6 +230,22 @@ export default function RogueMapScreen() {
             accessibilityRole="button"
           >
             <Text style={styles.resumeBattleBtnText}>Resume Battle</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Pending Relic Reward Banner */}
+      {run.pendingReward && run.pendingReward.type === 'RELIC_DRAFT' && (
+        <View style={styles.pendingRewardBanner}>
+          <Text style={styles.pendingRewardText}>
+            🏺 {t('rogue.relics.chooseTitle', 'Choose a Relic')} ({run.currentNodeId})
+          </Text>
+          <TouchableOpacity
+            style={styles.claimRewardBtn}
+            onPress={() => navigation.navigate('RogueRelicReward')}
+            accessibilityRole="button"
+          >
+            <Text style={styles.claimRewardBtnText}>Claim</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -560,6 +583,34 @@ const styles = StyleSheet.create({
   },
   resumeBattleBtnText: {
     color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  pendingRewardBanner: {
+    backgroundColor: '#78350F',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    borderRadius: 10,
+    padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  pendingRewardText: {
+    color: '#FDE68A',
+    fontSize: 12,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  claimRewardBtn: {
+    backgroundColor: '#F59E0B',
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  claimRewardBtnText: {
+    color: '#0F172A',
     fontWeight: 'bold',
     fontSize: 12,
   },

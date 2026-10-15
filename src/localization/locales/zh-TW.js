@@ -322,6 +322,46 @@ export default {
       curseIntensified: '詛咒加劇 — 等級 {{level}}！（受到反噬 {{backlash}} 傷害）',
       curseWeakened: '答對 — 詛咒削弱至等級 {{level}}。',
       cursePurified: '淨化成功 —「{{word}}」已解除詛咒！',
+      scholarsLensBonus: '學者透鏡：淨化 2 層詛咒！',
+      piercingNibPierced: '破甲筆尖：擊穿敵方防禦（抵消 -{{amount}}）！',
+      mnemonicCharmPrevented: '記憶護符生效：免疫本次新詛咒！',
+      purifyingInkHeal: '淨化成功 — 淨化墨水恢復 {{amount}} 點生命值！',
+      glassQuillBonus: '琉璃羽筆：攻擊傷害 +10！',
+      glassQuillBacklash: '琉璃羽筆：反噬傷害 +5！',
+      secondChanceTriggered: '起死回生發動 — 承受致命傷害，保留 1 點生命值！',
+    },
+    relics: {
+      title: '遺物',
+      count: '遺物：{{count}}',
+      relicsCountLabel: '遺物',
+      chooseTitle: '選擇一件遺物',
+      chooseDesc: '菁英戰鬥獲勝！請挑選一件古代遺物來強化本次遠征。',
+      noRelicsAvailable: '已獲得所有遺物！',
+      continueReward: '繼續遠征',
+      scholarsLens: {
+        name: '學者透鏡',
+        desc: '答對詛咒單字時額外淨化 1 層（共減少 2 層詛咒）。',
+      },
+      piercingNib: {
+        name: '破甲筆尖',
+        desc: '敵方防禦抵消傷害減少 10 點。',
+      },
+      mnemonicCharm: {
+        name: '記憶護符',
+        desc: '每場戰鬥中第一次一般單字答錯不會產生詛咒。',
+      },
+      purifyingInk: {
+        name: '淨化墨水',
+        desc: '每當完全淨化一個詛咒單字時，恢復 10 點生命值。',
+      },
+      glassQuill: {
+        name: '琉璃羽筆',
+        desc: '答對攻擊傷害 +10，但詛咒反噬傷害 +5。',
+      },
+      secondChance: {
+        name: '起死回生',
+        desc: '每次遠征僅限一次，承受致命傷害時保留 1 點生命值。',
+      },
     },
   }
 };

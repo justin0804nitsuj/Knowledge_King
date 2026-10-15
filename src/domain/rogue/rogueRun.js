@@ -10,6 +10,7 @@
 
 import { generateRogueMap, ROGUE_NODE_TYPES } from './mapGenerator';
 import { createEncounter, ENCOUNTER_STATUS } from './combat/rogueCombat';
+import { generateRelicDraft, claimRelicReward } from './relic/relicDraft';
 
 export const CURRENT_ROGUE_SCHEMA_VERSION = 1;
 
@@ -66,6 +67,8 @@ export function createRogueRun({
       visitedNodeIds: [startId],
     },
     relics: [],
+    relicState: {},
+    pendingReward: null,
     cursedWords: [],
     runStats: {
       battlesWon: 0,
@@ -86,6 +89,7 @@ export function createRogueRun({
  */
 export function isCurrentNodeResolved(run) {
   if (!run || typeof run !== 'object') return false;
+  if (run.pendingReward) return false;
   return run.currentNodeResolved !== false;
 }
 
@@ -189,6 +193,8 @@ export function advanceRunNode(run, targetNodeId, options = {}) {
       playerMaxHp: run.player.maxHp,
       seed: options.seed || run.seed,
       customQuestion: options.customQuestion,
+      relics: run.relics,
+      relicState: run.relicState,
       run,
     });
   }
@@ -224,16 +230,45 @@ export function resolveCombatVictory(run, finalEncounter) {
   }
 
   const remainingHp = finalEncounter?.player?.hp ?? run.player.hp;
+  const currentNode = run.route.nodes[run.currentNodeId];
   const isBossNode =
     run.currentNodeId === run.route.bossNodeId ||
-    run.route.nodes[run.currentNodeId]?.type === ROGUE_NODE_TYPES.BOSS;
+    currentNode?.type === ROGUE_NODE_TYPES.BOSS;
+
+  const isEliteNode = currentNode?.type === ROGUE_NODE_TYPES.ELITE;
+
+  let pendingReward = run.pendingReward || null;
+  let isNodeResolved = true;
+
+  if (isEliteNode && !pendingReward) {
+    const draft = generateRelicDraft({
+      seed: run.seed,
+      nodeId: run.currentNodeId,
+      ownedRelics: run.relics || [],
+    });
+
+    if (draft.options.length > 0) {
+      pendingReward = draft;
+      isNodeResolved = false;
+    } else {
+      // All relics owned: resolve reward without adding another relic
+      pendingReward = null;
+      isNodeResolved = true;
+    }
+  }
+
+  const updatedRelics = finalEncounter?.relics || run.relics || [];
+  const updatedRelicState = finalEncounter?.runRelicState || run.relicState || {};
 
   return {
     ...run,
     status: isBossNode ? ROGUE_RUN_STATUS.VICTORY : ROGUE_RUN_STATUS.ACTIVE,
-    currentNodeResolved: true,
+    currentNodeResolved: isNodeResolved,
+    pendingReward,
     encounter: finalEncounter || run.encounter,
     cursedWords: finalEncounter?.cursedWords || run.cursedWords || [],
+    relics: updatedRelics,
+    relicState: updatedRelicState,
     player: {
       ...run.player,
       hp: Math.max(1, Math.min(remainingHp, run.player.maxHp)),

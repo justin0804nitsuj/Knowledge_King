@@ -15,6 +15,7 @@ import PvpResultScreen from './src/screens/PvpResultScreen';
 import RogueHomeScreen from './src/screens/RogueHomeScreen';
 import RogueMapScreen from './src/screens/RogueMapScreen';
 import RogueBattleScreen from './src/screens/RogueBattleScreen';
+import RogueRelicRewardScreen from './src/screens/RogueRelicRewardScreen';
 import { AuthProvider } from './src/context/AuthContext';
 import { OnlineProvider } from './src/context/OnlineContext';
 import { PvpRoomProvider } from './src/context/PvpRoomContext';
@@ -61,6 +62,7 @@ export default function App() {
                   <Stack.Screen name="RogueHome" component={RogueHomeScreen} />
                   <Stack.Screen name="RogueMap" component={RogueMapScreen} />
                   <Stack.Screen name="RogueBattle" component={RogueBattleScreen} />
+                  <Stack.Screen name="RogueRelicReward" component={RogueRelicRewardScreen} />
                 </Stack.Navigator>
               </NavigationContainer>
             </PvpRoomProvider>

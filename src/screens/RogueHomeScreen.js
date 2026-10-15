@@ -57,7 +57,9 @@ export default function RogueHomeScreen() {
   };
 
   const handleContinueRun = () => {
-    if (activeRun?.encounter && activeRun.encounter.status === 'ACTIVE') {
+    if (activeRun?.pendingReward && activeRun.pendingReward.type === 'RELIC_DRAFT') {
+      navigation.navigate('RogueRelicReward');
+    } else if (activeRun?.encounter && activeRun.encounter.status === 'ACTIVE') {
       navigation.navigate('RogueBattle');
     } else {
       navigation.navigate('RogueMap');
@@ -149,6 +151,10 @@ export default function RogueHomeScreen() {
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>{t('rogue.curse.cursedCountLabel', 'Curses')}</Text>
               <Text style={styles.statValue}>☠️ {activeRun.cursedWords?.length || 0}</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>{t('rogue.relics.relicsCountLabel', 'Relics')}</Text>
+              <Text style={styles.statValue}>🏺 {activeRun.relics?.length || 0}</Text>
             </View>
           </View>
 

@@ -29,6 +29,16 @@ import {
   applyCurseCorrectAnswer,
 } from '../curse/cursedWordModel';
 import { getRogueQuestion } from './rogueQuestionProvider';
+import { RELIC_IDS } from '../relic/relicRegistry';
+import {
+  modifyPlayerAttackDamage,
+  modifyGuardMitigation,
+  getCursePurificationAmount,
+  modifyCurseBacklashDamage,
+  shouldPreventNewCurse,
+  onCursePurified,
+  applyLethalProtection,
+} from '../relic/relicEffects';
 
 export const CURRENT_ENCOUNTER_SCHEMA_VERSION = 1;
 
@@ -49,6 +59,9 @@ export const ENCOUNTER_STATUS = Object.freeze({
  * @param {number|string} [params.seed]
  * @param {string} [params.archetypeId] - Optional explicit archetype override for testing
  * @param {object} [params.customQuestion] - Optional mock question for testing
+ * @param {Array<object>} [params.cursedWords]
+ * @param {Array<string>} [params.relics]
+ * @param {object} [params.relicState]
  * @param {object} [params.run]
  * @returns {object} Pure encounter state
  */
@@ -61,6 +74,8 @@ export function createEncounter({
   archetypeId,
   customQuestion,
   cursedWords,
+  relics,
+  relicState,
   run,
 } = {}) {
   const encounterId = `enc_${nodeId}_${Date.now()}`;
@@ -70,6 +85,24 @@ export function createEncounter({
     : Array.isArray(run?.cursedWords)
     ? [...run.cursedWords]
     : [];
+
+  const initialRelics = Array.isArray(relics)
+    ? [...relics]
+    : Array.isArray(run?.relics)
+    ? [...run.relics]
+    : [];
+
+  const initialRunRelicState = relicState
+    ? { ...relicState }
+    : run?.relicState
+    ? { ...run.relicState }
+    : {};
+
+  const initialEncounterRelicState = {
+    [RELIC_IDS.MNEMONIC_CHARM]: {
+      usedThisEncounter: false,
+    },
+  };
 
   // Resolve archetype deterministically
   const assignedArchetypeId =
@@ -114,6 +147,9 @@ export function createEncounter({
     },
     question: firstQuestion,
     cursedWords: initialCursedWords,
+    relics: initialRelics,
+    runRelicState: initialRunRelicState,
+    encounterRelicState: initialEncounterRelicState,
     resolvedQuestionTokens: [],
     lastResolution: null,
     stats: {
@@ -186,6 +222,16 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
     ? encounter.cursedWords
     : [];
 
+  const activeRelics = Array.isArray(options.relics)
+    ? options.relics
+    : Array.isArray(encounter.relics)
+    ? encounter.relics
+    : [];
+
+  let currentRunRelicState = { ...(options.runRelicState || encounter.runRelicState || {}) };
+  let currentEncounterRelicState = { ...(encounter.encounterRelicState || {}) };
+  const relicTriggers = [];
+
   const questionWordId =
     encounter.question?.wordId ||
     encounter.question?.targetId ||
@@ -197,67 +243,204 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
 
   // 1. Evaluate Player Answer
   const isCorrect = String(choiceId) === String(encounter.question.correctChoiceId);
-  const basePlayerDamage = isCorrect
+  const rawBaseDamage = isCorrect
     ? ROGUE_COMBAT_CONSTANTS.PLAYER_ATTACK_DAMAGE
     : ROGUE_COMBAT_CONSTANTS.PLAYER_WRONG_DAMAGE;
 
-  // 2. Apply Current Intent Defensive Modifiers (GUARD)
+  // 2. Apply player-damage relic modifiers (Glass Quill: +10 on correct attack)
+  const { playerDamage: basePlayerDamage, glassQuillBonus } = modifyPlayerAttackDamage({
+    baseDamage: rawBaseDamage,
+    relics: activeRelics,
+  });
+  if (glassQuillBonus > 0) {
+    relicTriggers.push({
+      relicId: RELIC_IDS.GLASS_QUILL,
+      type: 'DAMAGE_BONUS',
+      value: glassQuillBonus,
+    });
+  }
+
+  // 3. Apply Current Intent Defensive Modifiers (GUARD) & Piercing Nib
   let effectivePlayerDamage = basePlayerDamage;
   let guardMitigated = 0;
+  let guardPierced = 0;
 
   if (currentIntent.type === INTENT_TYPES.GUARD && isCorrect) {
-    const mitigation = currentIntent.value || archetype.guardMitigation || 10;
-    effectivePlayerDamage = Math.max(0, basePlayerDamage - mitigation);
-    guardMitigated = Math.min(basePlayerDamage, mitigation);
+    const rawMitigation = currentIntent.value || archetype.guardMitigation || 10;
+    const { effectiveMitigation, guardPierced: pierced } = modifyGuardMitigation({
+      mitigation: rawMitigation,
+      relics: activeRelics,
+    });
+    effectivePlayerDamage = Math.max(0, basePlayerDamage - effectiveMitigation);
+    guardMitigated = Math.min(basePlayerDamage, effectiveMitigation);
+    guardPierced = pierced;
+    if (guardPierced > 0) {
+      relicTriggers.push({
+        relicId: RELIC_IDS.PIERCING_NIB,
+        type: 'GUARD_PIERCED',
+        value: guardPierced,
+      });
+    }
   }
 
   const newEnemyHp = Math.max(0, encounter.enemy.hp - effectivePlayerDamage);
   const enemyDefeated = newEnemyHp <= 0;
 
-  // 3. Resolve Cursed Word State Transition
+  // 4. Resolve Cursed Word State Transition & Relic Modifiers
   let nextCursedWords = currentCursedWords;
   let curseResult = null;
+  let currentPlayerHp = encounter.player.hp;
+  let inkHeal = 0;
 
   if (isCorrect) {
     if (isCursedReview) {
+      const purificationAmount = getCursePurificationAmount({ relics: activeRelics });
+      if (purificationAmount > 1) {
+        relicTriggers.push({
+          relicId: RELIC_IDS.SCHOLARS_LENS,
+          type: 'PURIFICATION_BONUS',
+          value: purificationAmount,
+        });
+      }
+
       const res = applyCurseCorrectAnswer(currentCursedWords, {
         wordId: questionWordId,
         word: questionWord,
         turn: encounter.turn,
+        purificationAmount,
+      });
+      nextCursedWords = res.cursedWords;
+      curseResult = res.curseResult;
+
+      // Purifying Ink: Heals 10 HP upon full purification
+      if (curseResult?.type === 'CURSE_PURIFIED') {
+        const { healedHp, actualHeal } = onCursePurified({
+          playerHp: currentPlayerHp,
+          playerMaxHp: encounter.player.maxHp,
+          relics: activeRelics,
+        });
+        currentPlayerHp = healedHp;
+        inkHeal = actualHeal;
+        if (actualHeal > 0) {
+          relicTriggers.push({
+            relicId: RELIC_IDS.PURIFYING_INK,
+            type: 'HEAL',
+            value: actualHeal,
+          });
+        }
+      }
+    }
+  } else {
+    // Wrong answer
+    if (!isCursedReview) {
+      // Normal word mistake: Check Mnemonic Charm
+      const preventCurse = shouldPreventNewCurse({
+        isNormalMistake: true,
+        relics: activeRelics,
+        encounterRelicState: currentEncounterRelicState,
+      });
+
+      if (preventCurse) {
+        currentEncounterRelicState = {
+          ...currentEncounterRelicState,
+          [RELIC_IDS.MNEMONIC_CHARM]: { usedThisEncounter: true },
+        };
+        relicTriggers.push({
+          relicId: RELIC_IDS.MNEMONIC_CHARM,
+          type: 'CURSE_PREVENTED',
+        });
+        curseResult = {
+          type: 'CURSE_PREVENTED',
+          wordId: questionWordId,
+          word: questionWord,
+          previousStacks: 0,
+          stacks: 0,
+          backlash: 0,
+        };
+      } else {
+        const res = applyCurseWrongAnswer(currentCursedWords, {
+          wordId: questionWordId,
+          word: questionWord,
+          level: questionLevel,
+          turn: encounter.turn,
+          isCursedReview: false,
+          firstCursedAt: encounter.stats.wrongAnswers + 1,
+          firstCursedOrder: encounter.stats.wrongAnswers + 1,
+        });
+        nextCursedWords = res.cursedWords;
+        curseResult = res.curseResult;
+      }
+    } else {
+      // Cursed review failed: normal stack increment & backlash
+      const res = applyCurseWrongAnswer(currentCursedWords, {
+        wordId: questionWordId,
+        word: questionWord,
+        level: questionLevel,
+        turn: encounter.turn,
+        isCursedReview: true,
+        firstCursedAt: encounter.stats.wrongAnswers + 1,
+        firstCursedOrder: encounter.stats.wrongAnswers + 1,
       });
       nextCursedWords = res.cursedWords;
       curseResult = res.curseResult;
     }
-  } else {
-    const res = applyCurseWrongAnswer(currentCursedWords, {
-      wordId: questionWordId,
-      word: questionWord,
-      level: questionLevel,
-      turn: encounter.turn,
-      isCursedReview,
-      firstCursedAt: encounter.stats.wrongAnswers + 1,
-    });
-    nextCursedWords = res.cursedWords;
-    curseResult = res.curseResult;
   }
 
-  const backlashDamage = curseResult?.backlash || 0;
+  // 5. Calculate Curse Backlash & Glass Quill tradeoff
+  const rawBacklash = curseResult?.backlash || 0;
+  let effectiveBacklash = rawBacklash;
+  let glassQuillBacklashBonus = 0;
 
-  // 4. Status Transition & Action Order
+  if (rawBacklash > 0 && isCursedReview) {
+    const backlashRes = modifyCurseBacklashDamage({
+      backlash: rawBacklash,
+      isCursedReview: true,
+      relics: activeRelics,
+    });
+    effectiveBacklash = backlashRes.effectiveBacklash;
+    glassQuillBacklashBonus = backlashRes.glassQuillBacklashBonus;
+    if (glassQuillBacklashBonus > 0) {
+      relicTriggers.push({
+        relicId: RELIC_IDS.GLASS_QUILL,
+        type: 'BACKLASH_BONUS',
+        value: glassQuillBacklashBonus,
+      });
+    }
+  }
+
+  // 6. Combat Status Transition & Canonical Damage Resolution
   let nextStatus = ENCOUNTER_STATUS.ACTIVE;
   let enemyDamage = 0;
-  let newPlayerHp = encounter.player.hp;
+  let secondChanceTriggered = false;
 
   if (enemyDefeated) {
-    // Lethal player hit: victory immediately; enemy action is skipped; curse updates persist
+    // Lethal player hit: victory immediately; enemy action skipped; curse updates & healing persist!
     nextStatus = ENCOUNTER_STATUS.VICTORY;
   } else {
     // Enemy survived: apply Curse Backlash if applicable
-    if (backlashDamage > 0) {
-      newPlayerHp = Math.max(0, newPlayerHp - backlashDamage);
+    if (effectiveBacklash > 0) {
+      const lethalRes = applyLethalProtection({
+        currentHp: currentPlayerHp,
+        incomingDamage: effectiveBacklash,
+        relics: activeRelics,
+        runRelicState: currentRunRelicState,
+      });
+      currentPlayerHp = lethalRes.newHp;
+      if (lethalRes.protected) {
+        secondChanceTriggered = true;
+        currentRunRelicState = {
+          ...currentRunRelicState,
+          [RELIC_IDS.SECOND_CHANCE]: { consumed: true },
+        };
+        relicTriggers.push({
+          relicId: RELIC_IDS.SECOND_CHANCE,
+          type: 'LETHAL_PROTECTION',
+          source: 'BACKLASH',
+        });
+      }
     }
 
-    if (newPlayerHp <= 0) {
+    if (currentPlayerHp <= 0) {
       // Player defeated by Curse Backlash; enemy action skipped
       nextStatus = ENCOUNTER_STATUS.DEFEAT;
     } else {
@@ -268,20 +451,41 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
         enemyDamage = 0;
       }
 
-      newPlayerHp = Math.max(0, newPlayerHp - enemyDamage);
-      if (newPlayerHp <= 0) {
+      if (enemyDamage > 0) {
+        const lethalRes = applyLethalProtection({
+          currentHp: currentPlayerHp,
+          incomingDamage: enemyDamage,
+          relics: activeRelics,
+          runRelicState: currentRunRelicState,
+        });
+        currentPlayerHp = lethalRes.newHp;
+        if (lethalRes.protected) {
+          secondChanceTriggered = true;
+          currentRunRelicState = {
+            ...currentRunRelicState,
+            [RELIC_IDS.SECOND_CHANCE]: { consumed: true },
+          };
+          relicTriggers.push({
+            relicId: RELIC_IDS.SECOND_CHANCE,
+            type: 'LETHAL_PROTECTION',
+            source: 'ENEMY_ATTACK',
+          });
+        }
+      }
+
+      if (currentPlayerHp <= 0) {
         nextStatus = ENCOUNTER_STATUS.DEFEAT;
       }
     }
   }
 
-  // 5. Update Stats
+  // 7. Update Stats
   const nextStats = {
     correctAnswers: encounter.stats.correctAnswers + (isCorrect ? 1 : 0),
     wrongAnswers: encounter.stats.wrongAnswers + (isCorrect ? 0 : 1),
     totalDamageDealt: encounter.stats.totalDamageDealt + effectivePlayerDamage,
-    totalDamageTaken: encounter.stats.totalDamageTaken + enemyDamage + backlashDamage,
-    curseBacklashTaken: (encounter.stats.curseBacklashTaken || 0) + backlashDamage,
+    totalDamageTaken: encounter.stats.totalDamageTaken + enemyDamage + effectiveBacklash,
+    curseBacklashTaken: (encounter.stats.curseBacklashTaken || 0) + effectiveBacklash,
   };
 
   const nextResolvedTokens = [...encounter.resolvedQuestionTokens, token];
@@ -292,13 +496,18 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
     correct: isCorrect,
     playerDamage: effectivePlayerDamage,
     guardMitigated,
+    guardPierced,
     enemyDamage,
-    backlashDamage,
+    backlashDamage: effectiveBacklash,
     curseResult,
     executedIntent: { ...currentIntent },
+    relicTriggers,
+    inkHeal,
+    glassQuillBonus,
+    secondChanceTriggered,
   };
 
-  // 6. Next Turn Generation (Intent + Question for turn + 1)
+  // 8. Next Turn Generation (Intent + Question for turn + 1)
   let nextQuestion = encounter.question;
   const nextTurn = encounter.turn + 1;
   let nextIntent = currentIntent;
@@ -330,7 +539,7 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
     turn: nextStatus === ENCOUNTER_STATUS.ACTIVE ? nextTurn : encounter.turn,
     player: {
       ...encounter.player,
-      hp: newPlayerHp,
+      hp: currentPlayerHp,
     },
     enemy: {
       ...encounter.enemy,
@@ -339,6 +548,9 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
     },
     question: nextQuestion,
     cursedWords: nextCursedWords,
+    relics: activeRelics,
+    runRelicState: currentRunRelicState,
+    encounterRelicState: currentEncounterRelicState,
     resolvedQuestionTokens: nextResolvedTokens,
     lastResolution: resolution,
     stats: nextStats,

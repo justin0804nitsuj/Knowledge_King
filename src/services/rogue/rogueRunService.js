@@ -27,6 +27,7 @@ import {
   resolveEncounterTurn,
   ENCOUNTER_STATUS,
 } from '../../domain/rogue/combat/rogueCombat';
+import { claimRelicReward } from '../../domain/rogue/relic/relicDraft';
 import {
   loadActiveRogueRun,
   saveActiveRogueRun,
@@ -144,10 +145,16 @@ export async function submitCombatAnswer({
     };
   }
 
+  const turnOptions = {
+    ...options,
+    relics: options.relics || currentRun.relics || [],
+    runRelicState: options.runRelicState || currentRun.relicState || {},
+  };
+
   const { encounter: updatedEncounter, resolved, resolution, reason } = resolveEncounterTurn(
     encounter,
     { choiceId, token },
-    options
+    turnOptions
   );
 
   if (!resolved) {
@@ -162,6 +169,8 @@ export async function submitCombatAnswer({
 
   let finalRun = {
     ...currentRun,
+    relics: updatedEncounter.relics || currentRun.relics || [],
+    relicState: updatedEncounter.runRelicState || currentRun.relicState || {},
     cursedWords: updatedEncounter.cursedWords || currentRun.cursedWords || [],
     encounter: updatedEncounter,
     player: {
@@ -224,4 +233,46 @@ export async function abandonRun(explicitIdentity) {
 export async function getActiveSelectableNodes(explicitIdentity) {
   const currentRun = await loadActiveRogueRun(explicitIdentity);
   return getSelectableNextNodes(currentRun);
+}
+
+/**
+ * Selects a relic from the pending reward draft.
+ * Idempotent: repeated selections with the same token do not duplicate relics or node resolutions.
+ *
+ * @param {object} params
+ * @param {string} params.rewardId
+ * @param {string|null} params.relicId
+ * @param {string|object} [params.explicitIdentity]
+ * @returns {Promise<{ run: object, success: boolean, reason?: string, alreadyClaimed?: boolean }>}
+ */
+export async function selectRelicReward({
+  rewardId,
+  relicId,
+  explicitIdentity,
+} = {}) {
+  const currentRun = await loadActiveRogueRun(explicitIdentity);
+  if (!currentRun) {
+    throw new Error('[RogueRunService] No active run found');
+  }
+
+  const { run: updatedRun, success, reason, alreadyClaimed } = claimRelicReward(
+    currentRun,
+    { rewardId, relicId }
+  );
+
+  if (!success) {
+    return {
+      run: currentRun,
+      success: false,
+      reason,
+    };
+  }
+
+  await saveActiveRogueRun(updatedRun, explicitIdentity);
+
+  return {
+    run: updatedRun,
+    success: true,
+    alreadyClaimed: Boolean(alreadyClaimed),
+  };
 }

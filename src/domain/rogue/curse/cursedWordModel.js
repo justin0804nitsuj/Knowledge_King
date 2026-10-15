@@ -49,6 +49,8 @@ export function createCursedWordEntry({
   mistakeCount = 1,
   firstCursedAt = 1,
   lastSeenAt = 1,
+  firstCursedOrder,
+  lastSeenOrder,
 }) {
   const safeId = String(wordId || word || 'unknown');
   const safeWord = String(word || safeId);
@@ -57,14 +59,23 @@ export function createCursedWordEntry({
     Math.min(MAX_CURSE_STACKS, Math.floor(stacks || 1))
   );
 
+  const resolvedFirstCursedOrder = typeof firstCursedOrder === 'number'
+    ? firstCursedOrder
+    : (typeof firstCursedAt === 'number' ? firstCursedAt : 1);
+  const resolvedLastSeenOrder = typeof lastSeenOrder === 'number'
+    ? lastSeenOrder
+    : (typeof lastSeenAt === 'number' ? lastSeenAt : 1);
+
   return {
     wordId: safeId,
     word: safeWord,
     level: Math.max(1, Math.min(6, Math.floor(level || 1))),
     stacks: safeStacks,
     mistakeCount: Math.max(1, Math.floor(mistakeCount || 1)),
-    firstCursedAt: typeof firstCursedAt === 'number' ? firstCursedAt : 1,
-    lastSeenAt: typeof lastSeenAt === 'number' ? lastSeenAt : 1,
+    firstCursedAt: resolvedFirstCursedOrder,
+    lastSeenAt: resolvedLastSeenOrder,
+    firstCursedOrder: resolvedFirstCursedOrder,
+    lastSeenOrder: resolvedLastSeenOrder,
   };
 }
 
@@ -87,7 +98,7 @@ export function isCursedReviewSlot(turn, interval = CURSED_REVIEW_INTERVAL) {
  *
  * Priority order:
  * 1. Highest stacks (descending)
- * 2. Oldest unresolved curse (firstCursedAt ascending)
+ * 2. Oldest unresolved curse (firstCursedOrder/firstCursedAt ascending)
  * 3. Stable wordId tie-break (alphabetical)
  *
  * @param {Array<object>} cursedWords
@@ -108,8 +119,8 @@ export function selectCursedWordForReview(cursedWords) {
     if (stackDiff !== 0) return stackDiff;
 
     // 2. Oldest unresolved curse
-    const aOrder = a.firstCursedAt ?? 0;
-    const bOrder = b.firstCursedAt ?? 0;
+    const aOrder = a.firstCursedOrder ?? a.firstCursedAt ?? 0;
+    const bOrder = b.firstCursedOrder ?? b.firstCursedAt ?? 0;
     if (aOrder !== bOrder) return aOrder - bOrder;
 
     // 3. Stable wordId tie-break
@@ -166,6 +177,7 @@ export function applyCurseWrongAnswer(currentCursedWords = [], {
   turn = 1,
   isCursedReview = false,
   firstCursedAt,
+  firstCursedOrder,
 }) {
   const targetId = String(wordId || word || 'unknown');
   const targetWord = String(word || targetId);
@@ -175,6 +187,10 @@ export function applyCurseWrongAnswer(currentCursedWords = [], {
     (c) => c && String(c.wordId || c.word) === targetId
   );
 
+  const resolvedOrder = typeof firstCursedOrder === 'number'
+    ? firstCursedOrder
+    : (typeof firstCursedAt === 'number' ? firstCursedAt : turn);
+
   if (existingIndex === -1) {
     // 1. Initial Curse Creation: First mistake on a non-cursed word
     const newEntry = createCursedWordEntry({
@@ -183,8 +199,10 @@ export function applyCurseWrongAnswer(currentCursedWords = [], {
       level,
       stacks: MIN_CURSE_STACKS,
       mistakeCount: 1,
-      firstCursedAt: typeof firstCursedAt === 'number' ? firstCursedAt : turn,
+      firstCursedAt: resolvedOrder,
+      firstCursedOrder: resolvedOrder,
       lastSeenAt: turn,
+      lastSeenOrder: turn,
     });
 
     const nextList = [...existingList, newEntry];
@@ -212,6 +230,7 @@ export function applyCurseWrongAnswer(currentCursedWords = [], {
     stacks: newStacks,
     mistakeCount: newMistakeCount,
     lastSeenAt: turn,
+    lastSeenOrder: turn,
   };
 
   const nextList = [...existingList];
@@ -239,7 +258,7 @@ export function applyCurseWrongAnswer(currentCursedWords = [], {
  * Pure transition: resolves a correct answer on a cursed word.
  *
  * If word is cursed:
- * - Reduces stacks by 1
+ * - Reduces stacks by purificationAmount (default 1, Scholar's Lens: 2)
  * - If stacks reaches 0, purifies and removes the word
  *
  * @param {Array<object>} currentCursedWords
@@ -247,12 +266,14 @@ export function applyCurseWrongAnswer(currentCursedWords = [], {
  * @param {string} params.wordId
  * @param {string} params.word
  * @param {number} [params.turn=1]
+ * @param {number} [params.purificationAmount=1]
  * @returns {{ cursedWords: Array<object>, curseResult: object|null }}
  */
 export function applyCurseCorrectAnswer(currentCursedWords = [], {
   wordId,
   word,
   turn = 1,
+  purificationAmount = 1,
 }) {
   const targetId = String(wordId || word || 'unknown');
   const targetWord = String(word || targetId);
@@ -272,7 +293,11 @@ export function applyCurseCorrectAnswer(currentCursedWords = [], {
 
   const existing = existingList[existingIndex];
   const previousStacks = existing.stacks || 1;
-  const newStacks = previousStacks - 1;
+  const safePurification = Math.max(
+    1,
+    typeof purificationAmount === 'number' ? Math.floor(purificationAmount) : 1
+  );
+  const newStacks = Math.max(0, previousStacks - safePurification);
 
   if (newStacks <= 0) {
     // Purified and removed
@@ -286,6 +311,7 @@ export function applyCurseCorrectAnswer(currentCursedWords = [], {
         previousStacks,
         stacks: 0,
         backlash: 0,
+        purifiedStacks: previousStacks,
       },
     };
   }
@@ -295,6 +321,7 @@ export function applyCurseCorrectAnswer(currentCursedWords = [], {
     ...existing,
     stacks: newStacks,
     lastSeenAt: turn,
+    lastSeenOrder: turn,
   };
 
   const nextList = [...existingList];
@@ -309,6 +336,7 @@ export function applyCurseCorrectAnswer(currentCursedWords = [], {
       previousStacks,
       stacks: newStacks,
       backlash: 0,
+      purifiedStacks: previousStacks - newStacks,
     },
   };
 }

@@ -95,7 +95,7 @@ export function getRogueQuestion({
   // 2. Resolve deterministic RNG
   let randomFunc = rng;
   if (!randomFunc) {
-    const resolvedSeed = seed !== undefined ? seed : `${encounterId}_${turn}_${Date.now()}`;
+    const resolvedSeed = seed !== undefined ? seed : `${encounterId}_${turn}`;
     const prng = createPrng(resolvedSeed);
     randomFunc = prng.next;
   }

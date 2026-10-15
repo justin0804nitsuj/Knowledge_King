@@ -249,18 +249,31 @@ export default function RogueBattleScreen() {
         <View style={styles.victoryCard}>
           <Text style={styles.outcomeTitle}>👑 VICTORY!</Text>
           <Text style={styles.outcomeDesc}>
-            The enemy has fallen. Your remaining HP will carry forward into the
-            expedition.
+            {encounter.nodeType === 'ELITE'
+              ? 'Elite trial conquered! A relic reward awaits.'
+              : 'The enemy has fallen. Your remaining HP will carry forward into the expedition.'}
           </Text>
-          <TouchableOpacity
-            style={styles.primaryActionBtn}
-            onPress={handleReturnToMap}
-            accessibilityRole="button"
-          >
-            <Text style={styles.primaryActionBtnText}>
-              Return to Expedition Map
-            </Text>
-          </TouchableOpacity>
+          {encounter.nodeType === 'ELITE' ? (
+            <TouchableOpacity
+              style={styles.primaryActionBtn}
+              onPress={() => navigation.navigate('RogueRelicReward')}
+              accessibilityRole="button"
+            >
+              <Text style={styles.primaryActionBtnText}>
+                🏺 Claim Relic Reward
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.primaryActionBtn}
+              onPress={handleReturnToMap}
+              accessibilityRole="button"
+            >
+              <Text style={styles.primaryActionBtnText}>
+                Return to Expedition Map
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -635,6 +648,34 @@ function getFeedbackDescription(feedback, isVictory, t) {
           word: cr.word,
         })
       );
+    }
+  }
+
+  if (Array.isArray(feedback.relicTriggers)) {
+    for (const trig of feedback.relicTriggers) {
+      if (trig.relicId === 'SCHOLARS_LENS') {
+        parts.push(t('rogue.feedback.scholarsLensBonus', "Scholar's Lens: Curse purified by 2 levels!"));
+      } else if (trig.relicId === 'PIERCING_NIB') {
+        parts.push(
+          t('rogue.feedback.piercingNibPierced', 'Guard pierced (-{{amount}} mitigation)!', {
+            amount: trig.value,
+          })
+        );
+      } else if (trig.relicId === 'MNEMONIC_CHARM') {
+        parts.push(t('rogue.feedback.mnemonicCharmPrevented', 'Mnemonic Charm prevented a new Curse!'));
+      } else if (trig.relicId === 'PURIFYING_INK') {
+        parts.push(
+          t('rogue.feedback.purifyingInkHeal', 'Purified — Purifying Ink restored {{amount}} HP!', {
+            amount: trig.value,
+          })
+        );
+      } else if (trig.relicId === 'GLASS_QUILL' && trig.type === 'DAMAGE_BONUS') {
+        parts.push(t('rogue.feedback.glassQuillBonus', 'Glass Quill: +10 damage dealt!'));
+      } else if (trig.relicId === 'GLASS_QUILL' && trig.type === 'BACKLASH_BONUS') {
+        parts.push(t('rogue.feedback.glassQuillBacklash', 'Glass Quill: +5 backlash damage taken!'));
+      } else if (trig.relicId === 'SECOND_CHANCE') {
+        parts.push(t('rogue.feedback.secondChanceTriggered', 'Second Chance activated — survived at 1 HP!'));
+      }
     }
   }
 

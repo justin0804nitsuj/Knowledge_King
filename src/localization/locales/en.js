@@ -322,6 +322,46 @@ export default {
       curseIntensified: 'Curse intensified — Level {{level}}! (Backlash: {{backlash}} dmg)',
       curseWeakened: 'Correct — Curse weakened to Level {{level}}.',
       cursePurified: 'Purified — "{{word}}" is free of curse!',
+      scholarsLensBonus: "Scholar's Lens: Curse purified by 2 levels!",
+      piercingNibPierced: 'Guard pierced (-{{amount}} mitigation)!',
+      mnemonicCharmPrevented: 'Mnemonic Charm prevented a new Curse!',
+      purifyingInkHeal: 'Purified — Purifying Ink restored {{amount}} HP!',
+      glassQuillBonus: 'Glass Quill: +10 damage dealt!',
+      glassQuillBacklash: 'Glass Quill: +5 backlash damage taken!',
+      secondChanceTriggered: 'Second Chance activated — survived at 1 HP!',
+    },
+    relics: {
+      title: 'Relics',
+      count: 'Relics: {{count}}',
+      relicsCountLabel: 'RELICS',
+      chooseTitle: 'Choose a Relic',
+      chooseDesc: 'Claim an artifact to empower your expedition.',
+      noRelicsAvailable: 'All relics collected!',
+      continueReward: 'Continue Expedition',
+      scholarsLens: {
+        name: "Scholar's Lens",
+        desc: 'Correct answers on Cursed Words reduce 2 curse levels instead of 1.',
+      },
+      piercingNib: {
+        name: 'Piercing Nib',
+        desc: 'Reduces enemy Guard damage mitigation by 10.',
+      },
+      mnemonicCharm: {
+        name: 'Mnemonic Charm',
+        desc: 'The first normal word mistake in each battle does not create a Curse.',
+      },
+      purifyingInk: {
+        name: 'Purifying Ink',
+        desc: 'Restores 10 HP whenever a Cursed Word is fully purified.',
+      },
+      glassQuill: {
+        name: 'Glass Quill',
+        desc: 'Correct answers deal +10 attack damage, but Curse Backlash deals +5 damage.',
+      },
+      secondChance: {
+        name: 'Second Chance',
+        desc: 'Once per expedition, surviving lethal damage leaves you at 1 HP instead.',
+      },
     },
   }
 };
