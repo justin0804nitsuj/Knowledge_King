@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -19,6 +19,7 @@ import {
 import {
   getSelectableNextNodes,
   isRunActive,
+  isCurrentNodeResolved,
   ROGUE_RUN_STATUS,
 } from '../domain/rogue/rogueRun';
 import { ROGUE_NODE_TYPES } from '../domain/rogue/mapGenerator';
@@ -50,12 +51,19 @@ export default function RogueMapScreen() {
     }
   }, [navigation]);
 
-  useEffect(() => {
-    fetchRun();
-  }, [fetchRun]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchRun();
+    }, [fetchRun])
+  );
 
   const handleSelectNode = async (nodeId) => {
     if (!run || advancing) return;
+
+    if (!isCurrentNodeResolved(run)) {
+      setStatusMessage('Current combat node is unresolved. Continue battle to proceed.');
+      return;
+    }
 
     const selectables = getSelectableNextNodes(run);
     if (!selectables.includes(nodeId)) {
@@ -69,10 +77,18 @@ export default function RogueMapScreen() {
       const updated = await advanceToNode(nodeId);
       setRun(updated);
 
-      if (updated.status === ROGUE_RUN_STATUS.VICTORY) {
+      const targetNode = updated.route.nodes[nodeId];
+      const isCombat =
+        targetNode?.type === ROGUE_NODE_TYPES.BATTLE ||
+        targetNode?.type === ROGUE_NODE_TYPES.ELITE ||
+        targetNode?.type === ROGUE_NODE_TYPES.BOSS;
+
+      if (isCombat) {
+        navigation.navigate('RogueBattle');
+      } else if (updated.status === ROGUE_RUN_STATUS.VICTORY) {
         setStatusMessage('🏆 Reached Boss! Expedition Complete!');
       } else {
-        setStatusMessage(`Advanced to ${updated.route.nodes[nodeId]?.type || 'node'}`);
+        setStatusMessage(`Visited ${targetNode?.type || 'node'}`);
       }
     } catch (err) {
       Alert.alert('Move Error', err.message || 'Cannot advance to node');
@@ -187,6 +203,22 @@ export default function RogueMapScreen() {
           </Text>
         </View>
       </View>
+
+      {/* Unresolved Encounter Banner */}
+      {run.encounter && run.encounter.status === 'ACTIVE' && (
+        <View style={styles.activeEncounterBanner}>
+          <Text style={styles.activeEncounterText}>
+            ⚔️ Unresolved combat at {run.currentNodeId}!
+          </Text>
+          <TouchableOpacity
+            style={styles.resumeBattleBtn}
+            onPress={() => navigation.navigate('RogueBattle')}
+            accessibilityRole="button"
+          >
+            <Text style={styles.resumeBattleBtnText}>Resume Battle</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Status Notice */}
       {statusMessage ? (
@@ -495,5 +527,33 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '600',
     color: '#94A3B8',
+  },
+  activeEncounterBanner: {
+    backgroundColor: '#7F1D1D',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    borderRadius: 10,
+    padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  activeEncounterText: {
+    color: '#FCA5A5',
+    fontSize: 12,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  resumeBattleBtn: {
+    backgroundColor: '#EF4444',
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  resumeBattleBtnText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 12,
   },
 });

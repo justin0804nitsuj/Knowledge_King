@@ -57,7 +57,11 @@ export default function RogueHomeScreen() {
   };
 
   const handleContinueRun = () => {
-    navigation.navigate('RogueMap');
+    if (activeRun?.encounter && activeRun.encounter.status === 'ACTIVE') {
+      navigation.navigate('RogueBattle');
+    } else {
+      navigation.navigate('RogueMap');
+    }
   };
 
   const handleAbandonRun = () => {

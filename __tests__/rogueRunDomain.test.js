@@ -6,6 +6,8 @@ import {
   abandonRogueRun,
   defeatRogueRun,
   completeRogueRun,
+  resolveCurrentNode,
+  resolveCombatVictory,
   isRunActive,
   isRunOver,
   ROGUE_RUN_STATUS,
@@ -66,10 +68,11 @@ describe('Rogue Expedition V0.1 — Pure Run Domain Model', () => {
       advanceRunNode(run, run.route.bossNodeId);
     }).toThrow(/Invalid move/);
 
-    // Illegal jump: cannot jump backwards to start once moved
-    expect(canAdvanceToNode(nextRun, run.route.startNodeId)).toBe(false);
+    // Illegal jump: cannot jump backwards to start once moved (even after resolved)
+    const resolvedNextRun = resolveCurrentNode(nextRun);
+    expect(canAdvanceToNode(resolvedNextRun, run.route.startNodeId)).toBe(false);
     expect(() => {
-      advanceRunNode(nextRun, run.route.startNodeId);
+      advanceRunNode(resolvedNextRun, run.route.startNodeId);
     }).toThrow(/Invalid move/);
 
     // Non-existent node
@@ -77,6 +80,27 @@ describe('Rogue Expedition V0.1 — Pure Run Domain Model', () => {
     expect(() => {
       advanceRunNode(run, 'node-999-999');
     }).toThrow(/Invalid move/);
+  });
+
+  test('entering battle node marks it unresolved and locks next map nodes until victory', () => {
+    const run = createRogueRun({ seed: testSeed });
+    const nextNodeId = getSelectableNextNodes(run)[0];
+
+    const battleRun = advanceRunNode(run, nextNodeId);
+    expect(battleRun.currentNodeResolved).toBe(false);
+    expect(battleRun.encounter).toBeDefined();
+    expect(battleRun.encounter.status).toBe('ACTIVE');
+
+    // Unresolved battle locks next map nodes
+    expect(getSelectableNextNodes(battleRun)).toEqual([]);
+    expect(() => {
+      advanceRunNode(battleRun, nextNodeId);
+    }).toThrow(/unresolved/);
+
+    // Victory resolves node
+    const resolvedRun = resolveCurrentNode(battleRun);
+    expect(resolvedRun.currentNodeResolved).toBe(true);
+    expect(getSelectableNextNodes(resolvedRun).length).toBeGreaterThanOrEqual(1);
   });
 
   test('cannot advance a finished (VICTORY / DEFEAT / ABANDONED) run', () => {
@@ -117,13 +141,14 @@ describe('Rogue Expedition V0.1 — Pure Run Domain Model', () => {
   test('advancing through a complete route to Boss triggers VICTORY', () => {
     let currentRun = createRogueRun({ seed: testSeed });
 
-    // Step row by row until reaching Boss
+    // Step row by row until reaching Boss, resolving each battle node
     while (currentRun.status === ROGUE_RUN_STATUS.ACTIVE) {
       const nextOptions = getSelectableNextNodes(currentRun);
       expect(nextOptions.length).toBeGreaterThanOrEqual(1);
 
       const chosenNodeId = nextOptions[0];
       currentRun = advanceRunNode(currentRun, chosenNodeId);
+      currentRun = resolveCurrentNode(currentRun);
     }
 
     expect(currentRun.status).toBe(ROGUE_RUN_STATUS.VICTORY);

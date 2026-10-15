@@ -3,11 +3,13 @@
  *
  * Pure domain logic for Rogue Expedition runs:
  * - Deterministic immutable state transitions
- * - Route navigation & choice validation
+ * - Route navigation & node resolution gating
+ * - Encounter attachment and combat resolution
  * - Isolated from account XP / campaign progress
  */
 
 import { generateRogueMap, ROGUE_NODE_TYPES } from './mapGenerator';
+import { createEncounter, ENCOUNTER_STATUS } from './combat/rogueCombat';
 
 export const CURRENT_ROGUE_SCHEMA_VERSION = 1;
 
@@ -20,6 +22,7 @@ export const ROGUE_RUN_STATUS = Object.freeze({
 
 /**
  * Creates a brand new Rogue Expedition run.
+ * START node begins resolved.
  *
  * @param {object} [params]
  * @param {number|string} [params.seed] - Seed for procedural map generation
@@ -48,6 +51,8 @@ export function createRogueRun({
     seed: resolvedSeed,
     status: ROGUE_RUN_STATUS.ACTIVE,
     currentNodeId: startId,
+    currentNodeResolved: true, // START begins resolved
+    encounter: null,
     player: {
       hp: initialHp,
       maxHp: maxHp,
@@ -74,7 +79,21 @@ export function createRogueRun({
 }
 
 /**
+ * Checks whether the current node is resolved.
+ *
+ * @param {object} run
+ * @returns {boolean}
+ */
+export function isCurrentNodeResolved(run) {
+  if (!run || typeof run !== 'object') return false;
+  return run.currentNodeResolved !== false;
+}
+
+/**
  * Derives selectable connected next nodes from the current run state.
+ *
+ * GATING INVARIANT:
+ * If the current node is unresolved (e.g. active combat), NO next nodes can be selected.
  *
  * @param {object} run
  * @returns {string[]} Array of node IDs available to visit next
@@ -82,6 +101,9 @@ export function createRogueRun({
 export function getSelectableNextNodes(run) {
   if (!run || typeof run !== 'object') return [];
   if (run.status !== ROGUE_RUN_STATUS.ACTIVE) return [];
+
+  // Gating rule: unresolved nodes lock all forward progression
+  if (!isCurrentNodeResolved(run)) return [];
 
   const { currentNodeId, route } = run;
   if (!route || !route.nodes) return [];
@@ -113,19 +135,28 @@ export function canAdvanceToNode(run, targetNodeId) {
 
 /**
  * Pure transition: advances the run to the selected target node.
- * Throws if the jump is invalid or the run is not ACTIVE.
+ * Throws if the jump is invalid, the run is not ACTIVE, or current node is unresolved.
+ *
+ * Combat nodes become unresolved on entry and spawn an encounter.
  *
  * @param {object} run
  * @param {string} targetNodeId
+ * @param {object} [options] - Optional seed/customQuestion injection for tests
  * @returns {object} Updated run state
  */
-export function advanceRunNode(run, targetNodeId) {
+export function advanceRunNode(run, targetNodeId, options = {}) {
   if (!run || typeof run !== 'object') {
     throw new Error('[RogueRun] Invalid run state');
   }
 
   if (run.status !== ROGUE_RUN_STATUS.ACTIVE) {
     throw new Error(`[RogueRun] Cannot advance a run with status "${run.status}"`);
+  }
+
+  if (!isCurrentNodeResolved(run)) {
+    throw new Error(
+      `[RogueRun] Cannot advance: current node "${run.currentNodeId}" is unresolved. Resolve encounter before advancing.`
+    );
   }
 
   if (!canAdvanceToNode(run, targetNodeId)) {
@@ -139,15 +170,34 @@ export function advanceRunNode(run, targetNodeId) {
     throw new Error(`[RogueRun] Target node "${targetNodeId}" does not exist in map`);
   }
 
-  const isBossNode =
-    targetNode.type === ROGUE_NODE_TYPES.BOSS || targetNodeId === run.route.bossNodeId;
+  const isCombatNode =
+    targetNode.type === ROGUE_NODE_TYPES.BATTLE ||
+    targetNode.type === ROGUE_NODE_TYPES.ELITE ||
+    targetNode.type === ROGUE_NODE_TYPES.BOSS;
 
   const nextVisited = Array.from(new Set([...(run.route.visitedNodeIds || []), targetNodeId]));
 
+  let encounter = null;
+  let isResolved = true;
+
+  if (isCombatNode) {
+    isResolved = false;
+    encounter = createEncounter({
+      nodeId: targetNodeId,
+      nodeType: targetNode.type,
+      playerHp: run.player.hp,
+      playerMaxHp: run.player.maxHp,
+      seed: options.seed || run.seed,
+      customQuestion: options.customQuestion,
+      run,
+    });
+  }
+
   return {
     ...run,
-    status: isBossNode ? ROGUE_RUN_STATUS.VICTORY : ROGUE_RUN_STATUS.ACTIVE,
     currentNodeId: targetNodeId,
+    currentNodeResolved: isResolved,
+    encounter,
     route: {
       ...run.route,
       visitedNodeIds: nextVisited,
@@ -155,6 +205,105 @@ export function advanceRunNode(run, targetNodeId) {
     runStats: {
       ...run.runStats,
       nodesVisited: (run.runStats?.nodesVisited || 0) + 1,
+    },
+    updatedAt: Date.now(),
+  };
+}
+
+/**
+ * Resolves combat victory on the current node.
+ * Persists remaining player HP, unlocks next nodes, and handles Boss run victory.
+ *
+ * @param {object} run
+ * @param {object} finalEncounter
+ * @returns {object} Updated run state
+ */
+export function resolveCombatVictory(run, finalEncounter) {
+  if (!run || typeof run !== 'object') {
+    throw new Error('[RogueRun] Invalid run state');
+  }
+
+  const remainingHp = finalEncounter?.player?.hp ?? run.player.hp;
+  const isBossNode =
+    run.currentNodeId === run.route.bossNodeId ||
+    run.route.nodes[run.currentNodeId]?.type === ROGUE_NODE_TYPES.BOSS;
+
+  return {
+    ...run,
+    status: isBossNode ? ROGUE_RUN_STATUS.VICTORY : ROGUE_RUN_STATUS.ACTIVE,
+    currentNodeResolved: true,
+    encounter: finalEncounter || run.encounter,
+    player: {
+      ...run.player,
+      hp: Math.max(1, Math.min(remainingHp, run.player.maxHp)),
+    },
+    runStats: {
+      ...run.runStats,
+      battlesWon: (run.runStats?.battlesWon || 0) + 1,
+      correctAnswers:
+        (run.runStats?.correctAnswers || 0) + (finalEncounter?.stats?.correctAnswers || 0),
+      wrongAnswers:
+        (run.runStats?.wrongAnswers || 0) + (finalEncounter?.stats?.wrongAnswers || 0),
+    },
+    updatedAt: Date.now(),
+  };
+}
+
+/**
+ * Resolves combat defeat on the current node.
+ * Terminates run with DEFEAT.
+ *
+ * @param {object} run
+ * @param {object} finalEncounter
+ * @returns {object} Updated run state
+ */
+export function resolveCombatDefeat(run, finalEncounter) {
+  if (!run || typeof run !== 'object') {
+    throw new Error('[RogueRun] Invalid run state');
+  }
+
+  return {
+    ...run,
+    status: ROGUE_RUN_STATUS.DEFEAT,
+    currentNodeResolved: false,
+    encounter: finalEncounter || run.encounter,
+    player: {
+      ...run.player,
+      hp: 0,
+    },
+    runStats: {
+      ...run.runStats,
+      correctAnswers:
+        (run.runStats?.correctAnswers || 0) + (finalEncounter?.stats?.correctAnswers || 0),
+      wrongAnswers:
+        (run.runStats?.wrongAnswers || 0) + (finalEncounter?.stats?.wrongAnswers || 0),
+    },
+    updatedAt: Date.now(),
+  };
+}
+
+/**
+ * Manually resolves the current node (e.g. non-combat or direct victory resolution helper).
+ *
+ * @param {object} run
+ * @returns {object} Updated run state
+ */
+export function resolveCurrentNode(run) {
+  if (!run || typeof run !== 'object') {
+    throw new Error('[RogueRun] Invalid run state');
+  }
+  const isBossNode =
+    run.currentNodeId === run.route.bossNodeId ||
+    run.route.nodes[run.currentNodeId]?.type === ROGUE_NODE_TYPES.BOSS;
+
+  return {
+    ...run,
+    status: isBossNode ? ROGUE_RUN_STATUS.VICTORY : ROGUE_RUN_STATUS.ACTIVE,
+    currentNodeResolved: true,
+    encounter: null,
+    runStats: {
+      ...run.runStats,
+      battlesWon: (run.runStats?.battlesWon || 0) + 1,
     },
     updatedAt: Date.now(),
   };
@@ -190,6 +339,10 @@ export function defeatRogueRun(run) {
   return {
     ...run,
     status: ROGUE_RUN_STATUS.DEFEAT,
+    player: {
+      ...run.player,
+      hp: 0,
+    },
     updatedAt: Date.now(),
   };
 }
@@ -207,6 +360,7 @@ export function completeRogueRun(run) {
   return {
     ...run,
     status: ROGUE_RUN_STATUS.VICTORY,
+    currentNodeResolved: true,
     updatedAt: Date.now(),
   };
 }
