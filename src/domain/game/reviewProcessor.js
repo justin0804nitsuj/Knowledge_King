@@ -6,6 +6,7 @@ import { buildDailyMissionClaimId } from '../sync/uniqueRewards';
 import { addStagedRepeatableXp, addStagedUniqueClaim } from '../../storage/unsyncedProgressStorage';
 import { flushLiveProgress } from '../../services/sync/liveProgressSync';
 import { getActiveIdentity } from '../../storage/storageIdentity';
+import { getLastSyncedSnapshot } from '../../services/sync/cloudRestoreAdapter';
 
 export async function processReviewAnswer(eventId, mistakeId, isCorrect) {
   let xpEarned = 0;
@@ -42,7 +43,15 @@ export async function processReviewAnswer(eventId, mistakeId, isCorrect) {
     // Mission 1: 20 questions
     const dm = playerProgress.daily.missions;
     const dateKey = playerProgress.daily.lastActiveDate || getLocalDailyKey();
-    if (!dm.m1.claimed) {
+
+    const activeIdentity = await getActiveIdentity();
+    const lastSnapshot = await getLastSyncedSnapshot(activeIdentity);
+    const claimId = buildDailyMissionClaimId(dateKey, 'm1');
+    if (lastSnapshot?.uniqueClaims?.[claimId] && dm.m1) {
+      dm.m1.claimed = true;
+    }
+
+    if (dm.m1 && dm.m1.claimed !== true) {
       dm.m1.progress += 1;
       if (dm.m1.progress >= 20) {
         dm.m1.claimed = true;
@@ -50,7 +59,7 @@ export async function processReviewAnswer(eventId, mistakeId, isCorrect) {
         playerProgress.stats.totalXpEarned += 30;
         xpEarned += 30;
         stagedClaim = {
-          claimId: buildDailyMissionClaimId(dateKey, 'm1'),
+          claimId,
           xpReward: 30
         };
       }
@@ -68,7 +77,7 @@ export async function processReviewAnswer(eventId, mistakeId, isCorrect) {
         await addStagedRepeatableXp(activeIdentity, repeatableReviewXp);
       }
       if (stagedClaim) {
-        await addStagedUniqueClaim(activeIdentity, stagedClaim);
+        await addStagedUniqueClaim(activeIdentity, stagedClaim, { idempotent: true });
       }
       flushLiveProgress(activeIdentity).catch(() => {});
     } catch (syncStageErr) {

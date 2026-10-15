@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { normalizeIdentity, getScopedKey } from '../../storage/storageIdentity';
 import { createDefaultPlayerProgress } from '../../storage/playerProgressStorage';
+import { DAILY_MISSIONS, getLocalDailyKey } from '../../domain/player/dailySystem';
 
 /**
  * CLOUD PROFILE SYNC V0.1 — CLOUD TO LOCAL RESTORE ADAPTER (PHASE 5A)
@@ -54,6 +55,35 @@ export function applyCloudToLocalProgress(cloudProgress, currentLocalPlayer = {}
   const playerStats = { ...(basePlayer.stats || {}) };
   playerStats.bestCombo = Math.max(playerStats.bestCombo || 0, cloudCombo);
 
+  // Invariant: If cloud.uniqueClaims contains daily:<today>:<missionId>,
+  // local mission must be marked as claimed=true.
+  // Do NOT add its XP again (cloud owns totalXp).
+  // Do NOT reset unrelated local mission progress.
+  const today = getLocalDailyKey();
+  const baseDaily = basePlayer.daily
+    ? JSON.parse(JSON.stringify(basePlayer.daily))
+    : createDefaultPlayerProgress().daily;
+
+  if (!baseDaily.missions) {
+    baseDaily.missions = createDefaultPlayerProgress().daily.missions;
+  }
+  if (!baseDaily.lastActiveDate) {
+    baseDaily.lastActiveDate = today;
+  }
+
+  const cloudClaims = cloudProgress.uniqueClaims || {};
+  for (const missionDef of Object.values(DAILY_MISSIONS)) {
+    const mId = missionDef.id;
+    const claimId = `daily:${today}:${mId}`;
+    if (cloudClaims[claimId]) {
+      if (!baseDaily.missions[mId]) {
+        baseDaily.missions[mId] = { progress: missionDef.target, claimed: true };
+      } else {
+        baseDaily.missions[mId].claimed = true;
+      }
+    }
+  }
+
   const updatedPlayerProgress = {
     ...basePlayer,
     schemaVersion: 1,
@@ -63,7 +93,7 @@ export function applyCloudToLocalProgress(cloudProgress, currentLocalPlayer = {}
       : (basePlayer.totalXp || 0),
     // Local owns processedEvents and daily
     processedEvents: Array.isArray(basePlayer.processedEvents) ? [...basePlayer.processedEvents] : [],
-    daily: basePlayer.daily ? { ...basePlayer.daily } : createDefaultPlayerProgress().daily,
+    daily: baseDaily,
     stats: playerStats
   };
 
