@@ -233,6 +233,7 @@ export function resolveCombatVictory(run, finalEncounter) {
     status: isBossNode ? ROGUE_RUN_STATUS.VICTORY : ROGUE_RUN_STATUS.ACTIVE,
     currentNodeResolved: true,
     encounter: finalEncounter || run.encounter,
+    cursedWords: finalEncounter?.cursedWords || run.cursedWords || [],
     player: {
       ...run.player,
       hp: Math.max(1, Math.min(remainingHp, run.player.maxHp)),
@@ -267,6 +268,7 @@ export function resolveCombatDefeat(run, finalEncounter) {
     status: ROGUE_RUN_STATUS.DEFEAT,
     currentNodeResolved: false,
     encounter: finalEncounter || run.encounter,
+    cursedWords: finalEncounter?.cursedWords || run.cursedWords || [],
     player: {
       ...run.player,
       hp: 0,

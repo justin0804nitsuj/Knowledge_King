@@ -82,13 +82,28 @@ export async function saveRun(run, explicitIdentity) {
  * @returns {Promise<object>} Updated run
  */
 export async function advanceToNode(targetNodeId, explicitIdentity, options = {}) {
-  const currentRun = await loadActiveRogueRun(explicitIdentity);
+  let resolvedIdentity = explicitIdentity;
+  let resolvedOptions = options;
+
+  if (
+    explicitIdentity &&
+    typeof explicitIdentity === 'object' &&
+    !explicitIdentity.uid &&
+    (explicitIdentity.customQuestion !== undefined ||
+      explicitIdentity.seed !== undefined ||
+      Object.keys(options).length === 0)
+  ) {
+    resolvedOptions = explicitIdentity;
+    resolvedIdentity = undefined;
+  }
+
+  const currentRun = await loadActiveRogueRun(resolvedIdentity);
   if (!currentRun) {
     throw new Error('[RogueRunService] No active run found to advance');
   }
 
-  const updatedRun = advanceRunNode(currentRun, targetNodeId, options);
-  await saveActiveRogueRun(updatedRun, explicitIdentity);
+  const updatedRun = advanceRunNode(currentRun, targetNodeId, resolvedOptions);
+  await saveActiveRogueRun(updatedRun, resolvedIdentity);
   return updatedRun;
 }
 
@@ -147,6 +162,7 @@ export async function submitCombatAnswer({
 
   let finalRun = {
     ...currentRun,
+    cursedWords: updatedEncounter.cursedWords || currentRun.cursedWords || [],
     encounter: updatedEncounter,
     player: {
       ...currentRun.player,

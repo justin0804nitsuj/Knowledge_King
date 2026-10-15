@@ -146,6 +146,10 @@ export default function RogueHomeScreen() {
               <Text style={styles.statLabel}>Current Node</Text>
               <Text style={styles.statValue}>{activeRun.currentNodeId}</Text>
             </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>{t('rogue.curse.cursedCountLabel', 'Curses')}</Text>
+              <Text style={styles.statValue}>☠️ {activeRun.cursedWords?.length || 0}</Text>
+            </View>
           </View>
 
           <TouchableOpacity

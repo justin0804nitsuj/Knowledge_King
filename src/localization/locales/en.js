@@ -303,6 +303,13 @@ export default {
       heavyAttack: 'Heavy Attack',
       guard: 'Guard',
     },
+    curse: {
+      cursedWord: 'Cursed Word',
+      curseLevel: 'Curse Level {{level}}',
+      cursedCount: 'Cursed Words: {{count}}',
+      cursedCountLabel: 'CURSES',
+      backlash: 'Curse Backlash',
+    },
     feedback: {
       playerDealt: 'You dealt {{damage}} damage.',
       playerWrong: 'You dealt 0 damage.',
@@ -311,6 +318,10 @@ export default {
       enemyHeavyAttack: 'Enemy used Heavy Attack for {{damage}} damage!',
       enemyGuarded: 'Enemy guarded (no attack this turn).',
       enemyDefeated: 'Enemy defeated before striking back!',
+      curseApplied: 'Wrong — "{{word}}" became Cursed.',
+      curseIntensified: 'Curse intensified — Level {{level}}! (Backlash: {{backlash}} dmg)',
+      curseWeakened: 'Correct — Curse weakened to Level {{level}}.',
+      cursePurified: 'Purified — "{{word}}" is free of curse!',
     },
   }
 };

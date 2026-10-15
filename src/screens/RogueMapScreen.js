@@ -202,6 +202,13 @@ export default function RogueMapScreen() {
             {visitedSet.size} / {Object.keys(run.route.nodes).length}
           </Text>
         </View>
+        <View style={styles.ribbonDivider} />
+        <View style={styles.ribbonItem}>
+          <Text style={styles.ribbonLabel}>{t('rogue.curse.cursedCountLabel', 'CURSES')}</Text>
+          <Text style={styles.ribbonValue}>
+            ☠️ {run.cursedWords?.length || 0}
+          </Text>
+        </View>
       </View>
 
       {/* Unresolved Encounter Banner */}

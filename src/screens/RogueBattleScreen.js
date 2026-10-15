@@ -206,6 +206,14 @@ export default function RogueBattleScreen() {
       {/* Active Question & Choices */}
       {isOngoing && encounter.question && (
         <View style={styles.questionCard}>
+          {encounter.question.isCursed ? (
+            <View style={styles.cursedBadgeContainer}>
+              <Text style={styles.cursedBadgeText}>
+                ☠️ {t('rogue.curse.cursedWord', 'Cursed Word')} • {t('rogue.curse.curseLevel', 'Curse Level {{level}}', { level: encounter.question.curseStacks || 1 })}
+              </Text>
+            </View>
+          ) : null}
+
           <View style={styles.wordContainer}>
             <Text style={styles.wordText}>{encounter.question.word}</Text>
             {encounter.question.partOfSpeech ? (
@@ -526,6 +534,22 @@ const styles = StyleSheet.create({
     color: '#BFDBFE',
     fontWeight: '700',
   },
+  cursedBadgeContainer: {
+    alignSelf: 'center',
+    backgroundColor: 'rgba(126, 34, 206, 0.25)',
+    borderWidth: 1,
+    borderColor: '#A855F7',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginBottom: 8,
+  },
+  cursedBadgeText: {
+    color: '#E9D5FF',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
 });
 
 function getIntentDisplay(intent, t) {
@@ -582,6 +606,36 @@ function getFeedbackDescription(feedback, isVictory, t) {
     );
   } else {
     parts.push(t('rogue.feedback.playerWrong', 'You dealt 0 damage.'));
+  }
+
+  if (feedback.curseResult) {
+    const cr = feedback.curseResult;
+    if (cr.type === 'CURSE_APPLIED') {
+      parts.push(
+        t('rogue.feedback.curseApplied', 'Wrong — "{{word}}" became Cursed.', {
+          word: cr.word,
+        })
+      );
+    } else if (cr.type === 'CURSE_INTENSIFIED') {
+      parts.push(
+        t('rogue.feedback.curseIntensified', 'Curse intensified — Level {{level}}! (Backlash: {{backlash}} dmg)', {
+          level: cr.stacks,
+          backlash: cr.backlash || 0,
+        })
+      );
+    } else if (cr.type === 'CURSE_WEAKENED') {
+      parts.push(
+        t('rogue.feedback.curseWeakened', 'Correct — Curse weakened to Level {{level}}.', {
+          level: cr.stacks,
+        })
+      );
+    } else if (cr.type === 'CURSE_PURIFIED') {
+      parts.push(
+        t('rogue.feedback.cursePurified', 'Purified — "{{word}}" is free of curse!', {
+          word: cr.word,
+        })
+      );
+    }
   }
 
   if (feedback.enemyDamage > 0) {

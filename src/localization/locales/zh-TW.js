@@ -303,6 +303,13 @@ export default {
       heavyAttack: '重擊',
       guard: '防禦',
     },
+    curse: {
+      cursedWord: '詛咒單字',
+      curseLevel: '詛咒等級 {{level}}',
+      cursedCount: '詛咒單字：{{count}}',
+      cursedCountLabel: '詛咒',
+      backlash: '詛咒反噬',
+    },
     feedback: {
       playerDealt: '你造成了 {{damage}} 點傷害。',
       playerWrong: '你造成了 0 點傷害。',
@@ -311,6 +318,10 @@ export default {
       enemyHeavyAttack: '敵方發動重擊，造成 {{damage}} 點致命傷害！',
       enemyGuarded: '敵方採取防禦姿態（本回合不發動攻擊）。',
       enemyDefeated: '敵方在反擊前已被擊敗！',
+      curseApplied: '答錯 —「{{word}}」受到詛咒！',
+      curseIntensified: '詛咒加劇 — 等級 {{level}}！（受到反噬 {{backlash}} 傷害）',
+      curseWeakened: '答對 — 詛咒削弱至等級 {{level}}。',
+      cursePurified: '淨化成功 —「{{word}}」已解除詛咒！',
     },
   }
 };

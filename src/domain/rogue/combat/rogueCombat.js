@@ -24,6 +24,10 @@ import {
   getIntentForTurn,
   validateEncounterIntegrity,
 } from './enemyArchetypes';
+import {
+  applyCurseWrongAnswer,
+  applyCurseCorrectAnswer,
+} from '../curse/cursedWordModel';
 import { getRogueQuestion } from './rogueQuestionProvider';
 
 export const CURRENT_ENCOUNTER_SCHEMA_VERSION = 1;
@@ -56,10 +60,16 @@ export function createEncounter({
   seed,
   archetypeId,
   customQuestion,
+  cursedWords,
   run,
 } = {}) {
   const encounterId = `enc_${nodeId}_${Date.now()}`;
   const resolvedSeed = seed !== undefined ? seed : run?.seed;
+  const initialCursedWords = Array.isArray(cursedWords)
+    ? [...cursedWords]
+    : Array.isArray(run?.cursedWords)
+    ? [...run.cursedWords]
+    : [];
 
   // Resolve archetype deterministically
   const assignedArchetypeId =
@@ -77,6 +87,7 @@ export function createEncounter({
     turn: 1,
     seed: resolvedSeed,
     customQuestion,
+    cursedWords: initialCursedWords,
   });
 
   return {
@@ -102,6 +113,7 @@ export function createEncounter({
       intent: initialIntent,
     },
     question: firstQuestion,
+    cursedWords: initialCursedWords,
     resolvedQuestionTokens: [],
     lastResolution: null,
     stats: {
@@ -109,6 +121,7 @@ export function createEncounter({
       wrongAnswers: 0,
       totalDamageDealt: 0,
       totalDamageTaken: 0,
+      curseBacklashTaken: 0,
     },
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -169,6 +182,19 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
   const currentIntent = encounter.enemy.intent;
   const archetype = getArchetype(encounter.archetypeId) || ENEMY_ARCHETYPES[ARCHETYPE_IDS.SCOUT];
 
+  const currentCursedWords = Array.isArray(encounter.cursedWords)
+    ? encounter.cursedWords
+    : [];
+
+  const questionWordId =
+    encounter.question?.wordId ||
+    encounter.question?.targetId ||
+    encounter.question?.word ||
+    'unknown';
+  const questionWord = encounter.question?.word || questionWordId;
+  const questionLevel = encounter.question?.level || 1;
+  const isCursedReview = Boolean(encounter.question?.isCursed);
+
   // 1. Evaluate Player Answer
   const isCorrect = String(choiceId) === String(encounter.question.correctChoiceId);
   const basePlayerDamage = isCorrect
@@ -188,26 +214,65 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
   const newEnemyHp = Math.max(0, encounter.enemy.hp - effectivePlayerDamage);
   const enemyDefeated = newEnemyHp <= 0;
 
-  // 3. Enemy Action Resolution
-  let enemyDamage = 0;
-  if (!enemyDefeated) {
-    if (currentIntent.type === INTENT_TYPES.ATTACK || currentIntent.type === INTENT_TYPES.HEAVY_ATTACK) {
-      enemyDamage = currentIntent.value;
-    } else if (currentIntent.type === INTENT_TYPES.GUARD) {
-      // Guard turn: enemy deals no attack damage
-      enemyDamage = 0;
+  // 3. Resolve Cursed Word State Transition
+  let nextCursedWords = currentCursedWords;
+  let curseResult = null;
+
+  if (isCorrect) {
+    if (isCursedReview) {
+      const res = applyCurseCorrectAnswer(currentCursedWords, {
+        wordId: questionWordId,
+        word: questionWord,
+        turn: encounter.turn,
+      });
+      nextCursedWords = res.cursedWords;
+      curseResult = res.curseResult;
     }
+  } else {
+    const res = applyCurseWrongAnswer(currentCursedWords, {
+      wordId: questionWordId,
+      word: questionWord,
+      level: questionLevel,
+      turn: encounter.turn,
+      isCursedReview,
+      firstCursedAt: encounter.stats.wrongAnswers + 1,
+    });
+    nextCursedWords = res.cursedWords;
+    curseResult = res.curseResult;
   }
 
-  const newPlayerHp = Math.max(0, Math.min(encounter.player.hp - enemyDamage, encounter.player.maxHp));
-  const playerDefeated = newPlayerHp <= 0;
+  const backlashDamage = curseResult?.backlash || 0;
 
-  // 4. Status Transition
+  // 4. Status Transition & Action Order
   let nextStatus = ENCOUNTER_STATUS.ACTIVE;
+  let enemyDamage = 0;
+  let newPlayerHp = encounter.player.hp;
+
   if (enemyDefeated) {
+    // Lethal player hit: victory immediately; enemy action is skipped; curse updates persist
     nextStatus = ENCOUNTER_STATUS.VICTORY;
-  } else if (playerDefeated) {
-    nextStatus = ENCOUNTER_STATUS.DEFEAT;
+  } else {
+    // Enemy survived: apply Curse Backlash if applicable
+    if (backlashDamage > 0) {
+      newPlayerHp = Math.max(0, newPlayerHp - backlashDamage);
+    }
+
+    if (newPlayerHp <= 0) {
+      // Player defeated by Curse Backlash; enemy action skipped
+      nextStatus = ENCOUNTER_STATUS.DEFEAT;
+    } else {
+      // Player survived backlash: enemy executes intent
+      if (currentIntent.type === INTENT_TYPES.ATTACK || currentIntent.type === INTENT_TYPES.HEAVY_ATTACK) {
+        enemyDamage = currentIntent.value;
+      } else if (currentIntent.type === INTENT_TYPES.GUARD) {
+        enemyDamage = 0;
+      }
+
+      newPlayerHp = Math.max(0, newPlayerHp - enemyDamage);
+      if (newPlayerHp <= 0) {
+        nextStatus = ENCOUNTER_STATUS.DEFEAT;
+      }
+    }
   }
 
   // 5. Update Stats
@@ -215,7 +280,8 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
     correctAnswers: encounter.stats.correctAnswers + (isCorrect ? 1 : 0),
     wrongAnswers: encounter.stats.wrongAnswers + (isCorrect ? 0 : 1),
     totalDamageDealt: encounter.stats.totalDamageDealt + effectivePlayerDamage,
-    totalDamageTaken: encounter.stats.totalDamageTaken + enemyDamage,
+    totalDamageTaken: encounter.stats.totalDamageTaken + enemyDamage + backlashDamage,
+    curseBacklashTaken: (encounter.stats.curseBacklashTaken || 0) + backlashDamage,
   };
 
   const nextResolvedTokens = [...encounter.resolvedQuestionTokens, token];
@@ -227,6 +293,8 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
     playerDamage: effectivePlayerDamage,
     guardMitigated,
     enemyDamage,
+    backlashDamage,
+    curseResult,
     executedIntent: { ...currentIntent },
   };
 
@@ -251,6 +319,7 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
         encounterId: encounter.encounterId,
         turn: nextTurn,
         seed: options.seed,
+        cursedWords: nextCursedWords,
       });
     }
   }
@@ -269,6 +338,7 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
       intent: nextIntent,
     },
     question: nextQuestion,
+    cursedWords: nextCursedWords,
     resolvedQuestionTokens: nextResolvedTokens,
     lastResolution: resolution,
     stats: nextStats,
