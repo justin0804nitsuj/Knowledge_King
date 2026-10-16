@@ -385,7 +385,7 @@ describe('Phase R8A — Final Balance & Release Candidate Hardening', () => {
 
       expect(res.resolution.curseResult.type).toBe('CURSE_PURIFIED');
       expect(res.resolution.inkHeal).toBe(10);
-      expect(res.encounter.player.hp).toBe(50); // 50 + 10 heal - 10 enemy attack = 50
+      expect(res.encounter.player.hp).toBe(56); // 50 + 10 heal - 4 enemy attack = 56
     });
 
     it('GLASS_QUILL + SECOND_CHANCE: amplified backlash kills, but Second Chance preserves 1 HP', () => {

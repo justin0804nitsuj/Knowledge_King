@@ -20,9 +20,12 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 import { loadActiveRogueRun } from '../storage/rogueRunStorage';
 import { selectRelicReward } from '../services/rogue/rogueRunService';
 import { getRelic } from '../domain/rogue/relic/relicRegistry';
+import RogueContextualHint from '../components/RogueContextualHint';
+import { hasSeenHint, markHintSeen } from '../services/rogue/rogueTutorialService';
 
 export default function RogueRelicRewardScreen() {
   const navigation = useNavigation();
@@ -32,6 +35,7 @@ export default function RogueRelicRewardScreen() {
   const [claiming, setClaiming] = useState(false);
   const [run, setRun] = useState(null);
   const [reward, setReward] = useState(null);
+  const [activeHintKey, setActiveHintKey] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -69,6 +73,29 @@ export default function RogueRelicRewardScreen() {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    let isMounted = true;
+    async function checkRelicHint() {
+      const seen = await hasSeenHint('first_relic_draft');
+      if (!seen && isMounted) {
+        setActiveHintKey('first_relic_draft');
+      }
+    }
+    checkRelicHint();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleDismissHint = async () => {
+    await markHintSeen('first_relic_draft');
+    setActiveHintKey(null);
+  };
+
+  const handleBackToMainHome = () => {
+    navigation.navigate('MainTabs', { screen: 'Home' });
+  };
+
   const handleSelectRelic = async (relicId) => {
     if (claiming || !reward) return;
 
@@ -103,6 +130,30 @@ export default function RogueRelicRewardScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Top Bar */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={handleBackToMainHome}
+          accessibilityRole="button"
+          accessibilityLabel="Back to Home"
+        >
+          <Ionicons name="arrow-back" size={20} color="#E2E8F0" />
+          <Text style={styles.backBtnLabel}>
+            {t('rogue.backToMainHome', '← Home')}
+          </Text>
+        </TouchableOpacity>
+        <View style={{ flex: 1 }} />
+      </View>
+
+      {/* Contextual Hint */}
+      {activeHintKey && (
+        <RogueContextualHint
+          hintKey={activeHintKey}
+          onDismiss={handleDismissHint}
+        />
+      )}
+
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.titleIcon}>🏺</Text>
@@ -308,5 +359,24 @@ const styles = StyleSheet.create({
     color: '#FBBF24',
     fontSize: 14,
     fontWeight: '600',
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#1E293B',
+  },
+  backBtnLabel: {
+    color: '#E2E8F0',
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 4,
   },
 });

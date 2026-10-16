@@ -110,8 +110,8 @@ describe('Rogue Expedition V0.1 — Phase R4 Cursed Word System', () => {
       expect(result.resolution.curseResult.backlash).toBe(0);
       expect(result.resolution.curseResult.type).toBe(CURSE_TRANSITION_TYPES.CURSE_APPLIED);
 
-      // Player took only normal enemy damage (10 from Scout), not backlash
-      expect(enc.player.hp).toBe(90);
+      // Player took only normal enemy damage (4 from Scout), not backlash
+      expect(enc.player.hp).toBe(96);
     });
 
     test('same word does not create duplicate entries in cursedWords', () => {
@@ -224,8 +224,8 @@ describe('Rogue Expedition V0.1 — Phase R4 Cursed Word System', () => {
         },
       });
 
-      // Enemy has 20 HP, player deal 20 -> lethal
-      initial.enemy.hp = 20;
+      // Enemy has 10 HP, player deal 10 -> lethal
+      initial.enemy.hp = 10;
 
       const result = resolveEncounterTurn(initial, {
         choiceId: 'c1',
@@ -270,9 +270,9 @@ describe('Rogue Expedition V0.1 — Phase R4 Cursed Word System', () => {
       expect(res.resolved).toBe(true);
       // Stack becomes 3 -> Backlash = 3 * 5 = 15 damage
       expect(res.resolution.backlashDamage).toBe(15);
-      expect(res.resolution.enemyDamage).toBe(10); // Scout standard attack
-      // Total HP lost: 15 (backlash) + 10 (enemy) = 25 -> 100 - 25 = 75
-      expect(res.encounter.player.hp).toBe(75);
+      expect(res.resolution.enemyDamage).toBe(4); // Scout standard attack
+      // Total HP lost: 15 (backlash) + 4 (enemy) = 19 -> 100 - 19 = 81
+      expect(res.encounter.player.hp).toBe(81);
       expect(res.encounter.stats.curseBacklashTaken).toBe(15);
     });
 
@@ -454,16 +454,14 @@ describe('Rogue Expedition V0.1 — Phase R4 Cursed Word System', () => {
 
       // Now defeat the enemy with correct answers
       enc = resWrong.encounter;
-      const resKill1 = await submitCombatAnswer({
-        choiceId: enc.question.correctChoiceId,
-        token: enc.question.token,
-      });
-      enc = resKill1.encounter;
-      const resKill2 = await submitCombatAnswer({
-        choiceId: enc.question.correctChoiceId,
-        token: enc.question.token,
-      });
-      expect(resKill2.encounter.status).toBe(ENCOUNTER_STATUS.VICTORY);
+      while (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+        const killRes = await submitCombatAnswer({
+          choiceId: enc.question.correctChoiceId,
+          token: enc.question.token,
+        });
+        enc = killRes.encounter;
+      }
+      expect(enc.status).toBe(ENCOUNTER_STATUS.VICTORY);
 
       // Run must have preserved cursedWords across combat victory!
       const victoryRun = await loadActiveRun();

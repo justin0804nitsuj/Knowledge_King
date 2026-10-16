@@ -77,12 +77,12 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
       expect(bossEncounter.bossPhase).toBe(1);
       expect(bossEncounter.enemy.intent).toEqual({
         type: INTENT_TYPES.ATTACK,
-        value: 20,
+        value: 6,
       });
     });
 
     it('crosses into Phase 2 when HP <= 40, without altering telegraphed current intent', () => {
-      // Create encounter with Boss at 50 HP, telegraphed intent ATTACK 20
+      // Create encounter with Boss at 45 HP, telegraphed intent ATTACK 6
       const encounter = createEncounter({
         nodeId: 'node-boss',
         nodeType: 'BOSS',
@@ -94,10 +94,10 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
           wordId: 'w1',
         },
       });
-      encounter.enemy.hp = 50;
-      encounter.enemy.intent = { type: INTENT_TYPES.ATTACK, value: 20 };
+      encounter.enemy.hp = 45;
+      encounter.enemy.intent = { type: INTENT_TYPES.ATTACK, value: 6 };
 
-      // Player answers correctly dealing 20 damage -> Boss HP becomes 30 (<= 40)
+      // Player answers correctly dealing 10 damage -> Boss HP becomes 35 (<= 40)
       const res = resolveEncounterTurn(
         encounter,
         { choiceId: 'c1', token: 'token-turn-1' },
@@ -105,23 +105,23 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
       );
 
       expect(res.resolved).toBe(true);
-      // Visible intent ATTACK 20 still executed during turn 1!
+      // Visible intent ATTACK 6 still executed during turn 1!
       expect(res.resolution.executedIntent).toEqual({
         type: INTENT_TYPES.ATTACK,
-        value: 20,
+        value: 6,
       });
-      expect(res.resolution.enemyDamage).toBe(20);
-      expect(res.encounter.player.hp).toBe(80); // 100 - 20 = 80
-      expect(res.encounter.enemy.hp).toBe(30);
+      expect(res.resolution.enemyDamage).toBe(6);
+      expect(res.encounter.player.hp).toBe(94); // 100 - 6 = 94
+      expect(res.encounter.enemy.hp).toBe(35);
 
       // Boss transitioned to Phase 2 for upcoming turn
       expect(res.encounter.bossPhase).toBe(2);
       expect(res.resolution.bossPhaseTransition).toBe(true);
 
-      // Next turn intent must follow Phase 2 cycle: first is HEAVY_ATTACK 30!
+      // Next turn intent must follow Phase 2 cycle: first is HEAVY_ATTACK 12!
       expect(res.encounter.enemy.intent).toEqual({
         type: INTENT_TYPES.HEAVY_ATTACK,
-        value: 30,
+        value: 12,
       });
     });
 
@@ -154,11 +154,11 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
         phase2StartTurn,
       });
 
-      expect(t1).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 30 });
-      expect(t2).toEqual({ type: INTENT_TYPES.ATTACK, value: 20 });
-      expect(t3).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 30 });
-      expect(t4).toEqual({ type: INTENT_TYPES.GUARD, value: 10 });
-      expect(t5).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 30 });
+      expect(t1).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 12 });
+      expect(t2).toEqual({ type: INTENT_TYPES.ATTACK, value: 6 });
+      expect(t3).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 12 });
+      expect(t4).toEqual({ type: INTENT_TYPES.GUARD, value: 5 });
+      expect(t5).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 12 });
     });
 
     it('preserves Boss phase, HP, and intent across serialization and reload', async () => {
@@ -208,22 +208,21 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
           wordId: 'w1',
         },
       });
-      // Set Boss intent to GUARD 10
-      encounter.enemy.intent = { type: INTENT_TYPES.GUARD, value: 10 };
+      // Set Boss intent to GUARD 5
+      encounter.enemy.intent = { type: INTENT_TYPES.GUARD, value: 5 };
 
-      // Correct answer: base 20 + 10 Glass Quill = 30.
-      // Correct answer: base 20 + 10 Glass Quill = 30.
-      // Guard mitigation 10 pierced by 10 (Piercing Nib) = 0 mitigated.
-      // Net player damage = 30.
+      // Correct answer: base 10 + 10 Glass Quill = 20.
+      // Guard mitigation 5 pierced by 10 (Piercing Nib) = 0 mitigated.
+      // Net player damage = 20.
       const res = resolveEncounterTurn(
         encounter,
         { choiceId: 'c1', token: 'token-gq' },
         { seed: 999 }
       );
 
-      expect(res.resolution.playerDamage).toBe(30);
-      expect(res.resolution.guardPierced).toBe(10);
-      expect(res.encounter.enemy.hp).toBe(80 - 30);
+      expect(res.resolution.playerDamage).toBe(20);
+      expect(res.resolution.guardPierced).toBe(5);
+      expect(res.encounter.enemy.hp).toBe(80 - 20);
     });
 
     it('lethal Boss hit skips enemy counterattack and concludes combat immediately', () => {
@@ -238,8 +237,8 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
           wordId: 'w1',
         },
       });
-      encounter.enemy.hp = 15;
-      encounter.enemy.intent = { type: INTENT_TYPES.HEAVY_ATTACK, value: 30 };
+      encounter.enemy.hp = 10;
+      encounter.enemy.intent = { type: INTENT_TYPES.HEAVY_ATTACK, value: 12 };
 
       const res = resolveEncounterTurn(
         encounter,

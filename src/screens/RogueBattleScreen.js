@@ -16,6 +16,9 @@ import {
   submitCombatAnswer,
 } from '../services/rogue/rogueRunService';
 import { ENCOUNTER_STATUS } from '../domain/rogue/combat/rogueCombat';
+import RogueTutorialModal from '../components/RogueTutorialModal';
+import RogueContextualHint from '../components/RogueContextualHint';
+import { hasSeenHint, markHintSeen } from '../services/rogue/rogueTutorialService';
 
 export default function RogueBattleScreen() {
   const { t } = useTranslation();
@@ -26,6 +29,8 @@ export default function RogueBattleScreen() {
   const [encounter, setEncounter] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [tutorialVisible, setTutorialVisible] = useState(false);
+  const [activeHintKey, setActiveHintKey] = useState(null);
 
   const fetchCombatState = useCallback(async () => {
     try {
@@ -52,6 +57,45 @@ export default function RogueBattleScreen() {
   useEffect(() => {
     fetchCombatState();
   }, [fetchCombatState]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function checkHints() {
+      if (!encounter) return;
+      if (feedback?.curseResult?.type === 'CURSE_APPLIED') {
+        const seen = await hasSeenHint('first_curse');
+        if (!seen && isMounted) {
+          setActiveHintKey('first_curse');
+          return;
+        }
+      }
+      if (encounter.enemy?.intent?.type === 'GUARD') {
+        const seen = await hasSeenHint('first_guard');
+        if (!seen && isMounted) {
+          setActiveHintKey('first_guard');
+          return;
+        }
+      }
+      if (encounter.enemy?.intent?.type === 'HEAVY_ATTACK') {
+        const seen = await hasSeenHint('first_heavy_attack');
+        if (!seen && isMounted) {
+          setActiveHintKey('first_heavy_attack');
+          return;
+        }
+      }
+    }
+    checkHints();
+    return () => {
+      isMounted = false;
+    };
+  }, [encounter?.enemy?.intent?.type, feedback?.curseResult?.type]);
+
+  const handleDismissHint = async () => {
+    if (activeHintKey) {
+      await markHintSeen(activeHintKey);
+      setActiveHintKey(null);
+    }
+  };
 
   const handleSelectChoice = async (choiceId) => {
     if (submitting || !encounter || encounter.status !== ENCOUNTER_STATUS.ACTIVE) {
@@ -81,8 +125,8 @@ export default function RogueBattleScreen() {
     navigation.navigate('RogueMap');
   };
 
-  const handleReturnToHome = () => {
-    navigation.navigate('RogueHome');
+  const handleBackToMainHome = () => {
+    navigation.navigate('MainTabs', { screen: 'Home' });
   };
 
   if (loading || !encounter) {
@@ -110,17 +154,15 @@ export default function RogueBattleScreen() {
       {/* Top Bar */}
       <View style={styles.topBar}>
         <TouchableOpacity
-          style={styles.navBtn}
-          onPress={handleReturnToMap}
-          disabled={isOngoing}
+          style={styles.backBtn}
+          onPress={handleBackToMainHome}
           accessibilityRole="button"
-          accessibilityLabel="Back to Map"
+          accessibilityLabel="Back to Home"
         >
-          <Ionicons
-            name="arrow-back"
-            size={22}
-            color={isOngoing ? '#475569' : '#E2E8F0'}
-          />
+          <Ionicons name="arrow-back" size={20} color="#E2E8F0" />
+          <Text style={styles.backBtnLabel}>
+            {t('rogue.backToMainHome', '← Home')}
+          </Text>
         </TouchableOpacity>
         <View style={styles.titleContainer}>
           <Text style={styles.headerTitle}>
@@ -134,8 +176,23 @@ export default function RogueBattleScreen() {
             Node {encounter.nodeId} • Turn {encounter.turn}
           </Text>
         </View>
-        <View style={{ width: 38 }} />
+        <TouchableOpacity
+          style={styles.helpBtn}
+          onPress={() => setTutorialVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="How to Play"
+        >
+          <Ionicons name="help-circle-outline" size={22} color="#60A5FA" />
+        </TouchableOpacity>
       </View>
+
+      {/* Contextual Hint */}
+      {activeHintKey && (
+        <RogueContextualHint
+          hintKey={activeHintKey}
+          onDismiss={handleDismissHint}
+        />
+      )}
 
       {/* Enemy Card */}
       <View style={styles.enemyCard}>
@@ -160,7 +217,7 @@ export default function RogueBattleScreen() {
             return (
               <View style={[styles.intentBadge, intentDisplay.badgeStyle]}>
                 <Text style={[styles.intentText, intentDisplay.textStyle]}>
-                  {intentDisplay.icon} {intentDisplay.label}
+                  {intentDisplay.label}
                 </Text>
               </View>
             );
@@ -326,6 +383,11 @@ export default function RogueBattleScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      <RogueTutorialModal
+        visible={tutorialVisible}
+        onClose={() => setTutorialVisible(false)}
+      />
     </ScrollView>
   );
 }
@@ -352,7 +414,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
-  navBtn: {
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#1E293B',
+  },
+  backBtnLabel: {
+    color: '#E2E8F0',
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  helpBtn: {
     padding: 8,
     borderRadius: 8,
     backgroundColor: '#1E293B',
@@ -631,7 +707,7 @@ function getIntentDisplay(intent, t) {
   if (!intent) {
     return {
       icon: '⚔️',
-      label: `${t('rogue.intents.attack', 'Attack')} 10`,
+      label: '⚔️ Attack • 4 damage',
       badgeStyle: styles.intentAttackBadge,
       textStyle: styles.intentAttackText,
     };
@@ -641,14 +717,20 @@ function getIntentDisplay(intent, t) {
     case 'HEAVY_ATTACK':
       return {
         icon: '💥',
-        label: `${t('rogue.intents.heavyAttack', 'Heavy Attack')} ${intent.value}`,
+        label: t('rogue.intents.heavyAttackDesc', {
+          damage: intent.value,
+          defaultValue: `💥 Heavy Attack • ${intent.value} damage`,
+        }),
         badgeStyle: styles.intentHeavyBadge,
         textStyle: styles.intentHeavyText,
       };
     case 'GUARD':
       return {
         icon: '🛡️',
-        label: `${t('rogue.intents.guard', 'Guard')} ${intent.value}`,
+        label: t('rogue.intents.guardDesc', {
+          mitigation: intent.value,
+          defaultValue: `🛡 Guard • blocks ${intent.value} damage`,
+        }),
         badgeStyle: styles.intentGuardBadge,
         textStyle: styles.intentGuardText,
       };
@@ -656,7 +738,10 @@ function getIntentDisplay(intent, t) {
     default:
       return {
         icon: '⚔️',
-        label: `${t('rogue.intents.attack', 'Attack')} ${intent.value}`,
+        label: t('rogue.intents.attackDesc', {
+          damage: intent.value,
+          defaultValue: `⚔ Attack • ${intent.value} damage`,
+        }),
         badgeStyle: styles.intentAttackBadge,
         textStyle: styles.intentAttackText,
       };
@@ -687,31 +772,36 @@ function getFeedbackDescription(feedback, isVictory, t) {
     const cr = feedback.curseResult;
     if (cr.type === 'CURSE_APPLIED') {
       parts.push(
-        t('rogue.feedback.curseApplied', 'Wrong — "{{word}}" became Cursed.', {
+        t('rogue.feedback.curseApplied', 'Wrong — "{{word}}" became Cursed (Level 1).', {
           word: cr.word,
         })
       );
     } else if (cr.type === 'CURSE_INTENSIFIED') {
+      const prevLevel = Math.max(1, (cr.stacks || 2) - 1);
       parts.push(
-        t('rogue.feedback.curseIntensified', 'Curse intensified — Level {{level}}! (Backlash: {{backlash}} dmg)', {
+        t('rogue.feedback.curseIntensified', 'Wrong — Curse Level {{prev}} → {{level}}! Backlash: {{backlash}} damage.', {
+          prev: prevLevel,
           level: cr.stacks,
           backlash: cr.backlash || 0,
         })
       );
     } else if (cr.type === 'CURSE_WEAKENED') {
+      const prevLevel = (cr.stacks || 1) + 1;
       parts.push(
-        t('rogue.feedback.curseWeakened', 'Correct — Curse weakened to Level {{level}}.', {
+        t('rogue.feedback.curseWeakened', 'Correct — Curse Level {{prev}} → {{level}}.', {
+          prev: prevLevel,
           level: cr.stacks,
         })
       );
     } else if (cr.type === 'CURSE_PURIFIED') {
       parts.push(
-        t('rogue.feedback.cursePurified', 'Purified — "{{word}}" is free of curse!', {
+        t('rogue.feedback.cursePurified', '✨ Purified — "{{word}}" is completely cleansed!', {
           word: cr.word,
         })
       );
     }
   }
+
 
   if (Array.isArray(feedback.relicTriggers)) {
     for (const trig of feedback.relicTriggers) {
