@@ -23,6 +23,7 @@ import {
   ROGUE_RUN_STATUS,
 } from '../domain/rogue/rogueRun';
 import { ROGUE_NODE_TYPES } from '../domain/rogue/mapGenerator';
+import RogueTutorialModal from '../components/RogueTutorialModal';
 
 export default function RogueMapScreen() {
   const { t } = useTranslation();
@@ -32,6 +33,11 @@ export default function RogueMapScreen() {
   const [run, setRun] = useState(null);
   const [advancing, setAdvancing] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+  const [tutorialVisible, setTutorialVisible] = useState(false);
+
+  const handleBackToMainHome = () => {
+    navigation.navigate('MainTabs', { screen: 'Home' });
+  };
 
   const fetchRun = useCallback(async () => {
     try {
@@ -111,7 +117,7 @@ export default function RogueMapScreen() {
   const handleAbandon = () => {
     Alert.alert(
       t('rogue.abandonExpedition', 'Abandon Expedition'),
-      t('rogue.confirmAbandon', 'Are you sure you want to abandon this expedition?'),
+      t('rogue.confirmAbandon', 'Abandon this Expedition? Current Rogue run progress will be lost.'),
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -164,24 +170,37 @@ export default function RogueMapScreen() {
       <View style={styles.topBar}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => navigation.navigate('RogueHome')}
+          onPress={handleBackToMainHome}
           accessibilityRole="button"
-          accessibilityLabel="Back to Expedition Menu"
+          accessibilityLabel="Back to Home"
         >
-          <Ionicons name="arrow-back" size={22} color="#E2E8F0" />
+          <Ionicons name="arrow-back" size={20} color="#E2E8F0" />
+          <Text style={styles.backBtnLabel}>
+            {t('rogue.backToMainHome', '← Home')}
+          </Text>
         </TouchableOpacity>
         <View style={styles.titleContainer}>
           <Text style={styles.headerTitle}>{t('rogue.map', 'Expedition Map')}</Text>
           <Text style={styles.headerSubtitle}>Seed: #{run.seed}</Text>
         </View>
-        <TouchableOpacity
-          style={styles.abandonBtnSmall}
-          onPress={handleAbandon}
-          accessibilityRole="button"
-          accessibilityLabel="Abandon Expedition"
-        >
-          <Ionicons name="flag-outline" size={20} color="#EF4444" />
-        </TouchableOpacity>
+        <View style={styles.topRightActions}>
+          <TouchableOpacity
+            style={styles.helpBtn}
+            onPress={() => setTutorialVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="How to Play"
+          >
+            <Ionicons name="help-circle-outline" size={22} color="#60A5FA" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.abandonBtnSmall}
+            onPress={handleAbandon}
+            accessibilityRole="button"
+            accessibilityLabel="Abandon Expedition"
+          >
+            <Ionicons name="flag-outline" size={20} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Player Status Ribbon */}
@@ -329,6 +348,30 @@ export default function RogueMapScreen() {
         </View>
       )}
 
+      {/* Map Legend */}
+      <View style={styles.legendContainer}>
+        <View style={styles.legendItem}>
+          <Text style={styles.legendIcon}>⚔️</Text>
+          <Text style={styles.legendText}>{t('rogue.mapLegend.battle', 'Battle')}</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <Text style={styles.legendIcon}>🌟</Text>
+          <Text style={styles.legendText}>{t('rogue.mapLegend.elite', 'Elite')}</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <Text style={styles.legendIcon}>⛺</Text>
+          <Text style={styles.legendText}>{t('rogue.mapLegend.rest', 'Rest')}</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <Text style={styles.legendIcon}>❓</Text>
+          <Text style={styles.legendText}>{t('rogue.mapLegend.event', 'Event')}</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <Text style={styles.legendIcon}>👑</Text>
+          <Text style={styles.legendText}>{t('rogue.mapLegend.boss', 'Boss')}</Text>
+        </View>
+      </View>
+
       {/* Map Nodes View */}
       <View style={styles.mapContainer}>
         {displayRows.map(({ row, nodes }) => {
@@ -380,6 +423,11 @@ export default function RogueMapScreen() {
           );
         })}
       </View>
+
+      <RogueTutorialModal
+        visible={tutorialVisible}
+        onClose={() => setTutorialVisible(false)}
+      />
     </ScrollView>
   );
 }
@@ -426,14 +474,58 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#1E293B',
+  },
+  backBtnLabel: {
+    color: '#E2E8F0',
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  topRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  helpBtn: {
     padding: 8,
     borderRadius: 8,
     backgroundColor: '#1E293B',
+    marginRight: 8,
   },
   abandonBtnSmall: {
     padding: 8,
     borderRadius: 8,
     backgroundColor: '#1E293B',
+  },
+  legendContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#1E293B80',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  legendIcon: {
+    fontSize: 14,
+    marginRight: 4,
+  },
+  legendText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '500',
   },
   titleContainer: {
     alignItems: 'center',

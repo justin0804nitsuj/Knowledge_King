@@ -25,7 +25,7 @@ export {
 
 export const ROGUE_COMBAT_CONSTANTS = Object.freeze({
   PLAYER_MAX_HP: 100,
-  PLAYER_ATTACK_DAMAGE: 20,
+  PLAYER_ATTACK_DAMAGE: 10,
   PLAYER_WRONG_DAMAGE: 0,
 });
 

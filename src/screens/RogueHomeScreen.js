@@ -14,6 +14,8 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { loadActiveRun, createNewRun, abandonRun } from '../services/rogue/rogueRunService';
 import { isRunActive, ROGUE_RUN_STATUS } from '../domain/rogue/rogueRun';
+import RogueTutorialModal from '../components/RogueTutorialModal';
+import { hasSeenTutorial, markTutorialCompleted } from '../services/rogue/rogueTutorialService';
 
 export default function RogueHomeScreen() {
   const { t } = useTranslation();
@@ -23,18 +25,34 @@ export default function RogueHomeScreen() {
   const [activeRun, setActiveRun] = useState(null);
   const [customSeed, setCustomSeed] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [tutorialVisible, setTutorialVisible] = useState(false);
 
   const fetchRun = useCallback(async () => {
     try {
       setLoading(true);
       const run = await loadActiveRun();
       setActiveRun(run);
+
+      // Check first-time tutorial eligibility
+      const seen = await hasSeenTutorial();
+      if (!seen) {
+        setTutorialVisible(true);
+      }
     } catch (err) {
       console.warn('[RogueHomeScreen] Error loading run:', err);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const handleCloseTutorial = async () => {
+    setTutorialVisible(false);
+    await markTutorialCompleted();
+  };
+
+  const handleBackToMainHome = () => {
+    navigation.navigate('MainTabs', { screen: 'Home' });
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -120,14 +138,24 @@ export default function RogueHomeScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => navigation.goBack()}
+          onPress={handleBackToMainHome}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel="Back to Home"
         >
-          <Ionicons name="arrow-back" size={24} color="#E2E8F0" />
+          <Ionicons name="arrow-back" size={20} color="#E2E8F0" />
+          <Text style={styles.backBtnLabel}>
+            {t('rogue.backToMainHome', '← Home')}
+          </Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('rogue.title', 'Rogue Expedition')}</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity
+          style={styles.helpBtn}
+          onPress={() => setTutorialVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="How to Play"
+        >
+          <Ionicons name="help-circle-outline" size={24} color="#60A5FA" />
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.subtitle}>
@@ -268,6 +296,11 @@ export default function RogueHomeScreen() {
         <Text style={styles.infoText}>• Forward-only navigation towards the Boss</Text>
         <Text style={styles.infoText}>• Local account-scoped run persistence</Text>
       </View>
+
+      <RogueTutorialModal
+        visible={tutorialVisible}
+        onClose={handleCloseTutorial}
+      />
     </ScrollView>
   );
 }
@@ -294,12 +327,26 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#1E293B',
+  },
+  backBtnLabel: {
+    color: '#E2E8F0',
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  helpBtn: {
     padding: 8,
     borderRadius: 8,
     backgroundColor: '#1E293B',
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#F8FAFC',
   },

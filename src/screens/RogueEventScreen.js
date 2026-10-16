@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 import { loadActiveRogueRun } from '../storage/rogueRunStorage';
 import { submitEventAction } from '../services/rogue/rogueRunService';
 import { getEvent, EVENT_EFFECT_TYPES } from '../domain/rogue/event/eventRegistry';
@@ -116,6 +117,22 @@ export default function RogueEventScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Top Bar */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
+          accessibilityRole="button"
+          accessibilityLabel="Back to Home"
+        >
+          <Ionicons name="arrow-back" size={20} color="#E2E8F0" />
+          <Text style={styles.backBtnLabel}>
+            {t('rogue.backToMainHome', '← Home')}
+          </Text>
+        </TouchableOpacity>
+        <View style={{ flex: 1 }} />
+      </View>
+
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.titleIcon}>{eventIcon}</Text>
@@ -373,5 +390,24 @@ const styles = StyleSheet.create({
     color: '#8B5CF6',
     fontSize: 14,
     fontWeight: '600',
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#1E293B',
+  },
+  backBtnLabel: {
+    color: '#E2E8F0',
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 4,
   },
 });
