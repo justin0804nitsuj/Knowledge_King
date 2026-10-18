@@ -19,7 +19,7 @@ export const REST_ACTIONS = Object.freeze({
   CLEANSE: 'CLEANSE',
 });
 
-export const REST_HEAL_AMOUNT = 30;
+export const REST_HEAL_AMOUNT = 40;
 
 /**
  * Pure helper to cleanse the highest-priority curse outside of combat answers.

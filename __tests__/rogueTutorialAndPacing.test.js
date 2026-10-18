@@ -185,7 +185,7 @@ describe('Phase R8C — Safe Exit, Tutorial & Combat Pacing', () => {
         customQuestion: mockQuestion('1'),
       });
 
-      expect(enc.enemy.hp).toBe(100);
+      expect(enc.enemy.hp).toBe(80);
       expect(ROGUE_COMBAT_CONSTANTS.PLAYER_ATTACK_DAMAGE).toBe(25);
 
       let turns = 0;
@@ -203,17 +203,53 @@ describe('Phase R8C — Safe Exit, Tutorial & Combat Pacing', () => {
         throw new Error(`Combat failed to advance after ${MAX_TEST_TURNS} test turns`);
       }
 
-      // Exactly 4 questions (4 * 25 = 100 HP)
+      // Exactly 4 questions (4 * 25 = 100 >= 80 HP)
       expect(turns).toBe(4);
       expect(enc.status).toBe(ENCOUNTER_STATUS.VICTORY);
       expect(turns).toBeGreaterThanOrEqual(4);
       expect(turns).toBeLessThanOrEqual(6);
     });
 
-    it('BRUTE (Normal Battle): requires 5 correct answers, fully exposing ATTACK and HEAVY_ATTACK cycle', () => {
+    it('BRUTE (Normal Battle): requires 4 correct answers, fully exposing ATTACK and HEAVY_ATTACK cycle', () => {
       let enc = createEncounter({
         nodeId: 'n1',
         archetypeId: ARCHETYPE_IDS.BRUTE,
+        customQuestion: mockQuestion('1'),
+      });
+
+      expect(enc.enemy.hp).toBe(100);
+      const observedIntents = [];
+
+      let turns = 0;
+      const MAX_TEST_TURNS = 30;
+      while (enc.status === ENCOUNTER_STATUS.ACTIVE && turns < MAX_TEST_TURNS) {
+        turns++;
+        observedIntents.push(enc.enemy.intent.type);
+        const res = chooseAttackAndResolve(
+          enc,
+          { choiceId: 'c1', token: enc.question.token },
+          { nextQuestion: mockQuestion(String(turns + 1)) }
+        );
+        enc = res.encounter;
+      }
+      if (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+        throw new Error(`Combat failed to advance after ${MAX_TEST_TURNS} test turns`);
+      }
+
+      // 4 questions: 25 * 4 = 100 HP (lethal)
+      expect(turns).toBe(4);
+      expect(enc.status).toBe(ENCOUNTER_STATUS.VICTORY);
+
+      // Archetype behavior is fully exposed!
+      expect(observedIntents).toContain(INTENT_TYPES.ATTACK);
+      expect(observedIntents).toContain(INTENT_TYPES.HEAVY_ATTACK);
+    });
+
+    it('SENTINEL (Elite Battle): requires 7 questions due to GUARD mitigation (target 6-8 questions)', () => {
+      let enc = createEncounter({
+        nodeId: 'n_elite',
+        nodeType: 'ELITE',
+        archetypeId: ARCHETYPE_IDS.SENTINEL,
         customQuestion: mockQuestion('1'),
       });
 
@@ -236,53 +272,16 @@ describe('Phase R8C — Safe Exit, Tutorial & Combat Pacing', () => {
         throw new Error(`Combat failed to advance after ${MAX_TEST_TURNS} test turns`);
       }
 
-      // 5 questions: 25 * 5 = 125 HP (lethal)
-      expect(turns).toBe(5);
+      // Turn 1 (Attack): deals 25 -> 100 HP
+      // Turn 2 (Guard): 25 - 10 = 15 -> 85 HP
+      // Turn 3 (Attack): deals 25 -> 60 HP
+      // Turn 4 (Guard): 25 - 10 = 15 -> 45 HP
+      // Turn 5 (Attack): deals 25 -> 20 HP
+      // Turn 6 (Guard): 25 - 10 = 15 -> 5 HP
+      // Turn 7 (Attack): deals 25 -> 0 HP (lethal)
+      expect(turns).toBe(7);
       expect(enc.status).toBe(ENCOUNTER_STATUS.VICTORY);
-
-      // Archetype behavior is fully exposed!
-      expect(observedIntents).toContain(INTENT_TYPES.ATTACK);
-      expect(observedIntents).toContain(INTENT_TYPES.HEAVY_ATTACK);
-    });
-
-    it('SENTINEL (Elite Battle): requires 8 questions due to GUARD mitigation (target 6-8 questions)', () => {
-      let enc = createEncounter({
-        nodeId: 'n_elite',
-        nodeType: 'ELITE',
-        archetypeId: ARCHETYPE_IDS.SENTINEL,
-        customQuestion: mockQuestion('1'),
-      });
-
-      expect(enc.enemy.hp).toBe(150);
-      const observedIntents = [];
-
-      let turns = 0;
-      const MAX_TEST_TURNS = 30;
-      while (enc.status === ENCOUNTER_STATUS.ACTIVE && turns < MAX_TEST_TURNS) {
-        turns++;
-        observedIntents.push(enc.enemy.intent.type);
-        const res = chooseAttackAndResolve(
-          enc,
-          { choiceId: 'c1', token: enc.question.token },
-          { nextQuestion: mockQuestion(String(turns + 1)) }
-        );
-        enc = res.encounter;
-      }
-      if (enc.status === ENCOUNTER_STATUS.ACTIVE) {
-        throw new Error(`Combat failed to advance after ${MAX_TEST_TURNS} test turns`);
-      }
-
-      // Turn 1 (Attack): deals 25 -> 125 HP
-      // Turn 2 (Guard): 25 - 10 = 15 -> 110 HP
-      // Turn 3 (Attack): deals 25 -> 85 HP
-      // Turn 4 (Guard): 25 - 10 = 15 -> 70 HP
-      // Turn 5 (Attack): deals 25 -> 45 HP
-      // Turn 6 (Guard): 25 - 10 = 15 -> 30 HP
-      // Turn 7 (Attack): deals 25 -> 5 HP
-      // Turn 8 (Guard): 25 - 10 = 15 -> 0 HP (lethal)
-      expect(turns).toBe(8);
-      expect(enc.status).toBe(ENCOUNTER_STATUS.VICTORY);
-      expect(turns).toBeGreaterThanOrEqual(6);
+      expect(turns).toBeGreaterThanOrEqual(5);
       expect(turns).toBeLessThanOrEqual(8);
 
       // Both Attack and Guard were exposed multiple times
@@ -298,7 +297,7 @@ describe('Phase R8C — Safe Exit, Tutorial & Combat Pacing', () => {
         customQuestion: mockQuestion('1'),
       });
 
-      expect(enc.enemy.hp).toBe(200);
+      expect(enc.enemy.hp).toBe(175);
       let turns = 0;
       const phaseHistory = [];
       const MAX_TEST_TURNS = 30;
@@ -398,8 +397,8 @@ describe('Phase R8C — Safe Exit, Tutorial & Combat Pacing', () => {
         throw new Error(`Combat failed to advance after ${MAX_TEST_TURNS} test turns`);
       }
 
-      // Without guard mitigation, 150 HP / 25 dmg per hit = 6 turns
-      expect(turns).toBe(6);
+      // Without guard mitigation, 125 HP / 25 dmg per hit = 5 turns
+      expect(turns).toBe(5);
       expect(enc.status).toBe(ENCOUNTER_STATUS.VICTORY);
     });
   });

@@ -141,7 +141,7 @@ describe('Rogue Expedition V0.1 — Combat Lifecycle & Persistence Gating (Phase
 
       const initialEncounter = await getActiveEncounter();
       expect(initialEncounter.turn).toBe(1);
-      expect(initialEncounter.enemy.hp).toBe(100);
+      expect(initialEncounter.enemy.hp).toBe(80);
 
       // Player selects ATTACK and answers 1 question correctly (deals 25 damage, takes 8 damage)
       await selectCombatAction({ actionId: PLAYER_ACTION_IDS.ATTACK });
@@ -149,7 +149,7 @@ describe('Rogue Expedition V0.1 — Combat Lifecycle & Persistence Gating (Phase
         choiceId: initialEncounter.question.correctChoiceId,
         token: initialEncounter.question.token,
       });
-      expect(submitRes.encounter.enemy.hp).toBe(75);
+      expect(submitRes.encounter.enemy.hp).toBe(55);
       expect(submitRes.encounter.player.hp).toBe(92);
       expect(submitRes.encounter.turn).toBe(2);
 
@@ -159,7 +159,7 @@ describe('Rogue Expedition V0.1 — Combat Lifecycle & Persistence Gating (Phase
       const reloadedRun = await loadActiveRun();
       expect(reloadedRun.encounter).toBeDefined();
       expect(reloadedRun.encounter.turn).toBe(2);
-      expect(reloadedRun.encounter.enemy.hp).toBe(75); // Enemy did NOT regenerate!
+      expect(reloadedRun.encounter.enemy.hp).toBe(55); // Enemy did NOT regenerate!
       expect(reloadedRun.encounter.player.hp).toBe(92); // Player was NOT healed!
       expect(reloadedRun.encounter.question.token).toBe(midBattleQuestionToken); // Same question preserved!
     });
@@ -221,7 +221,7 @@ describe('Rogue Expedition V0.1 — Combat Lifecycle & Persistence Gating (Phase
         token: encA.question.token,
       });
       encA = (await loadActiveRun()).encounter;
-      expect(encA.enemy.hp).toBe(75);
+      expect(encA.enemy.hp).toBe(55);
 
       // Account B starts expedition
       await setActiveIdentity('uid:account_beta');
@@ -240,7 +240,7 @@ describe('Rogue Expedition V0.1 — Combat Lifecycle & Persistence Gating (Phase
       // Switch back to Account A
       await setActiveIdentity('uid:account_alpha');
       const reloadedA = (await loadActiveRun()).encounter;
-      expect(reloadedA.enemy.hp).toBe(75); // Account A's damaged enemy remains intact
+      expect(reloadedA.enemy.hp).toBe(55); // Account A's damaged enemy remains intact
     });
 
     test('Guest mid-battle state is isolated from logged-in Account A', async () => {
