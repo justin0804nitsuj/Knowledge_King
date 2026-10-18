@@ -374,6 +374,7 @@ export default {
     },
     hints: {
       dismiss: 'Got it',
+      defaultTitle: '💡 Expedition Hint',
       firstActionTitle: 'Tactical Action System',
       firstActionDesc: 'Choose your action for this turn before answering. Your action will only succeed if your vocabulary answer is correct!',
       firstCurseTitle: '⚠️ Cursed Word Encountered!',
