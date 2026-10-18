@@ -374,6 +374,7 @@ export default {
     },
     hints: {
       dismiss: '了解',
+      defaultTitle: '💡 遠征提示',
       firstActionTitle: '戰術行動系統',
       firstActionDesc: '先選擇本回合行動，再回答英文題目。答對，行動才會成功。',
       firstCurseTitle: '⚠️ 遭遇詛咒詞彙！',
