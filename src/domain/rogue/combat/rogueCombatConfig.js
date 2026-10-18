@@ -14,6 +14,14 @@ import {
   getIntentForTurn,
 } from './enemyArchetypes';
 
+import {
+  PLAYER_ACTION_IDS,
+  PLAYER_ACTIONS,
+  PLAYER_ACTION_CONSTANTS,
+  isValidActionId,
+  isActionAvailable,
+} from './playerActions';
+
 export {
   INTENT_TYPES,
   ARCHETYPE_IDS,
@@ -21,12 +29,20 @@ export {
   selectArchetypeForNode,
   getArchetype,
   getIntentForTurn,
+  PLAYER_ACTION_IDS,
+  PLAYER_ACTIONS,
+  PLAYER_ACTION_CONSTANTS,
+  isValidActionId,
+  isActionAvailable,
 };
 
 export const ROGUE_COMBAT_CONSTANTS = Object.freeze({
   PLAYER_MAX_HP: 100,
-  PLAYER_ATTACK_DAMAGE: 10,
+  PLAYER_ATTACK_DAMAGE: PLAYER_ACTION_CONSTANTS.ATTACK_DAMAGE, // 25
   PLAYER_WRONG_DAMAGE: 0,
+  PLAYER_GUARD_BLOCK: PLAYER_ACTION_CONSTANTS.GUARD_BLOCK, // 20
+  PLAYER_RECOVER_HEAL: PLAYER_ACTION_CONSTANTS.RECOVER_HEAL, // 15
+  PLAYER_RECOVER_COOLDOWN: PLAYER_ACTION_CONSTANTS.RECOVER_COOLDOWN_TURNS, // 3
 });
 
 /**

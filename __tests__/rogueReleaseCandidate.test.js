@@ -26,12 +26,15 @@ import {
   INTENT_TYPES,
   getIntentForTurn,
 } from '../src/domain/rogue/combat/enemyArchetypes';
+import { PLAYER_ACTION_IDS } from '../src/domain/rogue/combat/playerActions';
+import { chooseAttackAndResolve } from './helpers/rogueTestHelpers';
 import { generateRogueMap, ROGUE_NODE_TYPES } from '../src/domain/rogue/mapGenerator';
 import { RELIC_IDS } from '../src/domain/rogue/relic/relicRegistry';
 import {
   createNewRun,
   loadActiveRun,
   advanceToNode,
+  selectCombatAction,
   submitCombatAnswer,
   selectRelicReward,
   submitRestAction,
@@ -76,13 +79,25 @@ describe('Phase R8A — Final Balance & Release Candidate Hardening', () => {
 
       // Traverse through the labyrinth rows until terminal victory
       let iterations = 0;
-      const maxIterations = 50;
+      const maxIterations = 100;
 
       while (run.status === ROGUE_RUN_STATUS.ACTIVE && iterations < maxIterations) {
         iterations++;
 
         // 1. If currently at an unresolved combat node, answer until defeated or victory
         if (run.encounter && run.encounter.status === ENCOUNTER_STATUS.ACTIVE) {
+          const isHeavy = run.encounter.enemy.intent.type === INTENT_TYPES.HEAVY_ATTACK;
+          const isWounded = run.encounter.player.hp <= 70;
+          const canRecover = (run.encounter.recoverCooldown ?? 0) === 0;
+
+          let actionId = PLAYER_ACTION_IDS.ATTACK;
+          if (isHeavy) {
+            actionId = PLAYER_ACTION_IDS.GUARD;
+          } else if (isWounded && canRecover) {
+            actionId = PLAYER_ACTION_IDS.RECOVER;
+          }
+
+          await selectCombatAction({ actionId });
           const res = await submitCombatAnswer({
             choiceId: run.encounter.question.correctChoiceId,
             token: run.encounter.question.token,
@@ -166,6 +181,7 @@ describe('Phase R8A — Final Balance & Release Candidate Hardening', () => {
       while (run.status === ROGUE_RUN_STATUS.ACTIVE && iterations < 30) {
         iterations++;
         if (run.encounter && run.encounter.status === ENCOUNTER_STATUS.ACTIVE) {
+          await selectCombatAction({ actionId: PLAYER_ACTION_IDS.ATTACK });
           const wrongChoiceId = 'definitely_wrong_choice_id';
           const res = await submitCombatAnswer({
             choiceId: wrongChoiceId,
@@ -376,8 +392,8 @@ describe('Phase R8A — Final Balance & Release Candidate Hardening', () => {
       // Player answers correctly:
       // Scholar's Lens purifies 2 stacks (from 2 down to 0) -> fully purified!
       // Purifying Ink triggers -> heals +10 HP (50 -> 60).
-      // Enemy attacks for 10 -> net HP = 50.
-      const res = resolveEncounterTurn(
+      // Scout attacks for 8 in R9 -> net HP = 52.
+      const res = chooseAttackAndResolve(
         encounter,
         { choiceId: 'c1', token: 'token-lens-ink' },
         { seed: 888 }
@@ -385,7 +401,7 @@ describe('Phase R8A — Final Balance & Release Candidate Hardening', () => {
 
       expect(res.resolution.curseResult.type).toBe('CURSE_PURIFIED');
       expect(res.resolution.inkHeal).toBe(10);
-      expect(res.encounter.player.hp).toBe(56); // 50 + 10 heal - 4 enemy attack = 56
+      expect(res.encounter.player.hp).toBe(52); // 50 + 10 heal - 8 enemy attack = 52
     });
 
     it('GLASS_QUILL + SECOND_CHANCE: amplified backlash kills, but Second Chance preserves 1 HP', () => {
@@ -411,7 +427,7 @@ describe('Phase R8A — Final Balance & Release Candidate Hardening', () => {
       // Glass Quill bonus = +5 -> Total backlash = 20!
       // Player HP is 10. Incoming damage 20 is lethal!
       // Second Chance triggers -> saves player at 1 HP!
-      const res = resolveEncounterTurn(
+      const res = chooseAttackAndResolve(
         encounter,
         { choiceId: 'wrong', token: 'token-gq-sc' },
         { seed: 999 }
@@ -439,7 +455,7 @@ describe('Phase R8A — Final Balance & Release Candidate Hardening', () => {
       });
 
       // Wrong answer on Cursed review -> Charm should NOT trigger
-      const res = resolveEncounterTurn(
+      const res = chooseAttackAndResolve(
         encounter,
         { choiceId: 'wrong', token: 'token-charm' },
         { seed: 777 }

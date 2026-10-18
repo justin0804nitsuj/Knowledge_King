@@ -144,7 +144,7 @@ export default function RogueHomeScreen() {
         >
           <Ionicons name="arrow-back" size={20} color="#E2E8F0" />
           <Text style={styles.backBtnLabel}>
-            {t('rogue.backToMainHome', '← Home')}
+            {t('rogue.backToMainHome', 'Home')}
           </Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('rogue.title', 'Rogue Expedition')}</Text>

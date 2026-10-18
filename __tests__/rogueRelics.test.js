@@ -22,8 +22,11 @@ import {
 import {
   createEncounter,
   resolveEncounterTurn,
+  selectActionInEncounter,
   ENCOUNTER_STATUS,
 } from '../src/domain/rogue/combat/rogueCombat';
+import { PLAYER_ACTION_IDS } from '../src/domain/rogue/combat/playerActions';
+import { chooseAttackAndResolve } from './helpers/rogueTestHelpers';
 import {
   createRogueRun,
   advanceRunNode,
@@ -343,7 +346,7 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
         ],
       });
 
-      const { encounter: nextEncounter, resolution } = resolveEncounterTurn(
+      const { encounter: nextEncounter, resolution } = chooseAttackAndResolve(
         encounter,
         {
           choiceId: 'c1',
@@ -374,7 +377,7 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
         ],
       });
 
-      const { encounter: nextEncounter, resolution } = resolveEncounterTurn(
+      const { encounter: nextEncounter, resolution } = chooseAttackAndResolve(
         encounter,
         {
           choiceId: 'c1',
@@ -404,15 +407,15 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
 
       expect(encounter.enemy.intent.type).toBe('GUARD');
 
-      const { resolution } = resolveEncounterTurn(encounter, {
+      const { resolution } = chooseAttackAndResolve(encounter, {
         choiceId: 'c1', // Correct answer
         token: mockQuestion.token,
       });
 
-      // Normal base damage = 10. Sentinel Guard = 5. Piercing Nib reduces mitigation by 10 -> 0 mitigation!
+      // R9 base attack = 25. Sentinel Guard = 10. Piercing Nib reduces mitigation by 10 -> 0 mitigation!
       expect(resolution.guardPierced).toBe(10);
       expect(resolution.guardMitigated).toBe(0);
-      expect(resolution.playerDamage).toBe(10);
+      expect(resolution.playerDamage).toBe(25);
     });
 
     test('mitigation cannot become negative and does not alter attack intents', () => {
@@ -431,13 +434,13 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
       });
 
       expect(encounter.enemy.intent.type).toBe('ATTACK');
-      const { resolution } = resolveEncounterTurn(encounter, {
+      const { resolution } = chooseAttackAndResolve(encounter, {
         choiceId: 'c1',
         token: mockQuestion.token,
       });
 
       expect(resolution.guardPierced).toBe(0);
-      expect(resolution.playerDamage).toBe(10);
+      expect(resolution.playerDamage).toBe(25);
     });
   });
 
@@ -454,7 +457,7 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
         cursedWords: [],
       });
 
-      const { encounter: nextEncounter, resolution } = resolveEncounterTurn(
+      const { encounter: nextEncounter, resolution } = chooseAttackAndResolve(
         encounter,
         {
           choiceId: 'c2', // Wrong answer
@@ -478,7 +481,7 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
       });
 
       // 1st mistake (protected)
-      const { encounter: turn2Encounter } = resolveEncounterTurn(encounter, {
+      const { encounter: turn2Encounter } = chooseAttackAndResolve(encounter, {
         choiceId: 'c2',
         token: mockQuestion.token,
       });
@@ -499,7 +502,7 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
       };
       turn2Encounter.question = mockQuestion2;
 
-      const { encounter: turn3Encounter, resolution } = resolveEncounterTurn(
+      const { encounter: turn3Encounter, resolution } = chooseAttackAndResolve(
         turn2Encounter,
         {
           choiceId: 'b2',
@@ -526,7 +529,7 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
         ],
       });
 
-      const { encounter: nextEncounter, resolution } = resolveEncounterTurn(
+      const { encounter: nextEncounter, resolution } = chooseAttackAndResolve(
         encounter,
         {
           choiceId: 'c2', // Wrong on cursed review
@@ -565,7 +568,7 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
         ],
       });
 
-      const { encounter: nextEncounter, resolution } = resolveEncounterTurn(
+      const { encounter: nextEncounter, resolution } = chooseAttackAndResolve(
         encounter,
         {
           choiceId: 'c1', // Correct answer purifies 1 stack to 0
@@ -575,8 +578,8 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
 
       expect(resolution.curseResult.type).toBe('CURSE_PURIFIED');
       expect(resolution.inkHeal).toBe(10);
-      // Started 50, healed 10 = 60, scout deals 4 = 56
-      expect(nextEncounter.player.hp).toBe(56);
+      // Started 50, healed 10 = 60, scout deals 8 in R9 = 52
+      expect(nextEncounter.player.hp).toBe(52);
     });
 
     test('partial curse weakening does NOT heal', () => {
@@ -598,7 +601,7 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
         ],
       });
 
-      const { resolution } = resolveEncounterTurn(encounter, {
+      const { resolution } = chooseAttackAndResolve(encounter, {
         choiceId: 'c1', // Weakened to 1 stack
         token: mockCursedQuestion.token,
       });
@@ -612,7 +615,7 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
   // 8. GLASS_QUILL
   // ==================================================
   describe('8. Glass Quill', () => {
-    test('correct attack deals +10 damage (10 -> 20)', () => {
+    test('correct attack deals +10 damage (25 -> 35 in R9)', () => {
       const encounter = createEncounter({
         nodeId: 'n1',
         archetypeId: 'SCOUT',
@@ -620,12 +623,12 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
         customQuestion: mockQuestion,
       });
 
-      const { resolution } = resolveEncounterTurn(encounter, {
+      const { resolution } = chooseAttackAndResolve(encounter, {
         choiceId: 'c1',
         token: mockQuestion.token,
       });
 
-      expect(resolution.playerDamage).toBe(20);
+      expect(resolution.playerDamage).toBe(35);
       expect(resolution.glassQuillBonus).toBe(10);
     });
 
@@ -644,7 +647,7 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
         ],
       });
 
-      const { resolution } = resolveEncounterTurn(encounter, {
+      const { resolution } = chooseAttackAndResolve(encounter, {
         choiceId: 'c2', // Wrong on cursed review: stacks 1 -> 2
         token: mockCursedQuestion.token,
       });
@@ -663,7 +666,7 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
         cursedWords: [],
       });
 
-      const { resolution } = resolveEncounterTurn(encounter, {
+      const { resolution } = chooseAttackAndResolve(encounter, {
         choiceId: 'c2', // Normal mistake
         token: mockQuestion.token,
       });
@@ -695,7 +698,7 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
         ],
       });
 
-      const { encounter: nextEncounter, resolution } = resolveEncounterTurn(
+      const { encounter: nextEncounter, resolution } = chooseAttackAndResolve(
         encounter,
         {
           choiceId: 'c2', // Backlash = 10, lethal to 8 HP!
@@ -704,7 +707,7 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
       );
 
       // Backlash triggers Second Chance, saving player at 1 HP
-      // Then enemy Scout attacks for 10 on the same turn, which now kills player
+      // Then enemy Scout attacks for 8 on the same turn, which now kills player
       expect(resolution.secondChanceTriggered).toBe(true);
       expect(nextEncounter.runRelicState[RELIC_IDS.SECOND_CHANCE].consumed).toBe(true);
       expect(nextEncounter.status).toBe(ENCOUNTER_STATUS.DEFEAT);
@@ -713,7 +716,7 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
     test('lethal enemy attack leaves player at 1 HP once when backlash was not lethal', () => {
       const encounter = createEncounter({
         nodeId: 'n1',
-        archetypeId: 'SCOUT', // deals 4 damage
+        archetypeId: 'SCOUT', // deals 8 damage in R9
         playerHp: 3,
         relics: [RELIC_IDS.SECOND_CHANCE],
         relicState: {
@@ -723,10 +726,10 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
         cursedWords: [],
       });
 
-      const { encounter: nextEncounter, resolution } = resolveEncounterTurn(
+      const { encounter: nextEncounter, resolution } = chooseAttackAndResolve(
         encounter,
         {
-          choiceId: 'c2', // Wrong answer, enemy attacks for 4
+          choiceId: 'c2', // Wrong answer, enemy attacks for 8
           token: mockQuestion.token,
         }
       );
@@ -749,7 +752,7 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
         customQuestion: mockQuestion,
       });
 
-      const { encounter: nextEncounter, resolution } = resolveEncounterTurn(
+      const { encounter: nextEncounter, resolution } = chooseAttackAndResolve(
         encounter,
         {
           choiceId: 'c2',
@@ -837,7 +840,7 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
         cursedWords: [],
       });
 
-      const { encounter: nextEncounter, resolution } = resolveEncounterTurn(
+      const { encounter: nextEncounter, resolution } = chooseAttackAndResolve(
         encounter,
         {
           choiceId: 'c1', // Correct answer
@@ -845,7 +848,7 @@ describe('Rogue Expedition V0.1 — Phase R5 Relic & Build System', () => {
         }
       );
 
-      expect(resolution.playerDamage).toBe(10);
+      expect(resolution.playerDamage).toBe(25);
       expect(resolution.guardMitigated).toBe(0);
       expect(nextEncounter.relics).toEqual([]);
     });

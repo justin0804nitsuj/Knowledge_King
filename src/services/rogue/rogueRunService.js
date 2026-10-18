@@ -26,6 +26,7 @@ import {
 } from '../../domain/rogue/rogueRun';
 import {
   resolveEncounterTurn,
+  selectActionInEncounter,
   ENCOUNTER_STATUS,
 } from '../../domain/rogue/combat/rogueCombat';
 import { claimRelicReward } from '../../domain/rogue/relic/relicDraft';
@@ -123,6 +124,7 @@ export async function advanceToNode(targetNodeId, explicitIdentity, options = {}
  * @param {object} params
  * @param {string} params.choiceId - Chosen answer choice ID
  * @param {string} params.token - Question token being answered
+ * @param {string} [params.actionId] - Optional action override ('ATTACK' | 'GUARD' | 'RECOVER')
  * @param {string|object} [params.explicitIdentity]
  * @param {object} [params.options] - Optional nextQuestion / seed injection
  * @returns {Promise<{ run: object, encounter: object, resolution?: object, resolved: boolean, reason?: string }>}
@@ -130,6 +132,7 @@ export async function advanceToNode(targetNodeId, explicitIdentity, options = {}
 export async function submitCombatAnswer({
   choiceId,
   token,
+  actionId,
   explicitIdentity,
   options = {},
 } = {}) {
@@ -163,9 +166,11 @@ export async function submitCombatAnswer({
     runRelicState: options.runRelicState || currentRun.relicState || {},
   };
 
+  const resolvedActionId = actionId || encounter.selectedAction || encounter.player?.selectedAction;
+
   const { encounter: updatedEncounter, resolved, resolution, reason } = resolveEncounterTurn(
     encounter,
-    { choiceId, token },
+    { choiceId, token, actionId: resolvedActionId },
     turnOptions
   );
 
@@ -188,6 +193,9 @@ export async function submitCombatAnswer({
     player: {
       ...currentRun.player,
       hp: updatedEncounter.player.hp,
+      selectedAction: updatedEncounter.player?.selectedAction ?? null,
+      recoverCooldown: updatedEncounter.player?.recoverCooldown ?? 0,
+      temporaryBlock: updatedEncounter.player?.temporaryBlock ?? 0,
     },
     updatedAt: Date.now(),
   };
@@ -205,6 +213,46 @@ export async function submitCombatAnswer({
     encounter: updatedEncounter,
     resolution,
     resolved: true,
+  };
+}
+
+/**
+ * Selects an action (ATTACK, GUARD, RECOVER) for the current active encounter
+ * and immediately persists it to account-scoped local storage.
+ *
+ * @param {object} params
+ * @param {string} params.actionId - 'ATTACK' | 'GUARD' | 'RECOVER'
+ * @param {string|object} [params.explicitIdentity]
+ * @returns {Promise<{ run: object, encounter: object }>}
+ */
+export async function selectCombatAction({ actionId, explicitIdentity } = {}) {
+  const currentRun = await loadActiveRogueRun(explicitIdentity);
+  if (!currentRun) {
+    throw new Error('[RogueRunService] No active run found');
+  }
+
+  const encounter = currentRun.encounter;
+  if (!encounter || encounter.status !== ENCOUNTER_STATUS.ACTIVE) {
+    throw new Error('[RogueRunService] No active encounter to select action for');
+  }
+
+  const updatedEncounter = selectActionInEncounter(encounter, actionId);
+  const updatedRun = {
+    ...currentRun,
+    encounter: updatedEncounter,
+    player: {
+      ...currentRun.player,
+      selectedAction: actionId,
+    },
+    updatedAt: Date.now(),
+  };
+
+  await saveActiveRogueRun(updatedRun, explicitIdentity);
+
+  return {
+    success: true,
+    run: updatedRun,
+    encounter: updatedEncounter,
   };
 }
 

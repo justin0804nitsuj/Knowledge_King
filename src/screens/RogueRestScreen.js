@@ -121,7 +121,7 @@ export default function RogueRestScreen() {
         >
           <Ionicons name="arrow-back" size={20} color="#E2E8F0" />
           <Text style={styles.backBtnLabel}>
-            {t('rogue.backToMainHome', '← Home')}
+            {t('rogue.backToMainHome', 'Home')}
           </Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }} />

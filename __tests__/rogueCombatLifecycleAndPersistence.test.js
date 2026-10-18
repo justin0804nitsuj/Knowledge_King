@@ -3,6 +3,7 @@ import {
   createNewRun,
   loadActiveRun,
   advanceToNode,
+  selectCombatAction,
   submitCombatAnswer,
   getActiveSelectableNodes,
   getActiveEncounter,
@@ -14,7 +15,7 @@ import {
 } from '../src/storage/storageIdentity';
 import { ROGUE_RUN_STORAGE_CATEGORY } from '../src/storage/rogueRunStorage';
 import { ROGUE_RUN_STATUS } from '../src/domain/rogue/rogueRun';
-import { ENCOUNTER_STATUS } from '../src/domain/rogue/combat/rogueCombat';
+import { ENCOUNTER_STATUS, PLAYER_ACTION_IDS } from '../src/domain/rogue/combat/rogueCombat';
 
 let mockStore = {};
 
@@ -59,15 +60,23 @@ describe('Rogue Expedition V0.1 — Combat Lifecycle & Persistence Gating (Phase
       // Attempting to advance while unresolved throws error
       await expect(advanceToNode('node-2-0')).rejects.toThrow(/unresolved/);
 
-      // Fight combat until victory
+      // Fight combat until victory with bounded loop safeguard
       let currentEncounter = activeRun.encounter;
-      while (currentEncounter.status === ENCOUNTER_STATUS.ACTIVE) {
+      let turns = 0;
+      const MAX_TURNS = 30;
+
+      while (currentEncounter.status === ENCOUNTER_STATUS.ACTIVE && turns++ < MAX_TURNS) {
+        await selectCombatAction({ actionId: PLAYER_ACTION_IDS.ATTACK });
         const correctChoiceId = currentEncounter.question.correctChoiceId;
         const result = await submitCombatAnswer({
           choiceId: correctChoiceId,
           token: currentEncounter.question.token,
         });
         currentEncounter = result.encounter;
+      }
+
+      if (currentEncounter.status === ENCOUNTER_STATUS.ACTIVE) {
+        throw new Error(`Combat failed to resolve within ${MAX_TURNS} turns`);
       }
 
       expect(currentEncounter.status).toBe(ENCOUNTER_STATUS.VICTORY);
@@ -87,15 +96,16 @@ describe('Rogue Expedition V0.1 — Combat Lifecycle & Persistence Gating (Phase
     });
 
     test('player defeat terminates the run and stops all map progression', async () => {
-      const run = await createNewRun({ seed: 888, initialHp: 6 }); // Low HP for quick defeat test
+      const run = await createNewRun({ seed: 888, initialHp: 10 }); // Low HP for quick defeat test (enemy deals 8 damage)
       const firstBattleId = (await getActiveSelectableNodes())[0];
       const battleRun = await advanceToNode(firstBattleId);
 
-      // Player answers incorrectly twice, enemy deals 4 damage each time
+      // Player answers incorrectly twice with ATTACK, enemy deals 8 damage each time
       let enc = battleRun.encounter;
       const wrongChoiceId = 'wrong_choice_id';
 
-      // Turn 1 wrong answer (6 - 4 = 2 HP)
+      // Turn 1 wrong answer (10 - 8 = 2 HP)
+      await selectCombatAction({ actionId: PLAYER_ACTION_IDS.ATTACK });
       const res1 = await submitCombatAnswer({
         choiceId: wrongChoiceId,
         token: enc.question.token,
@@ -103,7 +113,8 @@ describe('Rogue Expedition V0.1 — Combat Lifecycle & Persistence Gating (Phase
       expect(res1.encounter.player.hp).toBe(2);
       expect(res1.encounter.status).toBe(ENCOUNTER_STATUS.ACTIVE);
 
-      // Turn 2 wrong answer (2 - 4 = 0 HP -> DEFEAT)
+      // Turn 2 wrong answer (2 - 8 = 0 HP -> DEFEAT)
+      await selectCombatAction({ actionId: PLAYER_ACTION_IDS.ATTACK });
       const res2 = await submitCombatAnswer({
         choiceId: wrongChoiceId,
         token: res1.encounter.question.token,
@@ -130,15 +141,16 @@ describe('Rogue Expedition V0.1 — Combat Lifecycle & Persistence Gating (Phase
 
       const initialEncounter = await getActiveEncounter();
       expect(initialEncounter.turn).toBe(1);
-      expect(initialEncounter.enemy.hp).toBe(40);
+      expect(initialEncounter.enemy.hp).toBe(100);
 
-      // Player answers 1 question correctly (deals 10 damage, takes 4 damage)
+      // Player selects ATTACK and answers 1 question correctly (deals 25 damage, takes 8 damage)
+      await selectCombatAction({ actionId: PLAYER_ACTION_IDS.ATTACK });
       const submitRes = await submitCombatAnswer({
         choiceId: initialEncounter.question.correctChoiceId,
         token: initialEncounter.question.token,
       });
-      expect(submitRes.encounter.enemy.hp).toBe(30);
-      expect(submitRes.encounter.player.hp).toBe(96);
+      expect(submitRes.encounter.enemy.hp).toBe(75);
+      expect(submitRes.encounter.player.hp).toBe(92);
       expect(submitRes.encounter.turn).toBe(2);
 
       const midBattleQuestionToken = submitRes.encounter.question.token;
@@ -147,8 +159,8 @@ describe('Rogue Expedition V0.1 — Combat Lifecycle & Persistence Gating (Phase
       const reloadedRun = await loadActiveRun();
       expect(reloadedRun.encounter).toBeDefined();
       expect(reloadedRun.encounter.turn).toBe(2);
-      expect(reloadedRun.encounter.enemy.hp).toBe(30); // Enemy did NOT regenerate to 40!
-      expect(reloadedRun.encounter.player.hp).toBe(96); // Player was NOT healed!
+      expect(reloadedRun.encounter.enemy.hp).toBe(75); // Enemy did NOT regenerate!
+      expect(reloadedRun.encounter.player.hp).toBe(92); // Player was NOT healed!
       expect(reloadedRun.encounter.question.token).toBe(midBattleQuestionToken); // Same question preserved!
     });
 
@@ -157,22 +169,31 @@ describe('Rogue Expedition V0.1 — Combat Lifecycle & Persistence Gating (Phase
       const battleId = (await getActiveSelectableNodes())[0];
       await advanceToNode(battleId);
 
-      // Answer once incorrectly (takes 4 damage -> 96 HP)
+      // Answer once incorrectly with ATTACK (takes 8 damage -> 92 HP)
       let enc = (await loadActiveRun()).encounter;
+      await selectCombatAction({ actionId: PLAYER_ACTION_IDS.ATTACK });
       const res1 = await submitCombatAnswer({
         choiceId: 'wrong_c',
         token: enc.question.token,
       });
-      expect(res1.encounter.player.hp).toBe(96);
+      expect(res1.encounter.player.hp).toBe(92);
 
-      // Now defeat enemy with correct answers
+      // Now defeat enemy with correct ATTACK answers with bounded loop safeguard
       enc = res1.encounter;
-      while (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+      let turns = 0;
+      const MAX_TURNS = 30;
+
+      while (enc.status === ENCOUNTER_STATUS.ACTIVE && turns++ < MAX_TURNS) {
+        await selectCombatAction({ actionId: PLAYER_ACTION_IDS.ATTACK });
         const killRes = await submitCombatAnswer({
           choiceId: enc.question.correctChoiceId,
           token: enc.question.token,
         });
         enc = killRes.encounter;
+      }
+
+      if (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+        throw new Error(`Combat failed to resolve within ${MAX_TURNS} turns`);
       }
 
       expect(enc.status).toBe(ENCOUNTER_STATUS.VICTORY);
@@ -184,7 +205,7 @@ describe('Rogue Expedition V0.1 — Combat Lifecycle & Persistence Gating (Phase
 
   describe('3. Account-Scoped Storage Isolation for Combat', () => {
     test('Account A mid-battle state is isolated from Account B', async () => {
-      // Account A enters battle and damages enemy to 20 HP
+      // Account A enters battle and damages enemy to 75 HP
       await setActiveIdentity('uid:account_alpha');
       await createNewRun({ seed: 123 });
       const runA = await loadActiveRun();
@@ -194,12 +215,13 @@ describe('Rogue Expedition V0.1 — Combat Lifecycle & Persistence Gating (Phase
       await advanceToNode(nodeA);
 
       let encA = (await loadActiveRun()).encounter;
+      await selectCombatAction({ actionId: PLAYER_ACTION_IDS.ATTACK });
       await submitCombatAnswer({
         choiceId: encA.question.correctChoiceId,
         token: encA.question.token,
       });
       encA = (await loadActiveRun()).encounter;
-      expect(encA.enemy.hp).toBe(30);
+      expect(encA.enemy.hp).toBe(75);
 
       // Account B starts expedition
       await setActiveIdentity('uid:account_beta');
@@ -218,7 +240,7 @@ describe('Rogue Expedition V0.1 — Combat Lifecycle & Persistence Gating (Phase
       // Switch back to Account A
       await setActiveIdentity('uid:account_alpha');
       const reloadedA = (await loadActiveRun()).encounter;
-      expect(reloadedA.enemy.hp).toBe(30); // Account A's damaged enemy remains intact
+      expect(reloadedA.enemy.hp).toBe(75); // Account A's damaged enemy remains intact
     });
 
     test('Guest mid-battle state is isolated from logged-in Account A', async () => {

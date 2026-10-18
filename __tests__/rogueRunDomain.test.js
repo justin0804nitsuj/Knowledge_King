@@ -140,15 +140,21 @@ describe('Rogue Expedition V0.1 — Pure Run Domain Model', () => {
 
   test('advancing through a complete route to Boss triggers VICTORY', () => {
     let currentRun = createRogueRun({ seed: testSeed });
+    let steps = 0;
+    const MAX_STEPS = 50;
 
     // Step row by row until reaching Boss, resolving each battle node
-    while (currentRun.status === ROGUE_RUN_STATUS.ACTIVE) {
+    while (currentRun.status === ROGUE_RUN_STATUS.ACTIVE && steps++ < MAX_STEPS) {
       const nextOptions = getSelectableNextNodes(currentRun);
       expect(nextOptions.length).toBeGreaterThanOrEqual(1);
 
       const chosenNodeId = nextOptions[0];
       currentRun = advanceRunNode(currentRun, chosenNodeId);
       currentRun = resolveCurrentNode(currentRun);
+    }
+
+    if (steps >= MAX_STEPS) {
+      throw new Error(`Run failed to reach terminal state within ${MAX_STEPS} steps`);
     }
 
     expect(currentRun.status).toBe(ROGUE_RUN_STATUS.VICTORY);

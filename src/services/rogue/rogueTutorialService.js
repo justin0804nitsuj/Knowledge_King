@@ -14,6 +14,7 @@ const STORAGE_KEY_TUTORIAL_SEEN = '@KnowledgeKing:rogueTutorialCompleted';
 const STORAGE_KEY_HINTS_SEEN = '@KnowledgeKing:rogueTutorialHints';
 
 export const TUTORIAL_HINT_KEYS = Object.freeze({
+  FIRST_ACTION_SELECT: 'first_action_select',
   FIRST_GUARD: 'first_guard',
   FIRST_CURSE: 'first_curse',
   FIRST_RELIC_DRAFT: 'first_relic_draft',

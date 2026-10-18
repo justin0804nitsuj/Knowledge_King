@@ -14,8 +14,10 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   loadActiveRun,
   submitCombatAnswer,
+  selectCombatAction,
 } from '../services/rogue/rogueRunService';
 import { ENCOUNTER_STATUS } from '../domain/rogue/combat/rogueCombat';
+import { PLAYER_ACTION_IDS } from '../domain/rogue/combat/playerActions';
 import RogueTutorialModal from '../components/RogueTutorialModal';
 import RogueContextualHint from '../components/RogueContextualHint';
 import { hasSeenHint, markHintSeen } from '../services/rogue/rogueTutorialService';
@@ -27,6 +29,7 @@ export default function RogueBattleScreen() {
   const [loading, setLoading] = useState(true);
   const [run, setRun] = useState(null);
   const [encounter, setEncounter] = useState(null);
+  const [selectedAction, setSelectedAction] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [tutorialVisible, setTutorialVisible] = useState(false);
@@ -44,6 +47,11 @@ export default function RogueBattleScreen() {
       }
       setRun(activeRun);
       setEncounter(activeRun.encounter);
+      setSelectedAction(
+        activeRun.encounter.selectedAction ||
+        activeRun.encounter.player?.selectedAction ||
+        null
+      );
       if (activeRun.encounter.lastResolution) {
         setFeedback(activeRun.encounter.lastResolution);
       }
@@ -62,6 +70,11 @@ export default function RogueBattleScreen() {
     let isMounted = true;
     async function checkHints() {
       if (!encounter) return;
+      const seenActionHint = await hasSeenHint('first_action_select');
+      if (!seenActionHint && isMounted) {
+        setActiveHintKey('first_action_select');
+        return;
+      }
       if (feedback?.curseResult?.type === 'CURSE_APPLIED') {
         const seen = await hasSeenHint('first_curse');
         if (!seen && isMounted) {
@@ -97,8 +110,36 @@ export default function RogueBattleScreen() {
     }
   };
 
+  const handleSelectAction = async (actionId) => {
+    if (submitting || !encounter || encounter.status !== ENCOUNTER_STATUS.ACTIVE) {
+      return;
+    }
+    const currentCd = encounter.recoverCooldown ?? encounter.player?.recoverCooldown ?? 0;
+    if (actionId === PLAYER_ACTION_IDS.RECOVER && currentCd > 0) {
+      return;
+    }
+    setSelectedAction(actionId);
+    try {
+      const res = await selectCombatAction({ actionId });
+      if (res?.encounter) {
+        setEncounter(res.encounter);
+        setRun(res.run);
+      }
+    } catch (err) {
+      console.warn('[RogueBattleScreen] Failed to persist action selection:', err);
+    }
+  };
+
   const handleSelectChoice = async (choiceId) => {
     if (submitting || !encounter || encounter.status !== ENCOUNTER_STATUS.ACTIVE) {
+      return;
+    }
+
+    if (!selectedAction) {
+      Alert.alert(
+        t('rogue.actions.step1Prompt', 'Step 1: Choose Action'),
+        t('rogue.actions.chooseActionFirst', 'Select an action above to unlock answer choices')
+      );
       return;
     }
 
@@ -107,12 +148,14 @@ export default function RogueBattleScreen() {
       const result = await submitCombatAnswer({
         choiceId,
         token: encounter.question?.token,
+        actionId: selectedAction,
       });
 
       if (result.resolved) {
         setRun(result.run);
         setEncounter(result.encounter);
         setFeedback(result.resolution);
+        setSelectedAction(result.encounter.selectedAction || null);
       }
     } catch (err) {
       Alert.alert('Combat Error', err.message || 'Failed to submit answer');
@@ -161,7 +204,7 @@ export default function RogueBattleScreen() {
         >
           <Ionicons name="arrow-back" size={20} color="#E2E8F0" />
           <Text style={styles.backBtnLabel}>
-            {t('rogue.backToMainHome', '← Home')}
+            {t('rogue.backToMainHome', 'Home')}
           </Text>
         </TouchableOpacity>
         <View style={styles.titleContainer}>
@@ -281,9 +324,119 @@ export default function RogueBattleScreen() {
         </View>
       </View>
 
-      {/* Active Question & Choices */}
+      {/* Step 1: Action Selection */}
+      {isOngoing && (
+        <View style={styles.actionSelectionCard}>
+          <View style={styles.actionSectionHeader}>
+            <Text style={styles.actionSectionStep}>
+              {t('rogue.actions.step1Prompt', 'Step 1: Choose Action')}
+            </Text>
+            {selectedAction && (
+              <View style={styles.actionArmedBadge}>
+                <Text style={styles.actionArmedText}>
+                  ✓ {t(`rogue.actions.${selectedAction.toLowerCase()}`, selectedAction)}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.actionCardsRow}>
+            {/* ATTACK */}
+            <TouchableOpacity
+              style={[
+                styles.actionCard,
+                styles.actionCardAttack,
+                selectedAction === PLAYER_ACTION_IDS.ATTACK && styles.actionCardSelected,
+                submitting && styles.actionCardDisabled,
+              ]}
+              onPress={() => handleSelectAction(PLAYER_ACTION_IDS.ATTACK)}
+              disabled={submitting}
+              accessibilityRole="button"
+              accessibilityLabel="Action: Attack"
+            >
+              <Text style={styles.actionIcon}>⚔️</Text>
+              <Text style={styles.actionTitle}>
+                {t('rogue.actions.attack', 'Attack')}
+              </Text>
+              <Text style={styles.actionSubtitle}>
+                {t('rogue.actions.attackDesc', '25 DMG')}
+              </Text>
+            </TouchableOpacity>
+
+            {/* GUARD */}
+            <TouchableOpacity
+              style={[
+                styles.actionCard,
+                styles.actionCardGuard,
+                selectedAction === PLAYER_ACTION_IDS.GUARD && styles.actionCardSelected,
+                submitting && styles.actionCardDisabled,
+              ]}
+              onPress={() => handleSelectAction(PLAYER_ACTION_IDS.GUARD)}
+              disabled={submitting}
+              accessibilityRole="button"
+              accessibilityLabel="Action: Guard"
+            >
+              <Text style={styles.actionIcon}>🛡️</Text>
+              <Text style={styles.actionTitle}>
+                {t('rogue.actions.guard', 'Guard')}
+              </Text>
+              <Text style={styles.actionSubtitle}>
+                {t('rogue.actions.guardDesc', '20 Block')}
+              </Text>
+            </TouchableOpacity>
+
+            {/* RECOVER */}
+            {(() => {
+              const recoverCd = encounter.recoverCooldown ?? encounter.player?.recoverCooldown ?? 0;
+              const isRecoverAvailable = recoverCd === 0;
+              return (
+                <TouchableOpacity
+                  style={[
+                    styles.actionCard,
+                    styles.actionCardRecover,
+                    selectedAction === PLAYER_ACTION_IDS.RECOVER && styles.actionCardSelected,
+                    (!isRecoverAvailable || submitting) && styles.actionCardDisabled,
+                  ]}
+                  onPress={() => handleSelectAction(PLAYER_ACTION_IDS.RECOVER)}
+                  disabled={!isRecoverAvailable || submitting}
+                  accessibilityRole="button"
+                  accessibilityLabel="Action: Recover"
+                >
+                  <Text style={styles.actionIcon}>❤️</Text>
+                  <Text style={styles.actionTitle}>
+                    {t('rogue.actions.recover', 'Recover')}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.actionSubtitle,
+                      !isRecoverAvailable && styles.actionCooldownText,
+                    ]}
+                  >
+                    {isRecoverAvailable
+                      ? t('rogue.actions.recoverDesc', '+15 HP')
+                      : t('rogue.actions.cooldown', { turns: recoverCd, defaultValue: `CD: ${recoverCd}` })}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })()}
+          </View>
+        </View>
+      )}
+
+      {/* Step 2: Question & Choices */}
       {isOngoing && encounter.question && (
         <View style={styles.questionCard}>
+          <View style={styles.step2HeaderRow}>
+            <Text style={styles.step2Label}>
+              {t('rogue.actions.step2Prompt', 'Step 2: Answer Question')}
+            </Text>
+            {!selectedAction && (
+              <Text style={styles.step2LockNotice}>
+                🔒 {t('rogue.actions.chooseActionFirst', 'Select action above')}
+              </Text>
+            )}
+          </View>
+
           {encounter.question.isCursed ? (
             <View style={styles.cursedBadgeContainer}>
               <Text style={styles.cursedBadgeText}>
@@ -309,13 +462,23 @@ export default function RogueBattleScreen() {
             {encounter.question.choices.map((choice) => (
               <TouchableOpacity
                 key={choice.id}
-                style={styles.choiceBtn}
+                style={[
+                  styles.choiceBtn,
+                  (!selectedAction || submitting) && styles.choiceBtnLocked,
+                ]}
                 onPress={() => handleSelectChoice(choice.id)}
-                disabled={submitting}
+                disabled={!selectedAction || submitting}
                 accessibilityRole="button"
                 accessibilityLabel={`Choice: ${choice.text}`}
               >
-                <Text style={styles.choiceBtnText}>{choice.text}</Text>
+                <Text
+                  style={[
+                    styles.choiceBtnText,
+                    (!selectedAction || submitting) && styles.choiceBtnTextLocked,
+                  ]}
+                >
+                  {choice.text}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -685,6 +848,112 @@ const styles = StyleSheet.create({
     color: '#BFDBFE',
     fontWeight: '700',
   },
+  actionSelectionCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    marginBottom: 14,
+  },
+  actionSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  actionSectionStep: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#E2E8F0',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  actionArmedBadge: {
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#3B82F6',
+  },
+  actionArmedText: {
+    color: '#93C5FD',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  actionCardsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'space-between',
+  },
+  actionCard: {
+    flex: 1,
+    backgroundColor: '#0F172A',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#334155',
+  },
+  actionCardAttack: {},
+  actionCardGuard: {},
+  actionCardRecover: {},
+  actionCardSelected: {
+    borderColor: '#F59E0B',
+    backgroundColor: '#1E293B',
+    transform: [{ scale: 1.02 }],
+  },
+  actionCardDisabled: {
+    opacity: 0.45,
+  },
+  actionIcon: {
+    fontSize: 22,
+    marginBottom: 4,
+  },
+  actionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#F8FAFC',
+    marginBottom: 2,
+  },
+  actionSubtitle: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  actionCooldownText: {
+    color: '#EF4444',
+    fontWeight: '700',
+  },
+  step2HeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  step2Label: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#E2E8F0',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  step2LockNotice: {
+    fontSize: 11,
+    color: '#F59E0B',
+    fontWeight: '600',
+  },
+  choiceBtnLocked: {
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+    opacity: 0.6,
+  },
+  choiceBtnTextLocked: {
+    color: '#64748B',
+  },
   cursedBadgeContainer: {
     alignSelf: 'center',
     backgroundColor: 'rgba(126, 34, 206, 0.25)',
@@ -751,13 +1020,45 @@ function getIntentDisplay(intent, t) {
 function getFeedbackDescription(feedback, isVictory, t) {
   const parts = [];
 
-  if (feedback.guardMitigated > 0) {
-    parts.push(
-      t('rogue.feedback.guardMitigated', 'Enemy Guard absorbed {{amount}} damage! Dealt {{dealt}} damage.', {
-        amount: feedback.guardMitigated,
-        dealt: feedback.playerDamage,
-      })
-    );
+  if (feedback.actionId === 'ATTACK') {
+    if (feedback.actionSucceeded) {
+      if (feedback.guardMitigated > 0) {
+        parts.push(
+          t('rogue.feedback.guardMitigated', 'Enemy Guard absorbed {{amount}} damage! Dealt {{dealt}} damage.', {
+            amount: feedback.guardMitigated,
+            dealt: feedback.playerDamage,
+          })
+        );
+      } else {
+        parts.push(
+          t('rogue.feedback.attackSuccess', '⚔ Attack succeeded! Dealt {{damage}} damage.', {
+            damage: feedback.playerDamage,
+          })
+        );
+      }
+    } else {
+      parts.push(t('rogue.feedback.attackFailed', '⚔ Attack failed! (0 damage dealt)'));
+    }
+  } else if (feedback.actionId === 'GUARD') {
+    if (feedback.actionSucceeded) {
+      parts.push(
+        t('rogue.feedback.guardSuccess', '🛡 Guard succeeded! Gained {{block}} Block.', {
+          block: 20,
+        })
+      );
+    } else {
+      parts.push(t('rogue.feedback.guardFailed', '🛡 Guard failed! (0 Block gained)'));
+    }
+  } else if (feedback.actionId === 'RECOVER') {
+    if (feedback.actionSucceeded) {
+      parts.push(
+        t('rogue.feedback.recoverSuccess', '❤️ Recover succeeded! Restored {{heal}} HP.', {
+          heal: feedback.recoveredHp,
+        })
+      );
+    } else {
+      parts.push(t('rogue.feedback.recoverFailed', '❤️ Recover failed! (0 HP restored)'));
+    }
   } else if (feedback.correct) {
     parts.push(
       t('rogue.feedback.playerDealt', 'You dealt {{damage}} damage.', {
@@ -766,6 +1067,14 @@ function getFeedbackDescription(feedback, isVictory, t) {
     );
   } else {
     parts.push(t('rogue.feedback.playerWrong', 'You dealt 0 damage.'));
+  }
+
+  if (feedback.blockedDamage > 0) {
+    parts.push(
+      t('rogue.feedback.blockedDamage', 'Blocked {{block}} incoming damage.', {
+        block: feedback.blockedDamage,
+      })
+    );
   }
 
   if (feedback.curseResult) {
