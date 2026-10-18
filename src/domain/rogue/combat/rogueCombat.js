@@ -25,6 +25,13 @@ import {
   validateEncounterIntegrity,
 } from './enemyArchetypes';
 import {
+  PLAYER_ACTION_IDS,
+  PLAYER_ACTIONS,
+  PLAYER_ACTION_CONSTANTS,
+  isValidActionId,
+  isActionAvailable,
+} from './playerActions';
+import {
   applyCurseWrongAnswer,
   applyCurseCorrectAnswer,
 } from '../curse/cursedWordModel';
@@ -39,6 +46,14 @@ import {
   onCursePurified,
   applyLethalProtection,
 } from '../relic/relicEffects';
+
+export {
+  PLAYER_ACTION_IDS,
+  PLAYER_ACTIONS,
+  PLAYER_ACTION_CONSTANTS,
+  isValidActionId,
+  isActionAvailable,
+};
 
 export const CURRENT_ENCOUNTER_SCHEMA_VERSION = 1;
 
@@ -142,9 +157,15 @@ export function createEncounter({
       : {}),
     status: ENCOUNTER_STATUS.ACTIVE,
     turn: 1,
+    selectedAction: null,
+    recoverCooldown: 0,
+    temporaryBlock: 0,
     player: {
       hp: initialHp,
       maxHp: playerMaxHp,
+      selectedAction: null,
+      recoverCooldown: 0,
+      temporaryBlock: 0,
     },
     enemy: {
       enemyId: `enemy_${archetype.id.toLowerCase()}`,
@@ -171,6 +192,35 @@ export function createEncounter({
       curseBacklashTaken: 0,
     },
     createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+}
+
+/**
+ * Updates the selected action for an active encounter.
+ *
+ * @param {object} encounter
+ * @param {string} actionId - 'ATTACK' | 'GUARD' | 'RECOVER'
+ * @returns {object} New encounter state with selectedAction set
+ */
+export function selectActionInEncounter(encounter, actionId) {
+  if (!encounter || encounter.status !== ENCOUNTER_STATUS.ACTIVE) {
+    throw new Error('[RogueCombat] Cannot select action for inactive encounter');
+  }
+  if (!isValidActionId(actionId)) {
+    throw new Error(`[RogueCombat] Invalid action ID: "${actionId}"`);
+  }
+  const currentCd = encounter.recoverCooldown ?? encounter.player?.recoverCooldown ?? 0;
+  if (actionId === PLAYER_ACTION_IDS.RECOVER && currentCd > 0) {
+    throw new Error(`[RogueCombat] Recover is on cooldown (${currentCd} turns remaining)`);
+  }
+  return {
+    ...encounter,
+    selectedAction: actionId,
+    player: {
+      ...encounter.player,
+      selectedAction: actionId,
+    },
     updatedAt: Date.now(),
   };
 }
@@ -223,7 +273,24 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
   }
 
   if (encounter.resolvedQuestionTokens.includes(token)) {
-    return { encounter, resolved: false, reason: 'TOKEN_ALREADY_RESOLVED' };
+    return { encounter, resolved: true, reason: 'TOKEN_ALREADY_RESOLVED', resolution: encounter.lastResolution };
+  }
+
+  // Action Selection validation
+  const selectedAction =
+    action?.actionId ||
+    encounter.selectedAction ||
+    encounter.player?.selectedAction;
+
+  if (!selectedAction || !isValidActionId(selectedAction)) {
+    return { encounter, resolved: false, reason: 'ACTION_REQUIRED' };
+  }
+
+  const currentRecoverCooldown =
+    encounter.recoverCooldown ?? encounter.player?.recoverCooldown ?? 0;
+
+  if (selectedAction === PLAYER_ACTION_IDS.RECOVER && currentRecoverCooldown > 0) {
+    return { encounter, resolved: false, reason: 'RECOVER_ON_COOLDOWN' };
   }
 
   const currentIntent = encounter.enemy.intent;
@@ -252,45 +319,72 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
   const questionLevel = encounter.question?.level || 1;
   const isCursedReview = Boolean(encounter.question?.isCursed);
 
-  // 1. Evaluate Player Answer
+  // 1. Evaluate Player Answer & Action Execution
   const isCorrect = String(choiceId) === String(encounter.question.correctChoiceId);
-  const rawBaseDamage = isCorrect
-    ? ROGUE_COMBAT_CONSTANTS.PLAYER_ATTACK_DAMAGE
-    : ROGUE_COMBAT_CONSTANTS.PLAYER_WRONG_DAMAGE;
 
-  // 2. Apply player-damage relic modifiers (Glass Quill: +10 on correct attack)
-  const { playerDamage: basePlayerDamage, glassQuillBonus } = modifyPlayerAttackDamage({
-    baseDamage: rawBaseDamage,
-    relics: activeRelics,
-  });
-  if (glassQuillBonus > 0) {
-    relicTriggers.push({
-      relicId: RELIC_IDS.GLASS_QUILL,
-      type: 'DAMAGE_BONUS',
-      value: glassQuillBonus,
-    });
-  }
-
-  // 3. Apply Current Intent Defensive Modifiers (GUARD) & Piercing Nib
-  let effectivePlayerDamage = basePlayerDamage;
+  let rawBaseDamage = 0;
+  let effectivePlayerDamage = 0;
   let guardMitigated = 0;
   let guardPierced = 0;
+  let temporaryBlock = 0;
+  let appliedTemporaryBlock = 0;
+  let recoveredHp = 0;
+  let recoverCooldownStarted = false;
+  let currentPlayerHp = encounter.player.hp;
+  let glassQuillBonus = 0;
 
-  if (currentIntent.type === INTENT_TYPES.GUARD && isCorrect) {
-    const rawMitigation = currentIntent.value || archetype.guardMitigation || 10;
-    const { effectiveMitigation, guardPierced: pierced } = modifyGuardMitigation({
-      mitigation: rawMitigation,
-      relics: activeRelics,
-    });
-    effectivePlayerDamage = Math.max(0, basePlayerDamage - effectiveMitigation);
-    guardMitigated = Math.min(basePlayerDamage, effectiveMitigation);
-    guardPierced = pierced;
-    if (guardPierced > 0) {
-      relicTriggers.push({
-        relicId: RELIC_IDS.PIERCING_NIB,
-        type: 'GUARD_PIERCED',
-        value: guardPierced,
+  if (isCorrect) {
+    if (selectedAction === PLAYER_ACTION_IDS.ATTACK) {
+      rawBaseDamage = PLAYER_ACTION_CONSTANTS.ATTACK_DAMAGE; // 25
+      const modResult = modifyPlayerAttackDamage({
+        baseDamage: rawBaseDamage,
+        relics: activeRelics,
       });
+      effectivePlayerDamage = modResult.playerDamage;
+      glassQuillBonus = modResult.glassQuillBonus;
+      if (glassQuillBonus > 0) {
+        relicTriggers.push({
+          relicId: RELIC_IDS.GLASS_QUILL,
+          type: 'DAMAGE_BONUS',
+          value: glassQuillBonus,
+        });
+      }
+
+      // Check enemy GUARD intent mitigation
+      if (currentIntent.type === INTENT_TYPES.GUARD) {
+        const rawMitigation = currentIntent.value || archetype.guardMitigation || 10;
+        const { effectiveMitigation, guardPierced: pierced } = modifyGuardMitigation({
+          mitigation: rawMitigation,
+          relics: activeRelics,
+        });
+        guardMitigated = Math.min(effectivePlayerDamage, effectiveMitigation);
+        effectivePlayerDamage = Math.max(0, effectivePlayerDamage - effectiveMitigation);
+        guardPierced = pierced;
+        if (guardPierced > 0) {
+          relicTriggers.push({
+            relicId: RELIC_IDS.PIERCING_NIB,
+            type: 'GUARD_PIERCED',
+            value: guardPierced,
+          });
+        }
+      }
+    } else if (selectedAction === PLAYER_ACTION_IDS.GUARD) {
+      temporaryBlock = PLAYER_ACTION_CONSTANTS.GUARD_BLOCK; // 20
+      appliedTemporaryBlock = temporaryBlock;
+    } else if (selectedAction === PLAYER_ACTION_IDS.RECOVER) {
+      recoverCooldownStarted = true;
+      const targetHp = Math.min(
+        encounter.player.maxHp,
+        currentPlayerHp + PLAYER_ACTION_CONSTANTS.RECOVER_HEAL
+      );
+      recoveredHp = targetHp - currentPlayerHp;
+      currentPlayerHp = targetHp;
+    }
+  } else {
+    // Wrong answer: chosen Action fails completely
+    if (selectedAction === PLAYER_ACTION_IDS.RECOVER) {
+      // Failed recover still starts cooldown
+      recoverCooldownStarted = true;
     }
   }
 
@@ -300,7 +394,6 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
   // 4. Resolve Cursed Word State Transition & Relic Modifiers
   let nextCursedWords = currentCursedWords;
   let curseResult = null;
-  let currentPlayerHp = encounter.player.hp;
   let inkHeal = 0;
 
   if (isCorrect) {
@@ -421,6 +514,8 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
 
   // 6. Combat Status Transition & Canonical Damage Resolution
   let nextStatus = ENCOUNTER_STATUS.ACTIVE;
+  let rawEnemyDamage = 0;
+  let blockedDamage = 0;
   let enemyDamage = 0;
   let secondChanceTriggered = false;
 
@@ -457,10 +552,17 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
     } else {
       // Player survived backlash: enemy executes intent
       if (currentIntent.type === INTENT_TYPES.ATTACK || currentIntent.type === INTENT_TYPES.HEAVY_ATTACK) {
-        enemyDamage = currentIntent.value;
+        rawEnemyDamage = currentIntent.value || 0;
       } else if (currentIntent.type === INTENT_TYPES.GUARD) {
-        enemyDamage = 0;
+        rawEnemyDamage = 0;
       }
+
+      // Guard blocks incoming enemy damage this turn
+      blockedDamage = Math.min(rawEnemyDamage, temporaryBlock);
+      enemyDamage = Math.max(0, rawEnemyDamage - temporaryBlock);
+
+      // Temporary block expires after current enemy intent resolves
+      temporaryBlock = 0;
 
       if (enemyDamage > 0) {
         const lethalRes = applyLethalProtection({
@@ -490,6 +592,12 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
     }
   }
 
+  // Cooldown progression: if Recover was selected, set to RECOVER_COOLDOWN_TURNS (3).
+  // Otherwise decrement active cooldown by 1 (minimum 0).
+  const nextRecoverCooldown = recoverCooldownStarted
+    ? PLAYER_ACTION_CONSTANTS.RECOVER_COOLDOWN_TURNS
+    : Math.max(0, currentRecoverCooldown - 1);
+
   // 7. Update Stats
   const nextStats = {
     correctAnswers: encounter.stats.correctAnswers + (isCorrect ? 1 : 0),
@@ -502,16 +610,17 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
   const nextResolvedTokens = [...encounter.resolvedQuestionTokens, token];
   const nextTurn = encounter.turn + 1;
 
-  // 7. Boss Phase Progression
+  // 8. Boss Phase Progression
   const isBoss =
     encounter.archetypeId === ARCHETYPE_IDS.OVERLORD ||
     encounter.nodeType === 'BOSS';
-  let nextBossPhase = encounter.bossPhase !== undefined ? encounter.bossPhase : (isBoss ? (encounter.enemy?.hp <= 40 ? 2 : 1) : null);
+  const bossPhaseThreshold = archetype.phaseThreshold || 100;
+  let nextBossPhase = encounter.bossPhase !== undefined ? encounter.bossPhase : (isBoss ? (encounter.enemy?.hp <= bossPhaseThreshold ? 2 : 1) : null);
   let nextPhase2StartTurn = encounter.phase2StartTurn || null;
   let bossPhaseTransition = false;
 
   if (isBoss && nextStatus === ENCOUNTER_STATUS.ACTIVE) {
-    if (nextBossPhase === 1 && newEnemyHp <= 40) {
+    if (nextBossPhase === 1 && newEnemyHp <= bossPhaseThreshold) {
       nextBossPhase = 2;
       nextPhase2StartTurn = nextTurn;
       bossPhaseTransition = true;
@@ -522,10 +631,19 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
     token,
     chosenChoiceId: String(choiceId),
     correct: isCorrect,
+    actionId: selectedAction,
+    selectedAction,
+    actionSucceeded: isCorrect,
     playerDamage: effectivePlayerDamage,
     guardMitigated,
     guardPierced,
+    temporaryBlock: appliedTemporaryBlock,
+    blockedDamage,
+    damageBlocked: blockedDamage,
+    recoveredHp,
+    rawEnemyDamage,
     enemyDamage,
+    recoverCooldown: nextRecoverCooldown,
     backlashDamage: effectiveBacklash,
     curseResult,
     executedIntent: { ...currentIntent },
@@ -541,7 +659,7 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
       : {}),
   };
 
-  // 8. Next Turn Generation (Intent + Question for turn + 1)
+  // 9. Next Turn Generation (Intent + Question for turn + 1)
   let nextQuestion = encounter.question;
   let nextIntent = currentIntent;
 
@@ -573,6 +691,9 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
     ...encounter,
     status: nextStatus,
     turn: nextStatus === ENCOUNTER_STATUS.ACTIVE ? nextTurn : encounter.turn,
+    selectedAction: null,
+    recoverCooldown: nextRecoverCooldown,
+    temporaryBlock: 0,
     ...(isBoss
       ? {
           bossPhase: nextBossPhase,
@@ -582,6 +703,9 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
     player: {
       ...encounter.player,
       hp: currentPlayerHp,
+      selectedAction: null,
+      recoverCooldown: nextRecoverCooldown,
+      temporaryBlock: 0,
     },
     enemy: {
       ...encounter.enemy,

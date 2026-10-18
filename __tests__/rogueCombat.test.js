@@ -1,6 +1,8 @@
 import {
   createEncounter,
+  selectActionInEncounter,
   resolveEncounterTurn,
+  PLAYER_ACTION_IDS,
   ENCOUNTER_STATUS,
 } from '../src/domain/rogue/combat/rogueCombat';
 import {
@@ -40,11 +42,14 @@ describe('Rogue Expedition V0.1 — Phase R2 Combat Foundation Domain', () => {
       expect(encounter.turn).toBe(1);
       expect(encounter.player.hp).toBe(100);
       expect(encounter.player.maxHp).toBe(100);
+      expect(encounter.selectedAction).toBeNull();
+      expect(encounter.recoverCooldown).toBe(0);
+      expect(encounter.temporaryBlock).toBe(0);
 
-      // Enemy config
-      expect(encounter.enemy.hp).toBe(40);
-      expect(encounter.enemy.maxHp).toBe(40);
-      expect(encounter.enemy.intent).toEqual({ type: 'ATTACK', value: 4 });
+      // Enemy config (R9 Scout: 100 HP, 8 base damage)
+      expect(encounter.enemy.hp).toBe(100);
+      expect(encounter.enemy.maxHp).toBe(100);
+      expect(encounter.enemy.intent).toEqual({ type: 'ATTACK', value: 8 });
 
       // Question
       expect(encounter.question.token).toBe('tok_test_1');
@@ -57,12 +62,12 @@ describe('Rogue Expedition V0.1 — Phase R2 Combat Foundation Domain', () => {
 
     test('scales baseline stats for ELITE and BOSS encounters', () => {
       const elite = createEncounter({ nodeId: 'node-3-0', nodeType: 'ELITE', customQuestion: mockQuestion });
-      expect(elite.enemy.hp).toBe(50);
-      expect(elite.enemy.intent.value).toBe(5);
+      expect(elite.enemy.hp).toBe(150);
+      expect(elite.enemy.intent.value).toBe(10);
 
       const boss = createEncounter({ nodeId: 'node-4-0', nodeType: 'BOSS', customQuestion: mockQuestion });
-      expect(boss.enemy.hp).toBe(80);
-      expect(boss.enemy.intent.value).toBe(6);
+      expect(boss.enemy.hp).toBe(200);
+      expect(boss.enemy.intent.value).toBe(10);
     });
 
     test('centralized difficulty mapping scales with floors', () => {
@@ -75,7 +80,26 @@ describe('Rogue Expedition V0.1 — Phase R2 Combat Foundation Domain', () => {
   });
 
   describe('2. Answer -> Action Core Loop & Damage Formulas', () => {
-    test('correct answer deals expected player damage (10) and triggers enemy response (4)', () => {
+    test('requires action selection before resolving an answer', () => {
+      const initial = createEncounter({
+        nodeId: 'node-1-0',
+        customQuestion: mockQuestion,
+      });
+
+      // Attempt to answer without selecting an action
+      const result = resolveEncounterTurn(initial, {
+        choiceId: 'c1',
+        token: 'tok_test_1',
+      });
+
+      expect(result.resolved).toBe(false);
+      expect(result.reason).toBe('ACTION_REQUIRED');
+      expect(result.encounter.turn).toBe(1);
+      expect(result.encounter.player.hp).toBe(100);
+      expect(result.encounter.enemy.hp).toBe(100);
+    });
+
+    test('correct answer deals expected player damage (25) and triggers enemy response (8)', () => {
       const initial = createEncounter({
         nodeId: 'node-1-0',
         customQuestion: mockQuestion,
@@ -89,8 +113,9 @@ describe('Rogue Expedition V0.1 — Phase R2 Combat Foundation Domain', () => {
         correctChoiceId: 'c1',
       };
 
+      const armed = selectActionInEncounter(initial, PLAYER_ACTION_IDS.ATTACK);
       const result = resolveEncounterTurn(
-        initial,
+        armed,
         { choiceId: 'c1', token: 'tok_test_1' },
         { nextQuestion: nextMockQ }
       );
@@ -98,10 +123,10 @@ describe('Rogue Expedition V0.1 — Phase R2 Combat Foundation Domain', () => {
       expect(result.resolved).toBe(true);
       const enc = result.encounter;
 
-      // Enemy took 10 damage: 40 - 10 = 30
-      expect(enc.enemy.hp).toBe(30);
-      // Enemy was not defeated, so it attacked for 4: 100 - 4 = 96
-      expect(enc.player.hp).toBe(96);
+      // Enemy took 25 damage: 100 - 25 = 75
+      expect(enc.enemy.hp).toBe(75);
+      // Enemy was not defeated, so it attacked for 8: 100 - 8 = 92
+      expect(enc.player.hp).toBe(92);
       expect(enc.status).toBe(ENCOUNTER_STATUS.ACTIVE);
       expect(enc.turn).toBe(2);
       expect(enc.question.token).toBe('tok_test_2');
@@ -109,18 +134,19 @@ describe('Rogue Expedition V0.1 — Phase R2 Combat Foundation Domain', () => {
       // Stats
       expect(enc.stats.correctAnswers).toBe(1);
       expect(enc.stats.wrongAnswers).toBe(0);
-      expect(enc.stats.totalDamageDealt).toBe(10);
-      expect(enc.stats.totalDamageTaken).toBe(4);
+      expect(enc.stats.totalDamageDealt).toBe(25);
+      expect(enc.stats.totalDamageTaken).toBe(8);
     });
 
-    test('wrong answer deals 0 player damage and triggers enemy response (4)', () => {
+    test('wrong answer deals 0 player damage and triggers enemy response (8)', () => {
       const initial = createEncounter({
         nodeId: 'node-1-0',
         customQuestion: mockQuestion,
       });
 
+      const armed = selectActionInEncounter(initial, PLAYER_ACTION_IDS.ATTACK);
       const result = resolveEncounterTurn(
-        initial,
+        armed,
         { choiceId: 'c2', token: 'tok_test_1' }, // c2 is wrong
         { nextQuestion: mockQuestion }
       );
@@ -129,27 +155,28 @@ describe('Rogue Expedition V0.1 — Phase R2 Combat Foundation Domain', () => {
       const enc = result.encounter;
 
       // Enemy took 0 damage
-      expect(enc.enemy.hp).toBe(40);
-      // Enemy dealt 4 damage to player
-      expect(enc.player.hp).toBe(96);
+      expect(enc.enemy.hp).toBe(100);
+      // Enemy dealt 8 damage to player
+      expect(enc.player.hp).toBe(92);
       expect(enc.status).toBe(ENCOUNTER_STATUS.ACTIVE);
 
       expect(enc.stats.correctAnswers).toBe(0);
       expect(enc.stats.wrongAnswers).toBe(1);
       expect(enc.stats.totalDamageDealt).toBe(0);
-      expect(enc.stats.totalDamageTaken).toBe(4);
+      expect(enc.stats.totalDamageTaken).toBe(8);
     });
 
     test('enemy does not attack after lethal correct answer', () => {
-      // Enemy starts at 10 HP so 1 correct answer kills it
+      // Enemy starts at 25 HP so 1 correct ATTACK kills it
       const initial = createEncounter({
         nodeId: 'node-1-0',
         playerHp: 100,
         customQuestion: mockQuestion,
       });
-      initial.enemy.hp = 10;
+      initial.enemy.hp = 25;
 
-      const result = resolveEncounterTurn(initial, {
+      const armed = selectActionInEncounter(initial, PLAYER_ACTION_IDS.ATTACK);
+      const result = resolveEncounterTurn(armed, {
         choiceId: 'c1', // Correct
         token: 'tok_test_1',
       });
@@ -167,11 +194,12 @@ describe('Rogue Expedition V0.1 — Phase R2 Combat Foundation Domain', () => {
     test('player defeat when player HP reaches 0', () => {
       const initial = createEncounter({
         nodeId: 'node-1-0',
-        playerHp: 4, // Less than or equal to enemy 4 damage
+        playerHp: 8, // Equal to enemy 8 damage
         customQuestion: mockQuestion,
       });
 
-      const result = resolveEncounterTurn(initial, {
+      const armed = selectActionInEncounter(initial, PLAYER_ACTION_IDS.ATTACK);
+      const result = resolveEncounterTurn(armed, {
         choiceId: 'c2', // Wrong answer
         token: 'tok_test_1',
       });
@@ -193,7 +221,8 @@ describe('Rogue Expedition V0.1 — Phase R2 Combat Foundation Domain', () => {
       });
       initial.enemy.intent.value = 50; // Overkill damage
 
-      const result = resolveEncounterTurn(initial, {
+      const armed = selectActionInEncounter(initial, PLAYER_ACTION_IDS.ATTACK);
+      const result = resolveEncounterTurn(armed, {
         choiceId: 'c2',
         token: 'tok_test_1',
       });
@@ -206,9 +235,10 @@ describe('Rogue Expedition V0.1 — Phase R2 Combat Foundation Domain', () => {
         nodeId: 'node-1-0',
         customQuestion: mockQuestion,
       });
-      initial.enemy.hp = 10; // Less than 20 damage
+      initial.enemy.hp = 10; // Less than 25 damage
 
-      const result = resolveEncounterTurn(initial, {
+      const armed = selectActionInEncounter(initial, PLAYER_ACTION_IDS.ATTACK);
+      const result = resolveEncounterTurn(armed, {
         choiceId: 'c1',
         token: 'tok_test_1',
       });
@@ -225,12 +255,13 @@ describe('Rogue Expedition V0.1 — Phase R2 Combat Foundation Domain', () => {
       });
 
       // First submission
-      const first = resolveEncounterTurn(initial, {
+      const armed = selectActionInEncounter(initial, PLAYER_ACTION_IDS.ATTACK);
+      const first = resolveEncounterTurn(armed, {
         choiceId: 'c1',
         token: 'tok_test_1',
       });
       expect(first.resolved).toBe(true);
-      expect(first.encounter.enemy.hp).toBe(30);
+      expect(first.encounter.enemy.hp).toBe(75);
 
       // Duplicate submission of the same token
       const duplicate = resolveEncounterTurn(first.encounter, {
@@ -240,7 +271,7 @@ describe('Rogue Expedition V0.1 — Phase R2 Combat Foundation Domain', () => {
 
       expect(duplicate.resolved).toBe(false);
       expect(duplicate.reason).toBe('TOKEN_MISMATCH'); // current question already moved or token mismatch
-      expect(duplicate.encounter.enemy.hp).toBe(30); // No double damage!
+      expect(duplicate.encounter.enemy.hp).toBe(75); // No double damage!
       expect(duplicate.encounter.stats.correctAnswers).toBe(1); // No double stats!
     });
 
@@ -250,14 +281,15 @@ describe('Rogue Expedition V0.1 — Phase R2 Combat Foundation Domain', () => {
         customQuestion: mockQuestion,
       });
 
-      const res = resolveEncounterTurn(initial, {
+      const armed = selectActionInEncounter(initial, PLAYER_ACTION_IDS.ATTACK);
+      const res = resolveEncounterTurn(armed, {
         choiceId: 'c1',
         token: 'invalid_token_999',
       });
 
       expect(res.resolved).toBe(false);
       expect(res.reason).toBe('TOKEN_MISMATCH');
-      expect(res.encounter.enemy.hp).toBe(40);
+      expect(res.encounter.enemy.hp).toBe(100);
     });
   });
 

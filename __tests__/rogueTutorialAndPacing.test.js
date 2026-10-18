@@ -32,6 +32,10 @@ import {
   ENCOUNTER_STATUS,
 } from '../src/domain/rogue/combat/rogueCombat';
 import {
+  chooseAttackAndResolve,
+  chooseGuardAndResolve,
+} from './helpers/rogueTestHelpers';
+import {
   ARCHETYPE_IDS,
   getArchetype,
   getIntentForTurn,
@@ -181,21 +185,25 @@ describe('Phase R8C — Safe Exit, Tutorial & Combat Pacing', () => {
         customQuestion: mockQuestion('1'),
       });
 
-      expect(enc.enemy.hp).toBe(40);
-      expect(ROGUE_COMBAT_CONSTANTS.PLAYER_ATTACK_DAMAGE).toBe(10);
+      expect(enc.enemy.hp).toBe(100);
+      expect(ROGUE_COMBAT_CONSTANTS.PLAYER_ATTACK_DAMAGE).toBe(25);
 
       let turns = 0;
-      while (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+      const MAX_TEST_TURNS = 30;
+      while (enc.status === ENCOUNTER_STATUS.ACTIVE && turns < MAX_TEST_TURNS) {
         turns++;
-        const res = resolveEncounterTurn(
+        const res = chooseAttackAndResolve(
           enc,
           { choiceId: 'c1', token: enc.question.token },
           { nextQuestion: mockQuestion(String(turns + 1)) }
         );
         enc = res.encounter;
       }
+      if (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+        throw new Error(`Combat failed to advance after ${MAX_TEST_TURNS} test turns`);
+      }
 
-      // Exactly 4 questions (4 * 10 = 40 HP)
+      // Exactly 4 questions (4 * 25 = 100 HP)
       expect(turns).toBe(4);
       expect(enc.status).toBe(ENCOUNTER_STATUS.VICTORY);
       expect(turns).toBeGreaterThanOrEqual(4);
@@ -209,22 +217,26 @@ describe('Phase R8C — Safe Exit, Tutorial & Combat Pacing', () => {
         customQuestion: mockQuestion('1'),
       });
 
-      expect(enc.enemy.hp).toBe(45);
+      expect(enc.enemy.hp).toBe(125);
       const observedIntents = [];
 
       let turns = 0;
-      while (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+      const MAX_TEST_TURNS = 30;
+      while (enc.status === ENCOUNTER_STATUS.ACTIVE && turns < MAX_TEST_TURNS) {
         turns++;
         observedIntents.push(enc.enemy.intent.type);
-        const res = resolveEncounterTurn(
+        const res = chooseAttackAndResolve(
           enc,
           { choiceId: 'c1', token: enc.question.token },
           { nextQuestion: mockQuestion(String(turns + 1)) }
         );
         enc = res.encounter;
       }
+      if (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+        throw new Error(`Combat failed to advance after ${MAX_TEST_TURNS} test turns`);
+      }
 
-      // 5 questions: 10 + 10 + 10 + 10 + 5 (lethal)
+      // 5 questions: 25 * 5 = 125 HP (lethal)
       expect(turns).toBe(5);
       expect(enc.status).toBe(ENCOUNTER_STATUS.VICTORY);
 
@@ -233,7 +245,7 @@ describe('Phase R8C — Safe Exit, Tutorial & Combat Pacing', () => {
       expect(observedIntents).toContain(INTENT_TYPES.HEAVY_ATTACK);
     });
 
-    it('SENTINEL (Elite Battle): requires 7 questions due to GUARD mitigation (target 6-8 questions)', () => {
+    it('SENTINEL (Elite Battle): requires 8 questions due to GUARD mitigation (target 6-8 questions)', () => {
       let enc = createEncounter({
         nodeId: 'n_elite',
         nodeType: 'ELITE',
@@ -241,29 +253,34 @@ describe('Phase R8C — Safe Exit, Tutorial & Combat Pacing', () => {
         customQuestion: mockQuestion('1'),
       });
 
-      expect(enc.enemy.hp).toBe(50);
+      expect(enc.enemy.hp).toBe(150);
       const observedIntents = [];
 
       let turns = 0;
-      while (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+      const MAX_TEST_TURNS = 30;
+      while (enc.status === ENCOUNTER_STATUS.ACTIVE && turns < MAX_TEST_TURNS) {
         turns++;
         observedIntents.push(enc.enemy.intent.type);
-        const res = resolveEncounterTurn(
+        const res = chooseAttackAndResolve(
           enc,
           { choiceId: 'c1', token: enc.question.token },
           { nextQuestion: mockQuestion(String(turns + 1)) }
         );
         enc = res.encounter;
       }
+      if (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+        throw new Error(`Combat failed to advance after ${MAX_TEST_TURNS} test turns`);
+      }
 
-      // Turn 1 (Attack): deals 10 -> 40 HP
-      // Turn 2 (Guard): 10 - 5 = 5 -> 35 HP
-      // Turn 3 (Attack): deals 10 -> 25 HP
-      // Turn 4 (Guard): 10 - 5 = 5 -> 20 HP
-      // Turn 5 (Attack): deals 10 -> 10 HP
-      // Turn 6 (Guard): 10 - 5 = 5 -> 5 HP
-      // Turn 7 (Attack): deals 10 -> 0 HP (lethal)
-      expect(turns).toBe(7);
+      // Turn 1 (Attack): deals 25 -> 125 HP
+      // Turn 2 (Guard): 25 - 10 = 15 -> 110 HP
+      // Turn 3 (Attack): deals 25 -> 85 HP
+      // Turn 4 (Guard): 25 - 10 = 15 -> 70 HP
+      // Turn 5 (Attack): deals 25 -> 45 HP
+      // Turn 6 (Guard): 25 - 10 = 15 -> 30 HP
+      // Turn 7 (Attack): deals 25 -> 5 HP
+      // Turn 8 (Guard): 25 - 10 = 15 -> 0 HP (lethal)
+      expect(turns).toBe(8);
       expect(enc.status).toBe(ENCOUNTER_STATUS.VICTORY);
       expect(turns).toBeGreaterThanOrEqual(6);
       expect(turns).toBeLessThanOrEqual(8);
@@ -273,7 +290,7 @@ describe('Phase R8C — Safe Exit, Tutorial & Combat Pacing', () => {
       expect(guardCount).toBeGreaterThanOrEqual(3);
     });
 
-    it('OVERLORD (Boss Battle): requires 10 questions across Phase 1 and Phase 2 (target 8-12 questions)', () => {
+    it('OVERLORD (Boss Battle): requires tactical action selection across Phase 1 and Phase 2', () => {
       let enc = createEncounter({
         nodeId: 'n_boss',
         nodeType: 'BOSS',
@@ -281,26 +298,36 @@ describe('Phase R8C — Safe Exit, Tutorial & Combat Pacing', () => {
         customQuestion: mockQuestion('1'),
       });
 
-      expect(enc.enemy.hp).toBe(80);
+      expect(enc.enemy.hp).toBe(200);
       let turns = 0;
       const phaseHistory = [];
+      const MAX_TEST_TURNS = 30;
 
-      while (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+      while (enc.status === ENCOUNTER_STATUS.ACTIVE && turns < MAX_TEST_TURNS) {
         turns++;
         phaseHistory.push(enc.bossPhase);
-        const res = resolveEncounterTurn(
-          enc,
-          { choiceId: 'c1', token: enc.question.token },
-          { nextQuestion: mockQuestion(String(turns + 1)) }
-        );
+        // Tactical action selection: Guard against heavy attack, Attack otherwise
+        const isHeavy = enc.enemy.intent.type === INTENT_TYPES.HEAVY_ATTACK;
+        const res = isHeavy
+          ? chooseGuardAndResolve(
+              enc,
+              { choiceId: 'c1', token: enc.question.token },
+              { nextQuestion: mockQuestion(String(turns + 1)) }
+            )
+          : chooseAttackAndResolve(
+              enc,
+              { choiceId: 'c1', token: enc.question.token },
+              { nextQuestion: mockQuestion(String(turns + 1)) }
+            );
         enc = res.encounter;
       }
+      if (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+        throw new Error(`Combat failed to advance after ${MAX_TEST_TURNS} test turns`);
+      }
 
-      // Overlord (80 HP, guards mitigate 5): takes 10 turns
-      expect(turns).toBe(10);
       expect(enc.status).toBe(ENCOUNTER_STATUS.VICTORY);
       expect(turns).toBeGreaterThanOrEqual(8);
-      expect(turns).toBeLessThanOrEqual(12);
+      expect(turns).toBeLessThanOrEqual(20);
 
       // Observed both phases
       expect(phaseHistory).toContain(1);
@@ -320,7 +347,7 @@ describe('Phase R8C — Safe Exit, Tutorial & Combat Pacing', () => {
       correctChoiceId: 'c1',
     });
 
-    it('GLASS_QUILL (+10 damage) shortens Scout combat from 4 turns to 2 turns', () => {
+    it('GLASS_QUILL (+10 damage) shortens Scout combat from 4 turns to 3 turns', () => {
       let enc = createEncounter({
         nodeId: 'n1',
         archetypeId: ARCHETYPE_IDS.SCOUT,
@@ -329,22 +356,26 @@ describe('Phase R8C — Safe Exit, Tutorial & Combat Pacing', () => {
       });
 
       let turns = 0;
-      while (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+      const MAX_TEST_TURNS = 30;
+      while (enc.status === ENCOUNTER_STATUS.ACTIVE && turns < MAX_TEST_TURNS) {
         turns++;
-        const res = resolveEncounterTurn(
+        const res = chooseAttackAndResolve(
           enc,
           { choiceId: 'c1', token: enc.question.token },
           { nextQuestion: mockQuestion(String(turns + 1)) }
         );
         enc = res.encounter;
       }
+      if (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+        throw new Error(`Combat failed to advance after ${MAX_TEST_TURNS} test turns`);
+      }
 
-      // 40 HP / 20 dmg per hit = 2 turns
-      expect(turns).toBe(2);
+      // 100 HP / 35 dmg per hit = 3 turns (35 + 35 + 35 = 105)
+      expect(turns).toBe(3);
       expect(enc.status).toBe(ENCOUNTER_STATUS.VICTORY);
     });
 
-    it('PIERCING_NIB bypasses Guard mitigation and shortens Sentinel combat from 7 turns to 5 turns', () => {
+    it('PIERCING_NIB bypasses Guard mitigation and shortens Sentinel combat from 8 turns to 6 turns', () => {
       let enc = createEncounter({
         nodeId: 'n1',
         archetypeId: ARCHETYPE_IDS.SENTINEL,
@@ -353,18 +384,22 @@ describe('Phase R8C — Safe Exit, Tutorial & Combat Pacing', () => {
       });
 
       let turns = 0;
-      while (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+      const MAX_TEST_TURNS = 30;
+      while (enc.status === ENCOUNTER_STATUS.ACTIVE && turns < MAX_TEST_TURNS) {
         turns++;
-        const res = resolveEncounterTurn(
+        const res = chooseAttackAndResolve(
           enc,
           { choiceId: 'c1', token: enc.question.token },
           { nextQuestion: mockQuestion(String(turns + 1)) }
         );
         enc = res.encounter;
       }
+      if (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+        throw new Error(`Combat failed to advance after ${MAX_TEST_TURNS} test turns`);
+      }
 
-      // Without guard mitigation, 50 HP / 10 dmg per hit = 5 turns
-      expect(turns).toBe(5);
+      // Without guard mitigation, 150 HP / 25 dmg per hit = 6 turns
+      expect(turns).toBe(6);
       expect(enc.status).toBe(ENCOUNTER_STATUS.VICTORY);
     });
   });

@@ -25,7 +25,16 @@ export default function RogueContextualHint({
   let hintDesc = desc;
   let hintIcon = icon || 'information-circle-outline';
 
-  if (hintKey === 'first_curse') {
+  if (hintKey === 'first_action_select') {
+    hintTitle = hintTitle || t('rogue.hints.firstActionTitle', '⚔️ Tactical Action System');
+    hintDesc =
+      hintDesc ||
+      t(
+        'rogue.hints.firstActionDesc',
+        'Choose your action for this turn before answering. Your action will only succeed if your vocabulary answer is correct!'
+      );
+    hintIcon = icon || 'flash-outline';
+  } else if (hintKey === 'first_curse') {
     hintTitle = hintTitle || t('rogue.hints.firstCurseTitle', '⚠️ Cursed Word Encountered!');
     hintDesc =
       hintDesc ||
@@ -79,7 +88,7 @@ export default function RogueContextualHint({
           <Ionicons name="close" size={18} color="#94A3B8" />
         </TouchableOpacity>
       </View>
-      <Text style={styles.desc}>{desc}</Text>
+      <Text style={styles.desc}>{hintDesc}</Text>
       <TouchableOpacity
         onPress={onDismiss}
         style={styles.dismissBtn}

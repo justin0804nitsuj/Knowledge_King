@@ -15,7 +15,9 @@ import {
 } from '../src/domain/rogue/curse/cursedWordModel';
 import {
   createEncounter,
+  selectActionInEncounter,
   resolveEncounterTurn,
+  PLAYER_ACTION_IDS,
   ENCOUNTER_STATUS,
 } from '../src/domain/rogue/combat/rogueCombat';
 import { getRogueQuestion } from '../src/domain/rogue/combat/rogueQuestionProvider';
@@ -29,6 +31,7 @@ import {
   createNewRun,
   loadActiveRun,
   advanceToNode,
+  selectCombatAction,
   submitCombatAnswer,
   getActiveSelectableNodes,
 } from '../src/services/rogue/rogueRunService';
@@ -90,7 +93,8 @@ describe('Rogue Expedition V0.1 — Phase R4 Cursed Word System', () => {
 
       expect(initial.cursedWords).toEqual([]);
 
-      const result = resolveEncounterTurn(initial, {
+      const armed = selectActionInEncounter(initial, PLAYER_ACTION_IDS.ATTACK);
+      const result = resolveEncounterTurn(armed, {
         choiceId: 'c2', // wrong
         token: 'tok_apple_1',
       });
@@ -110,8 +114,8 @@ describe('Rogue Expedition V0.1 — Phase R4 Cursed Word System', () => {
       expect(result.resolution.curseResult.backlash).toBe(0);
       expect(result.resolution.curseResult.type).toBe(CURSE_TRANSITION_TYPES.CURSE_APPLIED);
 
-      // Player took only normal enemy damage (4 from Scout), not backlash
-      expect(enc.player.hp).toBe(96);
+      // Player took only normal enemy damage (8 from Scout in R9), not backlash
+      expect(enc.player.hp).toBe(92);
     });
 
     test('same word does not create duplicate entries in cursedWords', () => {
@@ -224,10 +228,11 @@ describe('Rogue Expedition V0.1 — Phase R4 Cursed Word System', () => {
         },
       });
 
-      // Enemy has 10 HP, player deal 10 -> lethal
-      initial.enemy.hp = 10;
+      // Enemy has 25 HP, player deals 25 with ATTACK -> lethal
+      initial.enemy.hp = 25;
 
-      const result = resolveEncounterTurn(initial, {
+      const armed = selectActionInEncounter(initial, PLAYER_ACTION_IDS.ATTACK);
+      const result = resolveEncounterTurn(armed, {
         choiceId: 'c1',
         token: 'tok_curse_kill',
       });
@@ -262,7 +267,8 @@ describe('Rogue Expedition V0.1 — Phase R4 Cursed Word System', () => {
         customQuestion: cursedQ,
       });
 
-      const res = resolveEncounterTurn(enc, {
+      const armed = selectActionInEncounter(enc, PLAYER_ACTION_IDS.ATTACK);
+      const res = resolveEncounterTurn(armed, {
         choiceId: 'c2', // wrong
         token: 'tok_curse_review',
       });
@@ -270,9 +276,9 @@ describe('Rogue Expedition V0.1 — Phase R4 Cursed Word System', () => {
       expect(res.resolved).toBe(true);
       // Stack becomes 3 -> Backlash = 3 * 5 = 15 damage
       expect(res.resolution.backlashDamage).toBe(15);
-      expect(res.resolution.enemyDamage).toBe(4); // Scout standard attack
-      // Total HP lost: 15 (backlash) + 4 (enemy) = 19 -> 100 - 19 = 81
-      expect(res.encounter.player.hp).toBe(81);
+      expect(res.resolution.enemyDamage).toBe(8); // Scout standard attack in R9 is 8
+      // Total HP lost: 15 (backlash) + 8 (enemy) = 23 -> 100 - 23 = 77
+      expect(res.encounter.player.hp).toBe(77);
       expect(res.encounter.stats.curseBacklashTaken).toBe(15);
     });
 
@@ -297,7 +303,8 @@ describe('Rogue Expedition V0.1 — Phase R4 Cursed Word System', () => {
         customQuestion: cursedQ,
       });
 
-      const res = resolveEncounterTurn(enc, {
+      const armed = selectActionInEncounter(enc, PLAYER_ACTION_IDS.ATTACK);
+      const res = resolveEncounterTurn(armed, {
         choiceId: 'c2',
         token: 'tok_backlash_lethal',
       });
@@ -413,7 +420,8 @@ describe('Rogue Expedition V0.1 — Phase R4 Cursed Word System', () => {
       });
 
       // Turn 1 wrong
-      const res1 = resolveEncounterTurn(initial, { choiceId: 'c2', token: 'tok_apple_1' });
+      const armed = selectActionInEncounter(initial, PLAYER_ACTION_IDS.ATTACK);
+      const res1 = resolveEncounterTurn(armed, { choiceId: 'c2', token: 'tok_apple_1' });
       expect(res1.resolved).toBe(true);
       expect(res1.encounter.cursedWords.length).toBe(1);
       expect(res1.encounter.cursedWords[0].stacks).toBe(1);
@@ -445,6 +453,7 @@ describe('Rogue Expedition V0.1 — Phase R4 Cursed Word System', () => {
 
       // Answer wrong -> curses "persistWord"
       let enc = (await loadActiveRun()).encounter;
+      await selectCombatAction({ actionId: PLAYER_ACTION_IDS.ATTACK });
       const resWrong = await submitCombatAnswer({
         choiceId: 'c2',
         token: enc.question.token,
@@ -452,15 +461,24 @@ describe('Rogue Expedition V0.1 — Phase R4 Cursed Word System', () => {
       expect(resWrong.encounter.cursedWords.length).toBe(1);
       expect(resWrong.encounter.cursedWords[0].wordId).toBe('w_persist');
 
-      // Now defeat the enemy with correct answers
+      // Now defeat the enemy with correct answers with bounded loop safeguard
       enc = resWrong.encounter;
-      while (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+      let turns = 0;
+      const MAX_TURNS = 30;
+
+      while (enc.status === ENCOUNTER_STATUS.ACTIVE && turns++ < MAX_TURNS) {
+        await selectCombatAction({ actionId: PLAYER_ACTION_IDS.ATTACK });
         const killRes = await submitCombatAnswer({
           choiceId: enc.question.correctChoiceId,
           token: enc.question.token,
         });
         enc = killRes.encounter;
       }
+
+      if (enc.status === ENCOUNTER_STATUS.ACTIVE) {
+        throw new Error(`Combat failed to resolve within ${MAX_TURNS} turns`);
+      }
+
       expect(enc.status).toBe(ENCOUNTER_STATUS.VICTORY);
 
       // Run must have preserved cursedWords across combat victory!
@@ -534,6 +552,7 @@ describe('Rogue Expedition V0.1 — Phase R4 Cursed Word System', () => {
           correctChoiceId: 'c1',
         },
       });
+      await selectCombatAction({ actionId: PLAYER_ACTION_IDS.ATTACK });
       await submitCombatAnswer({ choiceId: 'c2', token: 'tok_g' });
       const guestRun = await loadActiveRun();
       expect(guestRun.cursedWords.length).toBe(1);

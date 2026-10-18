@@ -12,69 +12,70 @@ import {
   resolveEncounterTurn,
   ENCOUNTER_STATUS,
 } from '../src/domain/rogue/combat/rogueCombat';
+import { chooseAttackAndResolve, chooseGuardAndResolve } from './helpers/rogueTestHelpers';
 
 describe('Rogue Expedition V0.1 — Phase R3 Enemy Archetypes & Intent System', () => {
   describe('1. Archetype Registry & Intent Patterns', () => {
     test('SCOUT has predictable repeating ATTACK cycle', () => {
       const scout = getArchetype(ARCHETYPE_IDS.SCOUT);
       expect(scout).toBeDefined();
-      expect(scout.hp).toBe(40);
-      expect(scout.baseDamage).toBe(4);
+      expect(scout.hp).toBe(100);
+      expect(scout.baseDamage).toBe(8);
 
-      // Verify turns 1 to 5 are strictly ATTACK with 4 damage
+      // Verify turns 1 to 5 are strictly ATTACK with 8 damage
       for (let turn = 1; turn <= 5; turn++) {
         const intent = getIntentForTurn(scout, turn);
-        expect(intent).toEqual({ type: INTENT_TYPES.ATTACK, value: 4 });
+        expect(intent).toEqual({ type: INTENT_TYPES.ATTACK, value: 8 });
       }
     });
 
     test('BRUTE alternates between normal ATTACK and HEAVY_ATTACK', () => {
       const brute = getArchetype(ARCHETYPE_IDS.BRUTE);
       expect(brute).toBeDefined();
-      expect(brute.hp).toBe(45);
+      expect(brute.hp).toBe(125);
 
-      // Turn 1: ATTACK 4
-      expect(getIntentForTurn(brute, 1)).toEqual({ type: INTENT_TYPES.ATTACK, value: 4 });
-      // Turn 2: HEAVY_ATTACK 8
-      expect(getIntentForTurn(brute, 2)).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 8 });
-      // Turn 3: ATTACK 4
-      expect(getIntentForTurn(brute, 3)).toEqual({ type: INTENT_TYPES.ATTACK, value: 4 });
-      // Turn 4: HEAVY_ATTACK 8
-      expect(getIntentForTurn(brute, 4)).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 8 });
+      // Turn 1: ATTACK 8
+      expect(getIntentForTurn(brute, 1)).toEqual({ type: INTENT_TYPES.ATTACK, value: 8 });
+      // Turn 2: HEAVY_ATTACK 22
+      expect(getIntentForTurn(brute, 2)).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 22 });
+      // Turn 3: ATTACK 8
+      expect(getIntentForTurn(brute, 3)).toEqual({ type: INTENT_TYPES.ATTACK, value: 8 });
+      // Turn 4: HEAVY_ATTACK 22
+      expect(getIntentForTurn(brute, 4)).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 22 });
     });
 
     test('SENTINEL alternates between ATTACK and GUARD', () => {
       const sentinel = getArchetype(ARCHETYPE_IDS.SENTINEL);
       expect(sentinel).toBeDefined();
-      expect(sentinel.hp).toBe(50);
+      expect(sentinel.hp).toBe(150);
 
-      // Turn 1: ATTACK 5
-      expect(getIntentForTurn(sentinel, 1)).toEqual({ type: INTENT_TYPES.ATTACK, value: 5 });
-      // Turn 2: GUARD 5
-      expect(getIntentForTurn(sentinel, 2)).toEqual({ type: INTENT_TYPES.GUARD, value: 5 });
-      // Turn 3: ATTACK 5
-      expect(getIntentForTurn(sentinel, 3)).toEqual({ type: INTENT_TYPES.ATTACK, value: 5 });
-      // Turn 4: GUARD 5
-      expect(getIntentForTurn(sentinel, 4)).toEqual({ type: INTENT_TYPES.GUARD, value: 5 });
+      // Turn 1: ATTACK 10
+      expect(getIntentForTurn(sentinel, 1)).toEqual({ type: INTENT_TYPES.ATTACK, value: 10 });
+      // Turn 2: GUARD 10
+      expect(getIntentForTurn(sentinel, 2)).toEqual({ type: INTENT_TYPES.GUARD, value: 10 });
+      // Turn 3: ATTACK 10
+      expect(getIntentForTurn(sentinel, 3)).toEqual({ type: INTENT_TYPES.ATTACK, value: 10 });
+      // Turn 4: GUARD 10
+      expect(getIntentForTurn(sentinel, 4)).toEqual({ type: INTENT_TYPES.GUARD, value: 10 });
     });
 
     test('OVERLORD follows deterministic 3-turn rotation (ATTACK -> GUARD -> HEAVY_ATTACK)', () => {
       const overlord = getArchetype(ARCHETYPE_IDS.OVERLORD);
       expect(overlord).toBeDefined();
-      expect(overlord.hp).toBe(80);
+      expect(overlord.hp).toBe(200);
 
-      // Turn 1: ATTACK 6
-      expect(getIntentForTurn(overlord, 1)).toEqual({ type: INTENT_TYPES.ATTACK, value: 6 });
-      // Turn 2: GUARD 5
-      expect(getIntentForTurn(overlord, 2)).toEqual({ type: INTENT_TYPES.GUARD, value: 5 });
-      // Turn 3: HEAVY_ATTACK 12
-      expect(getIntentForTurn(overlord, 3)).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 12 });
-      // Turn 4: ATTACK 6
-      expect(getIntentForTurn(overlord, 4)).toEqual({ type: INTENT_TYPES.ATTACK, value: 6 });
-      // Turn 5: GUARD 5
-      expect(getIntentForTurn(overlord, 5)).toEqual({ type: INTENT_TYPES.GUARD, value: 5 });
-      // Turn 6: HEAVY_ATTACK 12
-      expect(getIntentForTurn(overlord, 6)).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 12 });
+      // Turn 1: ATTACK 10
+      expect(getIntentForTurn(overlord, 1)).toEqual({ type: INTENT_TYPES.ATTACK, value: 10 });
+      // Turn 2: GUARD 10
+      expect(getIntentForTurn(overlord, 2)).toEqual({ type: INTENT_TYPES.GUARD, value: 10 });
+      // Turn 3: HEAVY_ATTACK 24
+      expect(getIntentForTurn(overlord, 3)).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 24 });
+      // Turn 4: ATTACK 10
+      expect(getIntentForTurn(overlord, 4)).toEqual({ type: INTENT_TYPES.ATTACK, value: 10 });
+      // Turn 5: GUARD 10
+      expect(getIntentForTurn(overlord, 5)).toEqual({ type: INTENT_TYPES.GUARD, value: 10 });
+      // Turn 6: HEAVY_ATTACK 24
+      expect(getIntentForTurn(overlord, 6)).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 24 });
     });
   });
 
@@ -175,12 +176,12 @@ describe('Rogue Expedition V0.1 — Phase R3 Enemy Archetypes & Intent System', 
 
       expect(encounter.enemy.intent).toBeDefined();
       expect(encounter.enemy.intent.type).toBe(INTENT_TYPES.ATTACK);
-      expect(encounter.enemy.intent.value).toBe(5);
+      expect(encounter.enemy.intent.value).toBe(10);
       expect(encounter.turn).toBe(1);
     });
 
     test('GUARD intent mitigates incoming player damage and enemy deals no attack damage', () => {
-      // Sentinel turn 2 has GUARD intent (mitigation: 5)
+      // Sentinel turn 2 has GUARD intent (mitigation: 10)
       const enc = createEncounter({
         nodeId: 'node-sentinel-guard',
         archetypeId: ARCHETYPE_IDS.SENTINEL,
@@ -188,16 +189,16 @@ describe('Rogue Expedition V0.1 — Phase R3 Enemy Archetypes & Intent System', 
       });
 
       // Advance to turn 2 where Sentinel's intent is GUARD
-      const t1Result = resolveEncounterTurn(
+      const t1Result = chooseAttackAndResolve(
         enc,
         { choiceId: 'c1', token: 'tok_test_1' },
         { nextQuestion: mockQ2 }
       );
       const turn2Enc = t1Result.encounter;
       expect(turn2Enc.turn).toBe(2);
-      expect(turn2Enc.enemy.intent).toEqual({ type: INTENT_TYPES.GUARD, value: 5 });
+      expect(turn2Enc.enemy.intent).toEqual({ type: INTENT_TYPES.GUARD, value: 10 });
 
-      // Player answers correctly on guard turn (Normal 10 damage mitigated by 5 -> 5 damage)
+      // Player answers correctly on guard turn (Normal 25 damage mitigated by 10 -> 15 damage)
       const mockQ3 = {
         questionId: 'q_test_3',
         token: 'tok_test_3',
@@ -205,10 +206,10 @@ describe('Rogue Expedition V0.1 — Phase R3 Enemy Archetypes & Intent System', 
         choices: [{ id: 'c1', text: '剛毅' }],
         correctChoiceId: 'c1',
       };
-      const initialEnemyHp = turn2Enc.enemy.hp; // 50 - 10 = 40
-      const initialPlayerHp = turn2Enc.player.hp; // 100 - 5 = 95
+      const initialEnemyHp = turn2Enc.enemy.hp; // 150 - 25 = 125
+      const initialPlayerHp = turn2Enc.player.hp; // 100 - 10 = 90
 
-      const guardTurnResult = resolveEncounterTurn(
+      const guardTurnResult = chooseAttackAndResolve(
         turn2Enc,
         { choiceId: 'c1', token: 'tok_test_2' },
         { nextQuestion: mockQ3 }
@@ -216,9 +217,9 @@ describe('Rogue Expedition V0.1 — Phase R3 Enemy Archetypes & Intent System', 
       expect(guardTurnResult.resolved).toBe(true);
       const turn3Enc = guardTurnResult.encounter;
 
-      // Enemy takes only 5 damage: 40 - 5 = 35
-      expect(turn3Enc.enemy.hp).toBe(initialEnemyHp - 5);
-      // Enemy dealt 0 damage because it was guarding: Player HP remains 95!
+      // Enemy takes only 15 damage: 125 - 15 = 110
+      expect(turn3Enc.enemy.hp).toBe(initialEnemyHp - 15);
+      // Enemy dealt 0 damage because it was guarding: Player HP remains 90!
       expect(turn3Enc.player.hp).toBe(initialPlayerHp);
 
       // Guard mitigation expires on turn 3! Next turn intent is ATTACK
@@ -234,7 +235,7 @@ describe('Rogue Expedition V0.1 — Phase R3 Enemy Archetypes & Intent System', 
       });
 
       // Advance to turn 2 (GUARD)
-      const t1Result = resolveEncounterTurn(
+      const t1Result = chooseAttackAndResolve(
         enc,
         { choiceId: 'c1', token: 'tok_test_1' },
         { nextQuestion: mockQ2 }
@@ -247,7 +248,7 @@ describe('Rogue Expedition V0.1 — Phase R3 Enemy Archetypes & Intent System', 
 
       // Player answers incorrectly ('c2')
       const mockQ3 = { questionId: 'q3', token: 'tok3', word: 'w3', choices: [{ id: 'c1' }], correctChoiceId: 'c1' };
-      const res = resolveEncounterTurn(
+      const res = chooseAttackAndResolve(
         turn2Enc,
         { choiceId: 'c2', token: 'tok_test_2' },
         { nextQuestion: mockQ3 }
@@ -261,7 +262,7 @@ describe('Rogue Expedition V0.1 — Phase R3 Enemy Archetypes & Intent System', 
     });
 
     test('HEAVY_ATTACK deals increased heavy damage when enemy survives', () => {
-      // BRUTE turn 2 is HEAVY_ATTACK (value: 20)
+      // BRUTE turn 2 is HEAVY_ATTACK (value: 22)
       const bruteEnc = createEncounter({
         nodeId: 'node-brute-heavy',
         archetypeId: ARCHETYPE_IDS.BRUTE,
@@ -269,60 +270,75 @@ describe('Rogue Expedition V0.1 — Phase R3 Enemy Archetypes & Intent System', 
         customQuestion: mockQ1,
       });
 
-      // Turn 1: BRUTE ATTACK (4)
-      const t1 = resolveEncounterTurn(
+      // Turn 1: BRUTE ATTACK (8)
+      const t1 = chooseAttackAndResolve(
         bruteEnc,
         { choiceId: 'c2', token: 'tok_test_1' }, // wrong answer
         { nextQuestion: mockQ2 }
       );
       const t2Enc = t1.encounter;
-      expect(t2Enc.player.hp).toBe(96);
-      expect(t2Enc.enemy.intent).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 8 });
+      expect(t2Enc.player.hp).toBe(92);
+      expect(t2Enc.enemy.intent).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 22 });
 
-      // Turn 2: player answers wrong again, enemy executes HEAVY_ATTACK (8 damage)
+      // Turn 2: player answers wrong again, enemy executes HEAVY_ATTACK (22 damage)
       const mockQ3 = { questionId: 'q3', token: 'tok3', word: 'w3', choices: [{ id: 'c1' }], correctChoiceId: 'c1' };
-      const t2 = resolveEncounterTurn(
+      const t2 = chooseAttackAndResolve(
         t2Enc,
         { choiceId: 'c2', token: 'tok_test_2' },
         { nextQuestion: mockQ3 }
       );
       expect(t2.resolved).toBe(true);
-      // Player HP: 96 - 8 = 88
-      expect(t2.encounter.player.hp).toBe(88);
+      // Player HP: 92 - 22 = 70
+      expect(t2.encounter.player.hp).toBe(70);
     });
 
     test('lethal player hit cancels HEAVY_ATTACK immediately', () => {
-      const bruteEnc = createEncounter({
+      let enc = createEncounter({
         nodeId: 'node-brute-lethal',
         archetypeId: ARCHETYPE_IDS.BRUTE,
         playerHp: 100,
-        enemyHp: 20,
         customQuestion: mockQ1,
       });
 
-      // Advance to turn 2
-      const t1 = resolveEncounterTurn(
-        bruteEnc,
-        { choiceId: 'c1', token: 'tok_test_1' }, // deals 10 damage (20 -> 10)
-        { nextQuestion: mockQ2 }
-      );
-      const t2Enc = t1.encounter;
-      t2Enc.enemy.hp = 10; // set low HP so next 10-damage hit is lethal
-      expect(t2Enc.enemy.hp).toBe(10);
-      expect(t2Enc.enemy.intent.type).toBe(INTENT_TYPES.HEAVY_ATTACK);
+      // Turn 1 (Intent: ATTACK 8): Player ATTACK -> Brute HP: 100, Player HP: 92
+      let res = chooseAttackAndResolve(enc, { choiceId: enc.question.correctChoiceId, token: enc.question.token });
+      enc = res.encounter;
 
-      // Player lands lethal blow (deals 10 damage: 10 -> 0)
-      const mockQ3 = { questionId: 'q3', token: 'tok3', word: 'w3', choices: [{ id: 'c1' }], correctChoiceId: 'c1' };
-      const t2 = resolveEncounterTurn(
-        t2Enc,
-        { choiceId: 'c1', token: 'tok_test_2' },
-        { nextQuestion: mockQ3 }
-      );
+      // Turn 2 (Intent: HEAVY_ATTACK 22): Player GUARD (20 block) -> Brute HP: 100, Player takes 2 (92 -> 90)
+      res = chooseGuardAndResolve(enc, { choiceId: enc.question.correctChoiceId, token: enc.question.token });
+      enc = res.encounter;
 
-      expect(t2.encounter.status).toBe(ENCOUNTER_STATUS.VICTORY);
-      expect(t2.encounter.enemy.hp).toBe(0);
+      // Turn 3 (Intent: ATTACK 8): Player ATTACK -> Brute HP: 75, Player takes 8 (90 -> 82)
+      res = chooseAttackAndResolve(enc, { choiceId: enc.question.correctChoiceId, token: enc.question.token });
+      enc = res.encounter;
+
+      // Turn 4 (Intent: HEAVY_ATTACK 22): Player GUARD (20 block) -> Brute HP: 75, Player takes 2 (82 -> 80)
+      res = chooseGuardAndResolve(enc, { choiceId: enc.question.correctChoiceId, token: enc.question.token });
+      enc = res.encounter;
+
+      // Turn 5 (Intent: ATTACK 8): Player ATTACK -> Brute HP: 50, Player takes 8 (80 -> 72)
+      res = chooseAttackAndResolve(enc, { choiceId: enc.question.correctChoiceId, token: enc.question.token });
+      enc = res.encounter;
+
+      // Turn 6 (Intent: HEAVY_ATTACK 22): Player ATTACK -> Brute HP: 25, Player takes 22 (72 -> 50)
+      res = chooseAttackAndResolve(enc, { choiceId: enc.question.correctChoiceId, token: enc.question.token });
+      enc = res.encounter;
+
+      // Turn 7 (Intent: ATTACK 8): Player GUARD -> Brute HP: 25, Player blocks 8 (HP: 50)
+      res = chooseGuardAndResolve(enc, { choiceId: enc.question.correctChoiceId, token: enc.question.token });
+      enc = res.encounter;
+
+      // Turn 8 (Intent: HEAVY_ATTACK 22): Brute HP is 25!
+      expect(enc.enemy.hp).toBe(25);
+      expect(enc.enemy.intent.type).toBe(INTENT_TYPES.HEAVY_ATTACK);
+      const playerHpBeforeLethal = enc.player.hp;
+
+      // Player lands lethal blow (deals 25 damage: 25 -> 0)
+      res = chooseAttackAndResolve(enc, { choiceId: enc.question.correctChoiceId, token: enc.question.token });
+      expect(res.encounter.status).toBe(ENCOUNTER_STATUS.VICTORY);
+      expect(res.encounter.enemy.hp).toBe(0);
       // Heavy attack was cancelled by lethal hit! Player took NO damage from HEAVY_ATTACK
-      expect(t2.encounter.player.hp).toBe(96);
+      expect(res.encounter.player.hp).toBe(playerHpBeforeLethal);
     });
 
     test('duplicate question submission does not re-execute intent or damage twice', () => {
@@ -332,11 +348,11 @@ describe('Rogue Expedition V0.1 — Phase R3 Enemy Archetypes & Intent System', 
         customQuestion: mockQ1,
       });
 
-      const firstRes = resolveEncounterTurn(scoutEnc, { choiceId: 'c1', token: 'tok_test_1' });
+      const firstRes = chooseAttackAndResolve(scoutEnc, { choiceId: 'c1', token: 'tok_test_1' });
       expect(firstRes.resolved).toBe(true);
 
       // Try resubmitting same token
-      const dupRes = resolveEncounterTurn(firstRes.encounter, { choiceId: 'c1', token: 'tok_test_1' });
+      const dupRes = chooseAttackAndResolve(firstRes.encounter, { choiceId: 'c1', token: 'tok_test_1' });
       expect(dupRes.resolved).toBe(false);
       expect(dupRes.reason).toBe('TOKEN_MISMATCH');
       expect(dupRes.encounter.enemy.hp).toBe(firstRes.encounter.enemy.hp);

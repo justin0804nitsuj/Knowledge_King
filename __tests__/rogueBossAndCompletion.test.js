@@ -21,6 +21,11 @@ import {
   resolveEncounterTurn,
   ENCOUNTER_STATUS,
 } from '../src/domain/rogue/combat/rogueCombat';
+import { PLAYER_ACTION_IDS } from '../src/domain/rogue/combat/playerActions';
+import {
+  chooseAttackAndResolve,
+  chooseAttackAndSubmit,
+} from './helpers/rogueTestHelpers';
 import {
   ARCHETYPE_IDS,
   INTENT_TYPES,
@@ -62,8 +67,11 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
   // =========================================================================
   // 1. BOSS PHASE
   // =========================================================================
+  // =========================================================================
+  // 1. BOSS PHASE
+  // =========================================================================
   describe('1. Boss Phase Transitions & Intent Cycles', () => {
-    it('Boss starts in Phase 1 with 80 HP and initial ATTACK 20 intent', () => {
+    it('Boss starts in Phase 1 with 200 HP and initial ATTACK 10 intent', () => {
       const bossEncounter = createEncounter({
         nodeId: 'node-boss',
         nodeType: 'BOSS',
@@ -72,17 +80,17 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
       });
 
       expect(bossEncounter.archetypeId).toBe(ARCHETYPE_IDS.OVERLORD);
-      expect(bossEncounter.enemy.hp).toBe(80);
-      expect(bossEncounter.enemy.maxHp).toBe(80);
+      expect(bossEncounter.enemy.hp).toBe(200);
+      expect(bossEncounter.enemy.maxHp).toBe(200);
       expect(bossEncounter.bossPhase).toBe(1);
       expect(bossEncounter.enemy.intent).toEqual({
         type: INTENT_TYPES.ATTACK,
-        value: 6,
+        value: 10,
       });
     });
 
-    it('crosses into Phase 2 when HP <= 40, without altering telegraphed current intent', () => {
-      // Create encounter with Boss at 45 HP, telegraphed intent ATTACK 6
+    it('crosses into Phase 2 when HP <= 100, without altering telegraphed current intent', () => {
+      // Create encounter with Boss at 105 HP, telegraphed intent ATTACK 10
       const encounter = createEncounter({
         nodeId: 'node-boss',
         nodeType: 'BOSS',
@@ -94,44 +102,38 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
           wordId: 'w1',
         },
       });
-      encounter.enemy.hp = 45;
-      encounter.enemy.intent = { type: INTENT_TYPES.ATTACK, value: 6 };
+      encounter.enemy.hp = 105;
+      encounter.enemy.intent = { type: INTENT_TYPES.ATTACK, value: 10 };
 
-      // Player answers correctly dealing 10 damage -> Boss HP becomes 35 (<= 40)
-      const res = resolveEncounterTurn(
+      // Player answers correctly dealing 25 base damage -> Boss HP becomes 80 (<= 100)
+      const res = chooseAttackAndResolve(
         encounter,
         { choiceId: 'c1', token: 'token-turn-1' },
         { seed: 101 }
       );
 
       expect(res.resolved).toBe(true);
-      // Visible intent ATTACK 6 still executed during turn 1!
+      // Visible intent ATTACK 10 still executed during turn 1!
       expect(res.resolution.executedIntent).toEqual({
         type: INTENT_TYPES.ATTACK,
-        value: 6,
+        value: 10,
       });
-      expect(res.resolution.enemyDamage).toBe(6);
-      expect(res.encounter.player.hp).toBe(94); // 100 - 6 = 94
-      expect(res.encounter.enemy.hp).toBe(35);
+      expect(res.resolution.enemyDamage).toBe(10);
+      expect(res.encounter.player.hp).toBe(90); // 100 - 10 = 90
+      expect(res.encounter.enemy.hp).toBe(80);
 
       // Boss transitioned to Phase 2 for upcoming turn
       expect(res.encounter.bossPhase).toBe(2);
       expect(res.resolution.bossPhaseTransition).toBe(true);
 
-      // Next turn intent must follow Phase 2 cycle: first is HEAVY_ATTACK 12!
+      // Next turn intent must follow Phase 2 cycle: first is HEAVY_ATTACK 24!
       expect(res.encounter.enemy.intent).toEqual({
         type: INTENT_TYPES.HEAVY_ATTACK,
-        value: 12,
+        value: 24,
       });
     });
 
     it('follows the deterministic Phase 2 cycle: HEAVY_ATTACK -> ATTACK -> HEAVY_ATTACK -> GUARD', () => {
-      // In Phase 2:
-      // Turn 1 in phase -> HEAVY_ATTACK 30
-      // Turn 2 in phase -> ATTACK 20
-      // Turn 3 in phase -> HEAVY_ATTACK 30
-      // Turn 4 in phase -> GUARD 10
-      // Turn 5 in phase -> HEAVY_ATTACK 30
       const phase2StartTurn = 4;
       const t1 = getIntentForTurn(ARCHETYPE_IDS.OVERLORD, 4, {
         bossPhase: 2,
@@ -154,11 +156,11 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
         phase2StartTurn,
       });
 
-      expect(t1).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 12 });
-      expect(t2).toEqual({ type: INTENT_TYPES.ATTACK, value: 6 });
-      expect(t3).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 12 });
-      expect(t4).toEqual({ type: INTENT_TYPES.GUARD, value: 5 });
-      expect(t5).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 12 });
+      expect(t1).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 24 });
+      expect(t2).toEqual({ type: INTENT_TYPES.ATTACK, value: 12 });
+      expect(t3).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 24 });
+      expect(t4).toEqual({ type: INTENT_TYPES.GUARD, value: 10 });
+      expect(t5).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 24 });
     });
 
     it('preserves Boss phase, HP, and intent across serialization and reload', async () => {
@@ -208,21 +210,21 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
           wordId: 'w1',
         },
       });
-      // Set Boss intent to GUARD 5
-      encounter.enemy.intent = { type: INTENT_TYPES.GUARD, value: 5 };
+      // Set Boss intent to GUARD 10
+      encounter.enemy.intent = { type: INTENT_TYPES.GUARD, value: 10 };
 
-      // Correct answer: base 10 + 10 Glass Quill = 20.
-      // Guard mitigation 5 pierced by 10 (Piercing Nib) = 0 mitigated.
-      // Net player damage = 20.
-      const res = resolveEncounterTurn(
+      // Correct answer: base 25 + 10 Glass Quill = 35.
+      // Guard mitigation 10 pierced by 10 (Piercing Nib) = 0 mitigated.
+      // Net player damage = 35.
+      const res = chooseAttackAndResolve(
         encounter,
         { choiceId: 'c1', token: 'token-gq' },
         { seed: 999 }
       );
 
-      expect(res.resolution.playerDamage).toBe(20);
-      expect(res.resolution.guardPierced).toBe(5);
-      expect(res.encounter.enemy.hp).toBe(80 - 20);
+      expect(res.resolution.playerDamage).toBe(35);
+      expect(res.resolution.guardPierced).toBe(10);
+      expect(res.encounter.enemy.hp).toBe(200 - 35);
     });
 
     it('lethal Boss hit skips enemy counterattack and concludes combat immediately', () => {
@@ -237,10 +239,10 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
           wordId: 'w1',
         },
       });
-      encounter.enemy.hp = 10;
-      encounter.enemy.intent = { type: INTENT_TYPES.HEAVY_ATTACK, value: 12 };
+      encounter.enemy.hp = 20;
+      encounter.enemy.intent = { type: INTENT_TYPES.HEAVY_ATTACK, value: 24 };
 
-      const res = resolveEncounterTurn(
+      const res = chooseAttackAndResolve(
         encounter,
         { choiceId: 'c1', token: 'token-lethal' },
         { seed: 999 }
@@ -267,10 +269,10 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
           wordId: 'w1',
         },
       });
-      // Wrong answer -> 0 damage dealt. Boss hits for 30.
-      encounter.enemy.intent = { type: INTENT_TYPES.HEAVY_ATTACK, value: 30 };
+      // Wrong answer -> 0 damage dealt. Boss hits for 24.
+      encounter.enemy.intent = { type: INTENT_TYPES.HEAVY_ATTACK, value: 24 };
 
-      const res = resolveEncounterTurn(
+      const res = chooseAttackAndResolve(
         encounter,
         { choiceId: 'wrong', token: 'token-sc' },
         { seed: 999 }
@@ -281,10 +283,10 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
       expect(res.encounter.runRelicState[RELIC_IDS.SECOND_CHANCE].consumed).toBe(true);
 
       // Set enemy intent on turn 2 to an attack
-      res.encounter.enemy.intent = { type: INTENT_TYPES.ATTACK, value: 20 };
+      res.encounter.enemy.intent = { type: INTENT_TYPES.ATTACK, value: 10 };
 
       // Next lethal hit will result in DEFEAT because Second Chance is consumed
-      const res2 = resolveEncounterTurn(
+      const res2 = chooseAttackAndResolve(
         res.encounter,
         { choiceId: 'wrong2', token: res.encounter.question.token },
         { seed: 1000 }
@@ -501,14 +503,14 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
           wordId: 'lethal_word',
         },
       });
-      bossEncounter.enemy.hp = 10;
+      bossEncounter.enemy.hp = 20;
       run.currentNodeId = run.route.bossNodeId;
       run.currentNodeResolved = false;
       run.encounter = bossEncounter;
       await saveActiveRogueRun(run);
 
       // First submission -> Lethal victory
-      const res1 = await submitCombatAnswer({
+      const res1 = await chooseAttackAndSubmit({
         choiceId: 'c1',
         token: 'token-lethal-idemp',
       });
