@@ -19,7 +19,7 @@ export const PLAYER_ACTION_IDS = Object.freeze({
 export const PLAYER_ACTION_CONSTANTS = Object.freeze({
   ATTACK_DAMAGE: 25,
   GUARD_BLOCK: 20,
-  RECOVER_HEAL: 15,
+  RECOVER_HEAL: 20,
   RECOVER_COOLDOWN_TURNS: 3,
 });
 
@@ -49,7 +49,7 @@ export const PLAYER_ACTIONS = Object.freeze({
     nameKey: 'rogue.actions.recover.name',
     descKey: 'rogue.actions.recover.desc',
     defaultName: 'Recover',
-    defaultDesc: 'Heal 15 HP (Cooldown: 3 turns)',
+    defaultDesc: 'Heal 20 HP (Cooldown: 3 turns)',
     value: PLAYER_ACTION_CONSTANTS.RECOVER_HEAL,
     cooldownTurns: PLAYER_ACTION_CONSTANTS.RECOVER_COOLDOWN_TURNS,
     icon: 'heart-outline',

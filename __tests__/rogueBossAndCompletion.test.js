@@ -80,8 +80,8 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
       });
 
       expect(bossEncounter.archetypeId).toBe(ARCHETYPE_IDS.OVERLORD);
-      expect(bossEncounter.enemy.hp).toBe(200);
-      expect(bossEncounter.enemy.maxHp).toBe(200);
+      expect(bossEncounter.enemy.hp).toBe(175);
+      expect(bossEncounter.enemy.maxHp).toBe(175);
       expect(bossEncounter.bossPhase).toBe(1);
       expect(bossEncounter.enemy.intent).toEqual({
         type: INTENT_TYPES.ATTACK,
@@ -126,10 +126,10 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
       expect(res.encounter.bossPhase).toBe(2);
       expect(res.resolution.bossPhaseTransition).toBe(true);
 
-      // Next turn intent must follow Phase 2 cycle: first is HEAVY_ATTACK 24!
+      // Next turn intent must follow Phase 2 cycle: first is HEAVY_ATTACK 23!
       expect(res.encounter.enemy.intent).toEqual({
         type: INTENT_TYPES.HEAVY_ATTACK,
-        value: 24,
+        value: 23,
       });
     });
 
@@ -156,11 +156,11 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
         phase2StartTurn,
       });
 
-      expect(t1).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 24 });
+      expect(t1).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 23 });
       expect(t2).toEqual({ type: INTENT_TYPES.ATTACK, value: 12 });
-      expect(t3).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 24 });
+      expect(t3).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 23 });
       expect(t4).toEqual({ type: INTENT_TYPES.GUARD, value: 10 });
-      expect(t5).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 24 });
+      expect(t5).toEqual({ type: INTENT_TYPES.HEAVY_ATTACK, value: 23 });
     });
 
     it('preserves Boss phase, HP, and intent across serialization and reload', async () => {
@@ -224,7 +224,7 @@ describe('Phase R7 — Boss Phases & Run Completion Lifecycle', () => {
 
       expect(res.resolution.playerDamage).toBe(35);
       expect(res.resolution.guardPierced).toBe(10);
-      expect(res.encounter.enemy.hp).toBe(200 - 35);
+      expect(res.encounter.enemy.hp).toBe(175 - 35);
     });
 
     it('lethal Boss hit skips enemy counterattack and concludes combat immediately', () => {

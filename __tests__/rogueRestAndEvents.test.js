@@ -170,8 +170,8 @@ describe('Rogue Expedition V0.1 — Phase R6 Rest & Event Nodes', () => {
         actionType: REST_ACTIONS.RECOVER,
       });
 
-      expect(updatedRun.player.hp).toBe(80);
-      expect(outcome.healed).toBe(30);
+      expect(updatedRun.player.hp).toBe(90);
+      expect(outcome.healed).toBe(40);
 
       // Clamping test: HP 90 -> 100 (clamped to maxHp 100)
       const nearFullRun = {
@@ -468,7 +468,7 @@ describe('Rogue Expedition V0.1 — Phase R6 Rest & Event Nodes', () => {
         actionType: REST_ACTIONS.RECOVER,
       });
       expect(s1).toBe(true);
-      expect(afterTap1.player.hp).toBe(70);
+      expect(afterTap1.player.hp).toBe(80);
 
       // Second tap with same interactionId
       const { run: afterTap2, success: s2, alreadyResolved } = resolveRestInteraction(afterTap1, {
@@ -477,8 +477,8 @@ describe('Rogue Expedition V0.1 — Phase R6 Rest & Event Nodes', () => {
       });
       expect(s2).toBe(true);
       expect(alreadyResolved).toBe(true);
-      // HP remains 70, not 100!
-      expect(afterTap2.player.hp).toBe(70);
+      // HP remains 80, not 100!
+      expect(afterTap2.player.hp).toBe(80);
     });
 
     test('EVENT double tap resolves only once and does not double-charge HP cost', () => {
@@ -554,12 +554,12 @@ describe('Rogue Expedition V0.1 — Phase R6 Rest & Event Nodes', () => {
 
       const result = await submitRestAction({ actionType: REST_ACTIONS.RECOVER });
       expect(result.success).toBe(true);
-      expect(result.run.player.hp).toBe(70);
+      expect(result.run.player.hp).toBe(80);
       expect(result.run.currentNodeResolved).toBe(true);
       expect(result.run.pendingInteraction).toBeNull();
 
       const fromStorage = await loadActiveRun();
-      expect(fromStorage.player.hp).toBe(70);
+      expect(fromStorage.player.hp).toBe(80);
       expect(fromStorage.currentNodeResolved).toBe(true);
       expect(fromStorage.pendingInteraction).toBeNull();
     });

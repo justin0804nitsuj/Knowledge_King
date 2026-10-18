@@ -614,7 +614,7 @@ export function resolveEncounterTurn(encounter, action, options = {}) {
   const isBoss =
     encounter.archetypeId === ARCHETYPE_IDS.OVERLORD ||
     encounter.nodeType === 'BOSS';
-  const bossPhaseThreshold = archetype.phaseThreshold || 100;
+  const bossPhaseThreshold = archetype.phaseThreshold || 85;
   let nextBossPhase = encounter.bossPhase !== undefined ? encounter.bossPhase : (isBoss ? (encounter.enemy?.hp <= bossPhaseThreshold ? 2 : 1) : null);
   let nextPhase2StartTurn = encounter.phase2StartTurn || null;
   let bossPhaseTransition = false;

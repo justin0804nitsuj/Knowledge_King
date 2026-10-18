@@ -411,8 +411,8 @@ describe('Phase R9 — Player Action System (ATTACK, GUARD, RECOVER)', () => {
       });
 
       expect(resolution.correct).toBe(true);
-      expect(resolution.recoveredHp).toBe(15);
-      expect(nextEnc.player.hp).toBe(75);
+      expect(resolution.recoveredHp).toBe(20);
+      expect(nextEnc.player.hp).toBe(80);
     });
 
     it('clamping: recovers only up to playerMaxHp', () => {
@@ -620,9 +620,9 @@ describe('Phase R9 — Player Action System (ATTACK, GUARD, RECOVER)', () => {
       expect(resolution.correct).toBe(true);
       expect(resolution.curseResult.type).toBe('CURSE_PURIFIED');
       expect(nextEnc.cursedWords.length).toBe(0);
-      expect(resolution.recoveredHp).toBe(15);
+      expect(resolution.recoveredHp).toBe(20);
       expect(resolution.enemyDamage).toBe(8);
-      expect(nextEnc.player.hp).toBe(67); // 60 + 15 - 8 = 67
+      expect(nextEnc.player.hp).toBe(72); // 60 + 20 - 8 = 72
     });
 
     it('Glass Quill + ATTACK deals +10 bonus damage (total 35)', () => {

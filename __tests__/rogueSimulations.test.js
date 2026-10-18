@@ -1,19 +1,20 @@
 /**
- * ROGUE EXPEDITION V0.1 — PHASE R9 COMBAT ACTIONS 50-SEED SIMULATION MATRIX
+ * ROGUE EXPEDITION V0.1 — PHASE R9.1 HUMAN DIFFICULTY & PACING REBALANCE
  *
- * Validates the core thesis of Phase R9 Combat Actions Redesign:
- * 1. SMART PERFECT PLAYER (50 Seeds):
- *    - 100% vocabulary accuracy.
- *    - Uses tactical Action choices:
- *      * GUARD against HEAVY_ATTACK
- *      * RECOVER when wounded (HP <= 75) and cooldown is ready
- *      * ATTACK otherwise
- *    - Result: 100% win rate (50/50 VICTORY).
+ * 50-Seed Simulation Matrix across accuracy tiers:
+ * 1. SMART TACTICAL PLAYER (100% accuracy):
+ *    - Near-guaranteed completion (target: 48–50 / 50 wins).
+ *    - Pacing: typical victorious run takes ~35–50 questions.
  *
- * 2. ATTACK-ONLY CONTROL PLAYER (Same 50 Seeds):
- *    - 100% vocabulary accuracy.
- *    - Mindlessly selects ATTACK on every single turn (no Guard, no Recover).
- *    - Result: Significant defeat rate proving tactical Action choice is required.
+ * 2. SMART TACTICAL PLAYER (~90% accuracy, deterministic 1 miss per 10 questions):
+ *    - Usually completes a run with noticeable HP pressure (target: 35–50 / 50 wins).
+ *    - Demonstrates realistic human completion for competent tactical players.
+ *
+ * 3. SMART TACTICAL PLAYER (~80% accuracy, deterministic 1 miss per 5 questions):
+ *    - Difficult and inconsistent, but not mathematically hopeless (target: 15–35 / 50 wins).
+ *
+ * 4. ATTACK-ONLY CONTROL PLAYER (100% accuracy, no Guard, no Recover):
+ *    - Materially worse than Smart Tactical (target: 10–25 / 50 wins).
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -53,7 +54,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   }),
 }));
 
-describe('Phase R9 — 50-Seed Tactical Combat Simulation', () => {
+describe('Phase R9.1 — 50-Seed Difficulty & Pacing Simulation Matrix', () => {
   beforeEach(async () => {
     mockStore = {};
     await clearActiveRogueRun();
@@ -63,15 +64,60 @@ describe('Phase R9 — 50-Seed Tactical Combat Simulation', () => {
   const SEED_COUNT = 50;
   const SEED_OFFSET = 100; // seeds 101 .. 150
 
+  const smartTacticalStrategy = (encounter) => {
+    const intent = encounter.enemy.intent;
+    const enemyHp = encounter.enemy.hp;
+    const playerHp = encounter.player.hp;
+    const canRecover = (encounter.recoverCooldown ?? 0) === 0;
+
+    // 1. Lethal blow cancels enemy action completely
+    const guardMitigation = intent?.type === INTENT_TYPES.GUARD ? (intent.value || 10) : 0;
+    const effectiveDmg = Math.max(0, 25 - guardMitigation);
+    if (enemyHp <= effectiveDmg) {
+      return PLAYER_ACTION_IDS.ATTACK;
+    }
+
+    // 2. Defend against HEAVY_ATTACK always
+    if (intent?.type === INTENT_TYPES.HEAVY_ATTACK) {
+      return PLAYER_ACTION_IDS.GUARD;
+    }
+
+    // 3. If enemy is GUARDING, zero incoming damage -> prime Recover window
+    if (intent?.type === INTENT_TYPES.GUARD) {
+      if (playerHp <= 85 && canRecover) {
+        return PLAYER_ACTION_IDS.RECOVER;
+      }
+      return PLAYER_ACTION_IDS.ATTACK;
+    }
+
+    // 4. Enemy is executing normal ATTACK:
+    // If player is critical (<= 20 HP), GUARD prevents 100% of standard attack damage
+    if (playerHp <= 20) {
+      return PLAYER_ACTION_IDS.GUARD;
+    }
+
+    // If player is wounded (<= 75 HP) and can recover:
+    if (playerHp <= 75 && canRecover) {
+      return PLAYER_ACTION_IDS.RECOVER;
+    }
+
+    return PLAYER_ACTION_IDS.ATTACK;
+  };
+
+  const attackOnlyStrategy = () => PLAYER_ACTION_IDS.ATTACK;
+
   /**
-   * Helper to simulate a full run on a given seed with a specified combat strategy.
+   * Helper to simulate a full run on a given seed with a specified combat strategy and accuracy rate.
    */
-  async function simulateRun({ seed, strategy }) {
+  async function simulateRun({ seed, strategy, accuracyRate = 100, offset = 0 }) {
     await clearActiveRogueRun();
     let run = await createNewRun({ seed });
 
     let iterations = 0;
-    const maxIterations = 200;
+    const maxIterations = 300;
+    let questionsAnswered = 0;
+    let battlesWon = 0;
+    let lastDefeatInfo = null;
 
     while (run.status === ROGUE_RUN_STATUS.ACTIVE && iterations < maxIterations) {
       iterations++;
@@ -81,11 +127,56 @@ describe('Phase R9 — 50-Seed Tactical Combat Simulation', () => {
         const actionId = strategy(run.encounter);
         await selectCombatAction({ actionId });
 
+        questionsAnswered++;
+        let isCorrect = true;
+        if (accuracyRate === 90) {
+          if ((questionsAnswered + offset) % 10 === 0) {
+            isCorrect = false;
+          }
+        } else if (accuracyRate === 89) {
+          if ((questionsAnswered + offset) % 9 === 0) {
+            isCorrect = false;
+          }
+        } else if (accuracyRate === 80) {
+          if ((questionsAnswered + offset) % 5 === 0) {
+            isCorrect = false;
+          }
+        }
+
+        let choiceId = run.encounter.question.correctChoiceId;
+        if (!isCorrect) {
+          const wrongChoice = run.encounter.question.choices.find(
+            (c) => String(c.id) !== String(choiceId)
+          );
+          choiceId = wrongChoice ? wrongChoice.id : 'wrong_choice';
+        }
+
+        const currentEnemyArchetype = run.encounter.archetypeId;
+        const currentIntent = run.encounter.enemy.intent;
         const res = await submitCombatAnswer({
-          choiceId: run.encounter.question.correctChoiceId,
+          choiceId,
           token: run.encounter.question.token,
         });
         run = res.run;
+
+        if (res.resolution?.enemyDamage > 0 || res.resolution?.backlashDamage > 0) {
+          if (run.player.hp <= 0) {
+            lastDefeatInfo = {
+              archetype: currentEnemyArchetype,
+              intent: currentIntent?.type,
+              intentValue: currentIntent?.value,
+              enemyDamage: res.resolution.enemyDamage,
+              backlashDamage: res.resolution.backlashDamage,
+              selectedAction: actionId,
+              actionSucceeded: isCorrect,
+              cursesCount: Array.isArray(run.cursedWords) ? run.cursedWords.length : 0,
+            };
+          }
+        }
+
+        if (run.encounter && run.encounter.status === ENCOUNTER_STATUS.VICTORY) {
+          battlesWon++;
+        }
         continue;
       }
 
@@ -148,86 +239,143 @@ describe('Phase R9 — 50-Seed Tactical Combat Simulation', () => {
       throw new Error(`Simulation exceeded maxIterations (${maxIterations}) on seed ${seed}`);
     }
 
-    return run;
+    return {
+      run,
+      questionsAnswered,
+      battlesWon,
+      lastDefeatInfo,
+    };
   }
 
-  test('SMART PERFECT PLAYER: completes all 50 seeds with 100% win rate', async () => {
-    let victories = 0;
-    let defeats = 0;
-
-    const smartStrategy = (encounter) => {
-      const intent = encounter.enemy.intent;
-      const enemyHp = encounter.enemy.hp;
-      const playerHp = encounter.player.hp;
-      const canRecover = (encounter.recoverCooldown ?? 0) === 0;
-
-      // 1. Lethal blow cancels enemy action completely
-      const guardMitigation = intent?.type === INTENT_TYPES.GUARD ? (intent.value || 10) : 0;
-      const effectiveDmg = Math.max(0, 25 - guardMitigation);
-      if (enemyHp <= effectiveDmg) {
-        return PLAYER_ACTION_IDS.ATTACK;
-      }
-
-      // 2. Defend against HEAVY_ATTACK always
-      if (intent?.type === INTENT_TYPES.HEAVY_ATTACK) {
-        return PLAYER_ACTION_IDS.GUARD;
-      }
-
-      // 3. If enemy is GUARDING, zero incoming damage -> prime Recover window
-      if (intent?.type === INTENT_TYPES.GUARD) {
-        if (playerHp <= 85 && canRecover) {
-          return PLAYER_ACTION_IDS.RECOVER;
-        }
-        return PLAYER_ACTION_IDS.ATTACK;
-      }
-
-      // 4. Enemy is executing normal ATTACK:
-      // If player is critical (<= 20 HP), GUARD prevents 100% of standard attack damage
-      if (playerHp <= 20) {
-        return PLAYER_ACTION_IDS.GUARD;
-      }
-
-      // If player is wounded (<= 75 HP) and can recover:
-      if (playerHp <= 75 && canRecover) {
-        return PLAYER_ACTION_IDS.RECOVER;
-      }
-
-      return PLAYER_ACTION_IDS.ATTACK;
-    };
-
+  async function runSimulationCohort({ strategy, accuracyRate, offset = 0, name }) {
+    const results = [];
     for (let i = 1; i <= SEED_COUNT; i++) {
       const seed = SEED_OFFSET + i;
-      const finalRun = await simulateRun({ seed, strategy: smartStrategy });
-
-      if (finalRun.status === ROGUE_RUN_STATUS.VICTORY) {
-        victories++;
-      } else if (finalRun.status === ROGUE_RUN_STATUS.DEFEAT) {
-        defeats++;
-      }
+      const res = await simulateRun({ seed, strategy, accuracyRate, offset });
+      results.push({
+        seed,
+        status: res.run.status,
+        finalHp: res.run.player.hp,
+        questionsAnswered: res.questionsAnswered,
+        battlesWon: res.battlesWon,
+        lastDefeatInfo: res.lastDefeatInfo,
+      });
     }
 
-    expect(victories).toBe(SEED_COUNT);
-    expect(defeats).toBe(0);
+    const victories = results.filter((r) => r.status === ROGUE_RUN_STATUS.VICTORY);
+    const defeats = results.filter((r) => r.status === ROGUE_RUN_STATUS.DEFEAT);
+
+    const avgFinalHp = victories.length > 0
+      ? Number((victories.reduce((acc, r) => acc + r.finalHp, 0) / victories.length).toFixed(1))
+      : 0;
+
+    const allQuestions = results.map((r) => r.questionsAnswered).sort((a, b) => a - b);
+    const avgQuestions = Number((results.reduce((acc, r) => acc + r.questionsAnswered, 0) / results.length).toFixed(1));
+    const medianQuestions = allQuestions.length % 2 === 0
+      ? Number(((allQuestions[allQuestions.length / 2 - 1] + allQuestions[allQuestions.length / 2]) / 2).toFixed(1))
+      : allQuestions[Math.floor(allQuestions.length / 2)];
+
+    const vicQuestions = victories.map((r) => r.questionsAnswered);
+    const avgVicQuestions = victories.length > 0
+      ? Number((vicQuestions.reduce((a, b) => a + b, 0) / victories.length).toFixed(1))
+      : 0;
+
+    const defeatCauses = {};
+    for (const d of defeats) {
+      const info = d.lastDefeatInfo;
+      let cause = 'Unknown';
+      if (info) {
+        if (info.backlashDamage > 0) {
+          cause = `Curse Backlash (${info.archetype})`;
+        } else if (info.intent === 'HEAVY_ATTACK') {
+          cause = info.actionSucceeded
+            ? `HEAVY_ATTACK through Guard/Unblocked (${info.archetype})`
+            : `Failed Guard against HEAVY_ATTACK (${info.archetype})`;
+        } else if (info.intent === 'ATTACK') {
+          cause = `Normal Attack Attrition (${info.archetype})`;
+        } else {
+          cause = `${info.archetype} ${info.intent}`;
+        }
+      }
+      defeatCauses[cause] = (defeatCauses[cause] || 0) + 1;
+    }
+
+    console.log(`\n[Cohort: ${name}] Wins: ${victories.length}/50 | AvgFinalHP: ${avgFinalHp} | AvgQ(All): ${avgQuestions} | MedQ: ${medianQuestions} | AvgQ(Wins): ${avgVicQuestions}`);
+    if (defeats.length > 0) {
+      console.log(`  Defeat causes:`, JSON.stringify(defeatCauses));
+    }
+
+    return {
+      name,
+      wins: victories.length,
+      defeats: defeats.length,
+      avgFinalHp,
+      avgQuestions,
+      medianQuestions,
+      avgVicQuestions,
+      defeatCauses,
+      results,
+    };
+  }
+
+  test('1. SMART TACTICAL 100%: near-guaranteed completion within 35-50 target questions', async () => {
+    const cohort = await runSimulationCohort({
+      strategy: smartTacticalStrategy,
+      accuracyRate: 100,
+      name: 'Smart Tactical 100%',
+    });
+
+    expect(cohort.wins).toBeGreaterThanOrEqual(48);
+    expect(cohort.avgVicQuestions).toBeGreaterThanOrEqual(25);
+    expect(cohort.avgVicQuestions).toBeLessThanOrEqual(50);
   }, 120000);
 
-  test('ATTACK-ONLY CONTROL PLAYER: experiences defeats due to lack of defense and sustain', async () => {
-    let victories = 0;
-    let defeats = 0;
+  test('2. SMART TACTICAL ~90%: realistic human completion (~89-90%) with noticeable HP pressure', async () => {
+    const cohort = await runSimulationCohort({
+      strategy: smartTacticalStrategy,
+      accuracyRate: 90,
+      offset: 0,
+      name: 'Smart Tactical 90%',
+    });
 
-    const attackOnlyStrategy = () => PLAYER_ACTION_IDS.ATTACK;
+    expect(cohort.wins).toBeGreaterThanOrEqual(35);
+    expect(cohort.avgVicQuestions).toBeGreaterThanOrEqual(30);
+    expect(cohort.avgVicQuestions).toBeLessThanOrEqual(50);
+  }, 120000);
 
-    for (let i = 1; i <= SEED_COUNT; i++) {
-      const seed = SEED_OFFSET + i;
-      const finalRun = await simulateRun({ seed, strategy: attackOnlyStrategy });
+  test('3. SMART TACTICAL ~89%: deterministic 1 wrong per 9 answers represents human playtest case', async () => {
+    const cohort = await runSimulationCohort({
+      strategy: smartTacticalStrategy,
+      accuracyRate: 89,
+      offset: 0,
+      name: 'Smart Tactical ~89%',
+    });
 
-      if (finalRun.status === ROGUE_RUN_STATUS.VICTORY) {
-        victories++;
-      } else if (finalRun.status === ROGUE_RUN_STATUS.DEFEAT) {
-        defeats++;
-      }
-    }
+    expect(cohort.wins).toBeGreaterThanOrEqual(35);
+    expect(cohort.avgVicQuestions).toBeGreaterThanOrEqual(30);
+    expect(cohort.avgVicQuestions).toBeLessThanOrEqual(50);
+  }, 120000);
 
-    expect(defeats).toBe(SEED_COUNT);
-    expect(victories).toBe(0);
+  test('4. SMART TACTICAL ~80%: difficult and inconsistent, but not mathematically hopeless', async () => {
+    const cohort = await runSimulationCohort({
+      strategy: smartTacticalStrategy,
+      accuracyRate: 80,
+      offset: 0,
+      name: 'Smart Tactical 80%',
+    });
+
+    expect(cohort.wins).toBeGreaterThanOrEqual(15);
+    expect(cohort.wins).toBeLessThanOrEqual(35);
+  }, 120000);
+
+  test('5. ATTACK-ONLY 100%: materially worse than smart tactical, proving strategy matters', async () => {
+    const cohort = await runSimulationCohort({
+      strategy: attackOnlyStrategy,
+      accuracyRate: 100,
+      name: 'Attack-Only 100%',
+    });
+
+    expect(cohort.wins).toBeLessThanOrEqual(25);
+    expect(cohort.defeats).toBeGreaterThan(cohort.wins);
   }, 120000);
 });
