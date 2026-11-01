@@ -56,3 +56,17 @@ export async function signOut() {
     throw error;
   }
 }
+
+/**
+ * Safely inspects native Google session if available.
+ */
+export function getGoogleCurrentUser() {
+  try {
+    if (GoogleOneTapSignIn && typeof GoogleOneTapSignIn.getCurrentUser === 'function') {
+      return GoogleOneTapSignIn.getCurrentUser();
+    }
+  } catch {
+    // Non-native or mock environments
+  }
+  return null;
+}

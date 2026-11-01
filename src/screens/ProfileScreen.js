@@ -11,6 +11,8 @@ import { useTranslation } from 'react-i18next';
 import { changeLanguage } from '../localization/i18n';
 import { LANGUAGE_PREF, loadSettings, saveSettings } from '../storage/settingsStorage';
 import { gameFeedback } from '../services/feedback/gameFeedback';
+import { auth } from '../services/firebase/firebaseAuth';
+import { getGoogleCurrentUser } from '../services/auth/googleSignIn';
 
 export default function ProfileScreen({ navigation }) {
   const [playerInfo, setPlayerInfo] = useState(null);
@@ -18,7 +20,20 @@ export default function ProfileScreen({ navigation }) {
   const [currentLang, setCurrentLang] = useState(LANGUAGE_PREF.SYSTEM);
   const [soundEffects, setSoundEffects] = useState(true);
   const [haptics, setHaptics] = useState(true);
-  const { user, isSignedIn, signInWithGoogle, signOut, isInitializing, syncStatus } = useAuth();
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryStatusReport, setRetryStatusReport] = useState(null);
+  const {
+    user,
+    isSignedIn,
+    signInWithGoogle,
+    signOut,
+    isInitializing,
+    syncStatus,
+    cloudSyncReady,
+    identity,
+    lastSyncError,
+    retrySync
+  } = useAuth();
   const { t } = useTranslation();
   
   useFocusEffect(
@@ -92,6 +107,20 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
+  const handleRetrySync = async () => {
+    setIsRetrying(true);
+    setRetryStatusReport('Syncing...');
+    try {
+      const res = await retrySync();
+      const st = res?.status || 'synced';
+      setRetryStatusReport(st);
+    } catch (err) {
+      setRetryStatusReport('error');
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
   if (!playerInfo || isInitializing) {
     return <View style={styles.container}><Text>Loading...</Text></View>;
   }
@@ -101,6 +130,16 @@ export default function ProfileScreen({ navigation }) {
   
   const accuracy = st.totalQuestions > 0 ? Math.round((st.totalCorrect / st.totalQuestions) * 100) : 0;
   const winRate = st.battlesPlayed > 0 ? Math.round((st.battlesWon / st.battlesPlayed) * 100) : 0;
+
+  const googleUser = getGoogleCurrentUser();
+  const isGoogleConnected = Boolean(isSignedIn || googleUser);
+  const isFirebaseAuthed = Boolean(auth?.currentUser);
+  const isAuthInconsistent = isGoogleConnected && !isFirebaseAuthed;
+
+  const authLabel = isGoogleConnected ? 'Google Signed In' : 'Guest';
+  const firebaseAuthLabel = isFirebaseAuthed ? 'Authenticated' : 'Not Authenticated';
+  const cloudIdentityLabel = formatShortUid(identity || (isFirebaseAuthed ? `uid:${auth.currentUser.uid}` : 'guest'));
+  const cloudSyncState = resolveCloudSyncState(syncStatus, cloudSyncReady);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -141,6 +180,67 @@ export default function ProfileScreen({ navigation }) {
         )}
       </View>
 
+      {/* Cloud Sync Diagnostic Section */}
+      <View style={styles.diagnosticCard}>
+        <Text style={styles.diagnosticTitle}>Cloud Sync Diagnostics</Text>
+
+        {isAuthInconsistent && (
+          <View style={styles.warningBox}>
+            <Text style={styles.warningText}>
+              Google account connected, but Firebase authentication is not active.
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.diagnosticRow}>
+          <Text style={styles.diagnosticLabel}>Authentication:</Text>
+          <Text style={styles.diagnosticValue}>{authLabel}</Text>
+        </View>
+
+        <View style={styles.diagnosticRow}>
+          <Text style={styles.diagnosticLabel}>Firebase Auth:</Text>
+          <Text style={[styles.diagnosticValue, { color: isFirebaseAuthed ? '#22c55e' : '#ef4444' }]}>
+            {firebaseAuthLabel}
+          </Text>
+        </View>
+
+        <View style={styles.diagnosticRow}>
+          <Text style={styles.diagnosticLabel}>Cloud Identity:</Text>
+          <Text style={styles.diagnosticValue}>{cloudIdentityLabel}</Text>
+        </View>
+
+        <View style={styles.diagnosticRow}>
+          <Text style={styles.diagnosticLabel}>Cloud Sync State:</Text>
+          <Text style={[styles.diagnosticValue, { color: getCloudSyncStateColor(cloudSyncState) }]}>
+            {cloudSyncState}
+          </Text>
+        </View>
+
+        {lastSyncError ? (
+          <View style={styles.diagnosticRow}>
+            <Text style={styles.diagnosticLabel}>Sync Error:</Text>
+            <Text style={[styles.diagnosticValue, { color: '#ef4444' }]}>{lastSyncError}</Text>
+          </View>
+        ) : null}
+
+        {retryStatusReport ? (
+          <View style={styles.diagnosticRow}>
+            <Text style={styles.diagnosticLabel}>Retry Status:</Text>
+            <Text style={styles.diagnosticValue}>{retryStatusReport}</Text>
+          </View>
+        ) : null}
+
+        <TouchableOpacity
+          style={[styles.retrySyncBtn, isRetrying && styles.retrySyncBtnDisabled]}
+          onPress={handleRetrySync}
+          disabled={isRetrying}
+        >
+          <Text style={styles.retrySyncBtnText}>
+            {isRetrying ? 'Syncing...' : 'Retry Cloud Sync'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.statsCard}>
         <Text style={styles.sectionTitle}>{t('profile.localStats')}</Text>
         <StatRow label={t('profile.battles')} value={st.battlesPlayed} />
@@ -170,17 +270,17 @@ export default function ProfileScreen({ navigation }) {
         <Text style={styles.devTitle}>{t('profile.settings')}</Text>
         <Text style={styles.statLabel}>{t('profile.language')}</Text>
         <View style={styles.langRow}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.langBtn, currentLang === LANGUAGE_PREF.SYSTEM && styles.langBtnActive]}
             onPress={() => handleLangChange(LANGUAGE_PREF.SYSTEM)}>
             <Text style={[styles.langBtnText, currentLang === LANGUAGE_PREF.SYSTEM && styles.langBtnTextActive]}>{t('profile.languageSystem')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.langBtn, currentLang === LANGUAGE_PREF.ZH_TW && styles.langBtnActive]}
             onPress={() => handleLangChange(LANGUAGE_PREF.ZH_TW)}>
             <Text style={[styles.langBtnText, currentLang === LANGUAGE_PREF.ZH_TW && styles.langBtnTextActive]}>{t('profile.languageZhTw')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.langBtn, currentLang === LANGUAGE_PREF.EN && styles.langBtnActive]}
             onPress={() => handleLangChange(LANGUAGE_PREF.EN)}>
             <Text style={[styles.langBtnText, currentLang === LANGUAGE_PREF.EN && styles.langBtnTextActive]}>{t('profile.languageEn')}</Text>
@@ -189,7 +289,7 @@ export default function ProfileScreen({ navigation }) {
         
         <View style={styles.toggleRow}>
           <Text style={styles.statLabel}>{t('profile.soundEffects')}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.langBtn, soundEffects && styles.langBtnActive]}
             onPress={handleToggleSound}>
             <Text style={[styles.langBtnText, soundEffects && styles.langBtnTextActive]}>
@@ -200,7 +300,7 @@ export default function ProfileScreen({ navigation }) {
 
         <View style={styles.toggleRow}>
           <Text style={styles.statLabel}>{t('profile.haptics')}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.langBtn, haptics && styles.langBtnActive]}
             onPress={handleToggleHaptics}>
             <Text style={[styles.langBtnText, haptics && styles.langBtnTextActive]}>
@@ -227,6 +327,40 @@ function StatRow({ label, value }) {
       <Text style={styles.statValue}>{value}</Text>
     </View>
   );
+}
+
+function formatShortUid(rawId) {
+  if (!rawId || rawId === 'guest') return 'guest';
+  if (rawId.startsWith('uid:')) {
+    const val = rawId.slice(4);
+    if (val.length <= 10) return rawId;
+    return `uid:${val.slice(0, 6)}...${val.slice(-4)}`;
+  }
+  return rawId;
+}
+
+function resolveCloudSyncState(status, isReady) {
+  if (status === 'syncing') return 'SYNCING';
+  if (status === 'error') return 'ERROR';
+  if (status === 'offline') return 'OFFLINE';
+  if (isReady) return 'READY';
+  return 'NOT READY';
+}
+
+function getCloudSyncStateColor(state) {
+  switch (state) {
+    case 'READY':
+      return '#22c55e'; // Green
+    case 'SYNCING':
+      return '#3b82f6'; // Blue
+    case 'OFFLINE':
+      return '#eab308'; // Amber
+    case 'ERROR':
+      return '#ef4444'; // Red
+    case 'NOT READY':
+    default:
+      return '#94a3b8'; // Slate/gray
+  }
 }
 
 const styles = StyleSheet.create({
@@ -301,6 +435,67 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     alignItems: 'center',
+  },
+  diagnosticCard: {
+    backgroundColor: theme.colors.card,
+    padding: theme.spacing.large,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    marginBottom: theme.spacing.large,
+  },
+  diagnosticTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: theme.colors.textMain,
+    marginBottom: 10,
+  },
+  diagnosticRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border,
+  },
+  diagnosticLabel: {
+    fontSize: 13,
+    color: theme.colors.textMuted,
+  },
+  diagnosticValue: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: theme.colors.textMain,
+  },
+  warningBox: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderLeftWidth: 4,
+    borderLeftColor: '#ef4444',
+    padding: theme.spacing.small,
+    borderRadius: 4,
+    marginBottom: 10,
+  },
+  warningText: {
+    color: '#ef4444',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 16,
+  },
+  retrySyncBtn: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  retrySyncBtnDisabled: {
+    opacity: 0.6,
+  },
+  retrySyncBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   authStatus: {
     fontSize: 16,
