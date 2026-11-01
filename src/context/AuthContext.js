@@ -3,6 +3,7 @@ import { auth, onAuthStateChanged } from '../services/firebase/firebaseAuth';
 import { signInWithGoogle, signOut } from '../services/auth/googleSignIn';
 import { coordinateAccountProgress } from '../services/sync/accountProgressCoordinator';
 import { flushLiveProgress, getSyncStatus, subscribeSyncStatus, setCloudSyncReady } from '../services/sync/liveProgressSync';
+import { initServerTimeOffset } from '../services/firebase/serverTimeService';
 
 export const AuthState = {
   INITIALIZING: 'INITIALIZING',
@@ -25,6 +26,7 @@ export function AuthProvider({ children }) {
   const [lastSyncResult, setLastSyncResult] = useState(null);
 
   useEffect(() => {
+    initServerTimeOffset();
     const unsubSync = subscribeSyncStatus((s) => {
       setSyncStatus(s);
     });

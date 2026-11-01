@@ -1,4 +1,5 @@
 import { buildFirstClearClaimId, buildDailyMissionClaimId } from './uniqueRewards';
+import { isServerTimeReadyState, getSafeServerNow } from '../../services/firebase/serverTimeService';
 
 /**
  * CLOUD PROFILE SYNC V0.1 — AUTH-AWARE CLOUD BOOTSTRAP DOMAIN (PHASE 5A)
@@ -62,7 +63,9 @@ export function normalizeClearedStagesMap(cleared) {
  * @returns {object} Full cloud progress snapshot
  */
 export function buildBootstrapSnapshot(localPlayerProgress = {}, localCampaignProgress = {}, options = {}) {
-  const now = Number.isFinite(options.now) ? options.now : Date.now();
+  const now = Number.isFinite(options.now)
+    ? options.now
+    : (isServerTimeReadyState() ? getSafeServerNow() : Date.now());
   const deviceId = (options.deviceId && typeof options.deviceId === 'string' && options.deviceId.trim())
     ? options.deviceId.trim()
     : 'bootstrap';
@@ -182,7 +185,9 @@ export function reconcileLegacyWithCloud(local, cloud, options = {}) {
     throw new Error('[CloudBootstrap] Authoritative cloud progress state is required for reconciliation');
   }
 
-  const now = Number.isFinite(options.now) ? options.now : Date.now();
+  const now = Number.isFinite(options.now)
+    ? options.now
+    : (isServerTimeReadyState() ? getSafeServerNow() : Date.now());
 
   // Extract local snapshot if local is raw player/campaign data
   let localSnapshot = local;

@@ -1,46 +1,54 @@
 import { validateSyncOperation } from './syncOperation';
 import { getCanonicalUniqueReward } from './uniqueRewards';
+import { isServerTimeReadyState, getSafeServerNow } from '../../services/firebase/serverTimeService';
 
 /**
  * CLOUD PROFILE SYNC V0.1 — PURE CLOUD TRANSACTION REDUCER (PHASE 4)
- * 
+ *
  * CORE TRANSACTION CONTRACT INVARIANTS:
- * 
+ *
  * 1. Pure Function:
  *    Takes (currentCloudState, op, options) and returns nextCloudState without side effects
  *    or direct database calls. Safe for repeated executions within RTDB runTransaction().
- * 
+ *
  * 2. Virgin State Initialization:
  *    If currentCloudState is null or empty, initializes schemaVersion = 1, revision = 0,
  *    and empty structured progression, campaign, uniqueClaims, and appliedOps.
- * 
+ *
  * 3. Lost-Ack & Duplicate Idempotency:
  *    If appliedOps[op.deviceId] >= op.seq, returns currentCloudState completely UNCHANGED.
  *    No XP is added, revision is not bumped, and no claims are processed.
- * 
+ *
  * 4. Canonical Reward Authority:
  *    The reducer re-resolves unique claim rewards from getCanonicalUniqueReward(claimId).
  *    Client-supplied xpReward fields in op payloads are strictly non-authoritative.
- * 
+ *
  * 5. Deterministic Deduplication:
  *    If a unique claimId is already recorded in cloud uniqueClaims, its reward is ignored.
  *    Repeatable XP delta is credited regardless of whether a unique claim was a duplicate.
- * 
+ *
  * 6. Merge-Safe Campaign Progress:
  *    Cleared stages are unioned. Star ratings, high scores, and best combo use high-water marks.
+ *
+ * 7. Safe Server Time Alignment:
+ *    Uses safe server-aligned timestamp if options.now is omitted and server time is ready,
+ *    preventing client clock drift from violating RTDB rules (`updatedAt <= now`, `claimedAt <= now`).
  */
 
 /**
  * Creates an empty, validated cloud progress root.
- * 
+ *
  * @param {number} [now]
  * @returns {object}
  */
-export function createVirginCloudProgress(now = Date.now()) {
+export function createVirginCloudProgress(now) {
+  const effectiveNow = Number.isFinite(now)
+    ? now
+    : (isServerTimeReadyState() ? getSafeServerNow() : Date.now());
   return {
     schemaVersion: 1,
     revision: 0,
-    updatedAt: now,
+    updatedAt: effectiveNow,
     appliedOps: {},
     progression: {
       totalXp: 0
@@ -57,18 +65,20 @@ export function createVirginCloudProgress(now = Date.now()) {
 
 /**
  * Reduces a SyncOperation into the authoritative cloud progress state.
- * 
+ *
  * @param {object|null|undefined} currentCloudState - Current state from database
  * @param {object} op - The SyncOperation to apply
  * @param {object} [options]
- * @param {number} [options.now] - Explicit timestamp override (defaults to Date.now())
+ * @param {number} [options.now] - Explicit timestamp override (defaults to getSafeServerNow() or Date.now())
  * @returns {object} The updated cloud state, or currentCloudState unchanged if already applied
  */
 export function reduceCloudProgress(currentCloudState, op, options = {}) {
   // 1. Strict validation of incoming SyncOperation
   const validatedOp = validateSyncOperation(op);
 
-  const now = Number.isFinite(options.now) ? options.now : Date.now();
+  const now = Number.isFinite(options.now)
+    ? options.now
+    : (isServerTimeReadyState() ? getSafeServerNow() : Date.now());
 
   // 2. Initialize virgin state if record does not yet exist
   const base = currentCloudState && typeof currentCloudState === 'object' && currentCloudState.schemaVersion === 1

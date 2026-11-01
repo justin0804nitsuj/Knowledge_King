@@ -1,4 +1,5 @@
 const { initializeTestEnvironment, assertSucceeds, assertFails } = require('@firebase/rules-unit-testing');
+const { serverTimestamp, runTransaction } = require('firebase/database');
 const fs = require('node:fs');
 
 const validPayload = () => ({
@@ -243,6 +244,61 @@ async function run() {
         deviceId: 'original-device'
       };
       await assertFails(db('user123').ref('userProgress/user123').set(rewrite));
+    });
+
+    // U. Clock Skew Alignment & Ownership Isolation (Phase 6)
+    await test('U1. Authenticated User A writing server-aligned timestamp under client clock skew succeeds', async () => {
+      await seed('userProgress/user123', null);
+
+      // Simulate client clock running 5000ms ahead, with serverTimeOffset = -5000
+      const clientWallClock = Date.now() + 5000;
+      const serverOffset = -5000;
+      const safeServerNow = clientWallClock + serverOffset;
+
+      const payload = validPayload();
+      payload.updatedAt = safeServerNow;
+      payload.uniqueClaims['firstClear:L1-S1'].claimedAt = safeServerNow;
+
+      await assertSucceeds(db('user123').ref('userProgress/user123').set(payload));
+    });
+
+    await test('U2. User A writing future timestamp without server alignment fails with permission_denied', async () => {
+      // Simulate client clock running 5000ms ahead without applying offset
+      const clientWallClock = Date.now() + 5000;
+
+      const payload = validPayload();
+      payload.updatedAt = clientWallClock;
+
+      await assertFails(db('user123').ref('userProgress/user123').set(payload));
+    });
+
+    await test('U3. User A cannot write User B progress even with server-aligned time', async () => {
+      const payload = validPayload();
+      await assertFails(db('user123').ref('userProgress/user456').set(payload));
+    });
+
+    await test('U4. Authenticated User A writing serverTimestamp() in runTransaction succeeds and resolves to number <= now', async () => {
+      await seed('userProgress/user123', null);
+      const userRef = db('user123').ref('userProgress/user123');
+      const tx = await assertSucceeds(runTransaction(userRef, () => {
+        const payload = validPayload();
+        payload.updatedAt = serverTimestamp();
+        payload.uniqueClaims['firstClear:L1-S1'].claimedAt = serverTimestamp();
+        return payload;
+      }));
+      if (!tx.committed) throw new Error('Transaction failed to commit');
+      const snapVal = tx.snapshot.val();
+      if (typeof snapVal.updatedAt !== 'number') throw new Error('updatedAt is not a number');
+      if (typeof snapVal.uniqueClaims['firstClear:L1-S1'].claimedAt !== 'number') throw new Error('claimedAt is not a number');
+    });
+
+    await test('U5. User A cannot write serverTimestamp() into User B progress in runTransaction', async () => {
+      const otherRef = db('user123').ref('userProgress/user456');
+      await assertFails(runTransaction(otherRef, () => {
+        const payload = validPayload();
+        payload.updatedAt = serverTimestamp();
+        return payload;
+      }));
     });
 
     console.log(`\nResults: ${passed} passed, ${failed} failed`);

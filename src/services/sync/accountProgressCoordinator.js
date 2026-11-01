@@ -21,6 +21,7 @@ import {
   setLastSyncedSnapshot
 } from './cloudRestoreAdapter';
 import { setCloudSyncReady } from './liveProgressSync';
+import { whenServerTimeReady, getSafeServerNow } from '../firebase/serverTimeService';
 
 /**
  * CLOUD PROFILE SYNC V0.1 — ACCOUNT PROGRESS COORDINATOR (PHASE 5A)
@@ -307,12 +308,18 @@ export async function coordinateAccountProgress(firebaseUser, options = {}) {
     const pendingOp = await getPendingSyncOp(targetIdentity);
     const { historicalPlayer, historicalCampaign, stagedClaimIds } = extractHistoricalProgress(localPlayer, localCampaign, unsynced, pendingOp);
 
+    const isReady = await whenServerTimeReady(4000);
+    const safeNow = Number.isFinite(options?.now)
+      ? options.now
+      : (isReady ? getSafeServerNow() : Date.now());
+
     const localSnapshot = buildBootstrapSnapshot(historicalPlayer, historicalCampaign, {
       ...options,
+      now: safeNow,
       excludedClaimIds: stagedClaimIds
     });
     try {
-      const res = await bootstrapCloudProgress(uid, localSnapshot);
+      const res = await bootstrapCloudProgress(uid, localSnapshot, { ...options, now: safeNow });
       finalCloudProgress = res.snapshot || localSnapshot;
       cloudSyncSuccess = true;
       await setLastSyncedSnapshot(targetIdentity, finalCloudProgress);
@@ -342,12 +349,18 @@ export async function coordinateAccountProgress(firebaseUser, options = {}) {
     const pendingOp = await getPendingSyncOp(targetIdentity);
     const { historicalPlayer, historicalCampaign, stagedClaimIds } = extractHistoricalProgress(localPlayer, localCampaign, unsynced, pendingOp);
 
+    const isReady = await whenServerTimeReady(4000);
+    const safeNow = Number.isFinite(options?.now)
+      ? options.now
+      : (isReady ? getSafeServerNow() : Date.now());
+
     const localSnapshot = buildBootstrapSnapshot(historicalPlayer, historicalCampaign, {
       ...options,
+      now: safeNow,
       excludedClaimIds: stagedClaimIds
     });
     try {
-      const res = await bootstrapCloudProgress(uid, localSnapshot);
+      const res = await bootstrapCloudProgress(uid, localSnapshot, { ...options, now: safeNow });
       finalCloudProgress = res.snapshot || cloudProgress;
       cloudSyncSuccess = true;
       await setLastSyncedSnapshot(targetIdentity, finalCloudProgress);

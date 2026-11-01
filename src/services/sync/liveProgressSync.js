@@ -14,6 +14,7 @@ import {
 } from './cloudRestoreAdapter';
 import { DAILY_MISSIONS, getLocalDailyKey } from '../../domain/player/dailySystem';
 import { createDefaultPlayerProgress } from '../../storage/playerProgressStorage';
+import { whenServerTimeReady } from '../firebase/serverTimeService';
 
 /**
  * CLOUD PROFILE SYNC V0.1 — LIVE GAMEPLAY SYNC DISPATCHER (PHASE 5B)
@@ -32,6 +33,8 @@ import { createDefaultPlayerProgress } from '../../storage/playerProgressStorage
  *    staged during or after the in-flight network round-trip.
  * 5. Network Resiliency (Local-First):
  *    Network failure NEVER undos local gameplay or drops staged data.
+ * 6. Explicit Error Classification:
+ *    Distinguishes true network offline states from permission/validation rule failures.
  */
 
 export const SYNC_STATUS = Object.freeze({
@@ -46,6 +49,25 @@ let currentSyncStatus = SYNC_STATUS.IDLE;
 const statusListeners = new Set();
 const inFlightFlushes = new Set();
 const cloudSyncReadyIdentities = new Set();
+
+/**
+ * Determines whether an error returned from RTDB is a permission or security rule rejection.
+ *
+ * @param {any} err
+ * @returns {boolean}
+ */
+export function isPermissionOrSecurityError(err) {
+  if (!err) return false;
+  const code = String(err.code || '');
+  const message = String(err.message || '');
+  if (/permission[-_]?denied/i.test(code) || /permission[-_]?denied/i.test(message)) {
+    return true;
+  }
+  if (code.includes('database/permission-denied')) {
+    return true;
+  }
+  return false;
+}
 
 /**
  * Checks if cloud progress bootstrap/restore has succeeded for the given identity in this session.
@@ -180,13 +202,25 @@ export async function flushLiveProgress(explicitIdentity) {
       // D. Network transmission (lock NOT held, allowing local gameplay in parallel)
       updateSyncStatus(SYNC_STATUS.SYNCING);
 
+      // Verify server time readiness before submitting cloud write
+      const serverTimeReady = await whenServerTimeReady(4000);
+      if (!serverTimeReady) {
+        console.warn('[LiveProgressSync] Server time offset not ready; deferring sync');
+        updateSyncStatus(SYNC_STATUS.OFFLINE);
+        return { status: 'offline', reason: 'SERVER_TIME_NOT_READY' };
+      }
+
       let cloudResult;
       try {
         cloudResult = await applySyncOperation(rawUid, pendingOp);
-      } catch (netErr) {
-        console.warn('[LiveProgressSync] Network error during applySyncOperation:', netErr);
+      } catch (err) {
+        console.warn('[LiveProgressSync] Error during applySyncOperation:', err);
+        if (isPermissionOrSecurityError(err)) {
+          updateSyncStatus(SYNC_STATUS.ERROR);
+          return { status: 'error', error: err };
+        }
         updateSyncStatus(SYNC_STATUS.OFFLINE);
-        return { status: 'offline', error: netErr };
+        return { status: 'offline', error: err };
       }
 
       if (!cloudResult || !cloudResult.committed || !cloudResult.snapshot) {
