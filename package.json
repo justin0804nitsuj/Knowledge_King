@@ -19,6 +19,7 @@
     "expo-localization": "~57.0.2",
     "expo-splash-screen": "~57.0.10",
     "expo-status-bar": "~57.0.1",
+    "expo-updates": "~57.0.26",
     "i18next": "^26.4.2",
     "react": "19.2.3",
     "react-i18next": "^17.0.16",

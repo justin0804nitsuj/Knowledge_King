@@ -2,7 +2,7 @@
   "expo": {
     "name": "Knowledge King",
     "slug": "Knowledge_King",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "backgroundColor": "#1E3A8A",
@@ -17,7 +17,7 @@
     "icon": "./assets/icon.png",
     "android": {
       "package": "com.justin.knowledgeking",
-      "versionCode": 8,
+      "versionCode": 9,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -49,6 +49,12 @@
       "eas": {
         "projectId": "61705626-0364-423f-b0f7-3ab13d29dca6"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/61705626-0364-423f-b0f7-3ab13d29dca6"
     }
   }
 }
